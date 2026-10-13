@@ -2,6 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { LoginScreen } from "./LoginScreen";
 import { Spinner } from "./ui";
@@ -13,6 +14,7 @@ export const useSession = () => useContext(SessionContext);
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const t = useT();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -27,11 +29,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <div className="mx-auto max-w-lg p-6">
         <div className="card p-6">
-          <h1 className="text-xl font-semibold">Falta configurar o Supabase</h1>
-          <p className="text-muted mt-2">
-            Define <code>NEXT_PUBLIC_SUPABASE_URL</code> e <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> no ficheiro{" "}
-            <code>.env.local</code> (ou nas variáveis da Vercel).
-          </p>
+          <h1 className="text-xl font-semibold">{t.auth.missingConfigTitle}</h1>
+          <p className="text-muted mt-2">{t.auth.missingConfigText}</p>
         </div>
       </div>
     );
@@ -40,7 +39,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <Spinner label="A carregar…" />
+        <Spinner label={t.common.loading} />
       </div>
     );
   }

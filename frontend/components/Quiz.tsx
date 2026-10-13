@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { QuizQuestion } from "@/lib/types";
 import { Markdown, Spinner } from "./ui";
 
@@ -9,6 +10,7 @@ const LETTERS = ["A", "B", "C", "D"];
 
 /** Teste de escolha múltipla com correção imediata e explicação. */
 export function Quiz({ documentId, questions }: { documentId: string; questions: QuizQuestion[] }) {
+  const t = useT();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [extra, setExtra] = useState<Record<number, string>>({});
@@ -67,15 +69,9 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
         <p className="text-3xl font-bold">
           {score} / {questions.length}
         </p>
-        <p className="text-muted">
-          {pct >= 80
-            ? "Excelente! Estás pronta para o exame."
-            : pct >= 50
-              ? "Bom trabalho! Revê as que falhaste."
-              : "Não desanimes: revê o resumo e tenta outra vez."}
-        </p>
+        <p className="text-muted">{t.quiz.result(pct)}</p>
         <button className="btn-primary" onClick={restart}>
-          Repetir o teste
+          {t.quiz.restart}
         </button>
       </div>
     );
@@ -84,12 +80,8 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
   return (
     <div className="mx-auto max-w-2xl">
       <div className="text-muted mb-3 flex justify-between text-sm">
-        <span>
-          Pergunta {index + 1} de {questions.length}
-        </span>
-        <span>
-          {score} {score === 1 ? "certa" : "certas"}
-        </span>
+        <span>{t.quiz.questionOf(index + 1, questions.length)}</span>
+        <span>{t.quiz.correctCount(score)}</span>
       </div>
       <div className="card p-5">
         <p className="text-lg font-medium">{q.question}</p>
@@ -120,7 +112,7 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
         {chosen !== null && (
           <div className="bg-surface-2 mt-4 rounded-xl p-4">
             <p className="font-semibold">
-              {chosen === q.correct_index ? "✅ Certo!" : `❌ A resposta certa é a ${LETTERS[q.correct_index]}.`}
+              {chosen === q.correct_index ? t.quiz.right : t.quiz.wrong(LETTERS[q.correct_index])}
             </p>
             <p className="mt-2">{q.explanation}</p>
             {extra[index] ? (
@@ -129,11 +121,11 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
               </div>
             ) : loadingExtra ? (
               <div className="mt-3">
-                <Spinner label="A preparar uma explicação…" />
+                <Spinner label={t.quiz.explaining} />
               </div>
             ) : (
               <button className="btn-ghost text-accent mt-2 px-0" onClick={explainMore}>
-                Explica-me melhor
+                {t.quiz.explainMore}
               </button>
             )}
           </div>
@@ -142,7 +134,7 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
 
       {chosen !== null && (
         <button className="btn-primary mt-4 w-full" onClick={next}>
-          {index + 1 < questions.length ? "Próxima pergunta →" : "Ver resultado"}
+          {index + 1 < questions.length ? t.quiz.next : t.quiz.seeResult}
         </button>
       )}
     </div>

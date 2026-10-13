@@ -6,6 +6,7 @@ import { userIdOf } from "../auth";
 import { MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
 import { detectKind } from "../extract";
 import { asyncHandler, HttpError } from "../http";
+import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { processDocument } from "../processing";
 import { getOrGenerateStudy } from "../study";
@@ -35,7 +36,7 @@ async function ownedDocument(id: string, userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new HttpError(404, "Documento não encontrado.");
+  if (!data) throw new HttpError(404, "documentNotFound");
   return data;
 }
 
@@ -45,13 +46,13 @@ documentsRouter.post(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     const file = req.file;
-    if (!file) throw new HttpError(400, "Nenhum ficheiro recebido.");
+    if (!file) throw new HttpError(400, "noFile");
 
     // O multer lê o nome em latin1; convertemos para manter acentos.
     const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
     const kind = detectKind(file.mimetype, originalName);
     if (!kind) {
-      throw new HttpError(415, "Tipo de ficheiro não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx) ou texto.");
+      throw new HttpError(415, "unsupportedType");
     }
 
     const subjectId = z.string().uuid().nullable().catch(null).parse(req.body?.subject_id || null);
@@ -62,7 +63,7 @@ documentsRouter.post(
         .eq("id", subjectId)
         .eq("user_id", userId)
         .maybeSingle();
-      if (!subject) throw new HttpError(400, "Disciplina inválida.");
+      if (!subject) throw new HttpError(400, "invalidSubject");
     }
 
     const id = randomUUID();
@@ -72,7 +73,7 @@ documentsRouter.post(
       .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
     if (uploadError) {
       console.error(uploadError);
-      throw new HttpError(500, "Não foi possível guardar o ficheiro. Tenta novamente.");
+      throw new HttpError(500, "saveFailed");
     }
 
     const title = originalName.replace(/\.[^.]+$/, "");
@@ -141,7 +142,7 @@ documentsRouter.patch(
         .eq("id", body.subject_id)
         .eq("user_id", userId)
         .maybeSingle();
-      if (!subject) throw new HttpError(400, "Disciplina inválida.");
+      if (!subject) throw new HttpError(400, "invalidSubject");
     }
     const update: Record<string, unknown> = { ...body };
     if ("subject_id" in body) update.suggested_subject_id = null;
@@ -175,7 +176,7 @@ documentsRouter.get(
   asyncHandler(async (req, res) => {
     const doc = await ownedDocument(String(req.params.id), userIdOf(req));
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(doc.storage_path, 60 * 10);
-    if (error || !data) throw new HttpError(500, "Não foi possível abrir o ficheiro original.");
+    if (error || !data) throw new HttpError(500, "openFailed");
     res.json({ url: data.signedUrl, mime_type: doc.mime_type });
   }),
 );
@@ -183,9 +184,9 @@ documentsRouter.get(
 async function studyHandler(req: Parameters<Parameters<typeof asyncHandler>[0]>[0], force: boolean) {
   const userId = userIdOf(req);
   const doc = await ownedDocument(String(req.params.id), userId);
-  if (doc.status === "processing") throw new HttpError(409, "O ficheiro ainda está a ser processado.");
-  if (doc.status === "error") throw new HttpError(409, doc.error_message ?? "Este ficheiro tem um erro.");
-  return getOrGenerateStudy(doc.id, userId, force);
+  if (doc.status === "processing") throw new HttpError(409, "stillProcessing");
+  if (doc.status === "error") throw new HttpError(409, "documentHasError");
+  return getOrGenerateStudy(doc.id, userId, langOf(req), force);
 }
 
 documentsRouter.get(

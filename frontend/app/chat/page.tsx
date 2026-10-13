@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/ui";
 import { apiFetch, api, errorMessage } from "@/lib/api";
+import { dict, useT } from "@/lib/i18n";
 import type { ChatMessage, DocumentItem, Source } from "@/lib/types";
 
 interface Conversation {
@@ -12,13 +13,8 @@ interface Conversation {
   updated_at: string;
 }
 
-const SUGGESTIONS = [
-  "Explica-me a diferença entre dose absorvida e dose equivalente",
-  "Quais são as contraindicações da ressonância magnética?",
-  "Faz-me 3 perguntas sobre proteção radiológica",
-];
-
 function SourceChips({ sources }: { sources: Source[] }) {
+  const t = useT();
   if (!sources.length) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-2">
@@ -32,7 +28,7 @@ function SourceChips({ sources }: { sources: Source[] }) {
           <span className="text-accent font-semibold">[{s.n}]</span>
           <span className="truncate">
             {s.document_title}
-            {s.page ? `, p. ${s.page}` : ""}
+            {s.page ? `, ${t.chat.pageShort} ${s.page}` : ""}
           </span>
         </Link>
       ))}
@@ -52,7 +48,7 @@ async function streamChat(
   });
   if (!res.ok || !res.body) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error ?? "Não foi possível responder agora. Tenta novamente.");
+    throw new Error((err as { error?: string }).error ?? dict().chat.failed);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -77,6 +73,7 @@ async function streamChat(
 }
 
 export default function ChatPage() {
+  const t = useT();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -128,7 +125,7 @@ export default function ChatPage() {
   }
 
   async function deleteConversation(id: string) {
-    if (!confirm("Apagar esta conversa?")) return;
+    if (!confirm(t.chat.confirmDelete)) return;
     await api.del(`/chat/conversations/${id}`).catch(() => undefined);
     if (id === conversationId) newConversation();
     loadConversations();
@@ -168,9 +165,9 @@ export default function ChatPage() {
   const historyPanel = (
     <div className="flex flex-col gap-1">
       <button className="btn-primary mb-2" onClick={newConversation}>
-        + Nova conversa
+        {t.chat.newConversation}
       </button>
-      {conversations.length === 0 && <p className="text-muted p-2 text-sm">Ainda não há conversas.</p>}
+      {conversations.length === 0 && <p className="text-muted p-2 text-sm">{t.chat.noConversations}</p>}
       {conversations.map((c) => (
         <div key={c.conversation_id} className="group flex items-center">
           <button
@@ -184,7 +181,7 @@ export default function ChatPage() {
           <button
             className="btn-ghost min-h-9 px-2 text-sm"
             onClick={() => deleteConversation(c.conversation_id)}
-            aria-label="Apagar conversa"
+            aria-label={t.chat.deleteConversation}
           >
             ✕
           </button>
@@ -201,12 +198,12 @@ export default function ChatPage() {
 
       <div className="flex min-h-[calc(100dvh-12rem)] min-w-0 flex-1 flex-col">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold sm:text-3xl">Chat</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">{t.chat.title}</h1>
           <div className="flex gap-2 lg:hidden">
             <button className="btn-secondary" onClick={() => setShowHistory((s) => !s)}>
-              🕘 Conversas
+              {t.chat.conversations}
             </button>
-            <button className="btn-secondary" onClick={newConversation} aria-label="Nova conversa">
+            <button className="btn-secondary" onClick={newConversation} aria-label={t.chat.newConversationLabel}>
               ＋
             </button>
           </div>
@@ -217,7 +214,7 @@ export default function ChatPage() {
         {docFilter && (
           <div className="bg-accent-soft mb-4 flex items-center justify-between gap-2 rounded-xl px-4 py-2 text-sm">
             <span className="truncate">
-              A responder só com: <strong>{docFilter.title}</strong>
+              {t.chat.onlyWith} <strong>{docFilter.title}</strong>
             </span>
             <button
               className="btn-ghost min-h-9 px-2"
@@ -226,7 +223,7 @@ export default function ChatPage() {
                 window.history.replaceState(null, "", "/chat");
               }}
             >
-              Usar todos
+              {t.chat.useAll}
             </button>
           </div>
         )}
@@ -237,12 +234,10 @@ export default function ChatPage() {
               <p className="text-4xl" aria-hidden="true">
                 💬
               </p>
-              <p className="mt-2 text-lg font-semibold">Em que te posso ajudar?</p>
-              <p className="text-muted mt-1">
-                Respondo com base nos teus apontamentos e digo-te de onde vem cada informação.
-              </p>
+              <p className="mt-2 text-lg font-semibold">{t.chat.emptyTitle}</p>
+              <p className="text-muted mt-1">{t.chat.emptyText}</p>
               <div className="mt-5 flex flex-col gap-2">
-                {SUGGESTIONS.map((s) => (
+                {t.chat.suggestions.map((s) => (
                   <button key={s} className="btn-secondary justify-start text-left text-sm" onClick={() => send(s)}>
                     {s}
                   </button>
@@ -271,7 +266,7 @@ export default function ChatPage() {
                       {m.content}
                     </Markdown>
                   ) : (
-                    <span className="flex gap-1 py-2" aria-label="A escrever">
+                    <span className="flex gap-1 py-2" aria-label={t.chat.typing}>
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full" />
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full [animation-delay:150ms]" />
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
@@ -296,8 +291,8 @@ export default function ChatPage() {
           <textarea
             className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 outline-none"
             rows={1}
-            placeholder="Escreve a tua dúvida…"
-            aria-label="A tua pergunta"
+            placeholder={t.chat.placeholder}
+            aria-label={t.chat.inputLabel}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -307,8 +302,8 @@ export default function ChatPage() {
               }
             }}
           />
-          <button className="btn-primary" disabled={busy || !input.trim()} aria-label="Enviar">
-            {busy ? "…" : "Enviar"}
+          <button className="btn-primary" disabled={busy || !input.trim()} aria-label={t.chat.send}>
+            {busy ? "…" : t.chat.send}
           </button>
         </form>
       </div>

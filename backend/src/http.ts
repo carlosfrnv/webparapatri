@@ -1,13 +1,14 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { ZodError } from "zod";
 import { AiError } from "./ai";
+import { langOf, t, type MessageKey } from "./i18n";
 
 export class HttpError extends Error {
   constructor(
     public status: number,
-    message: string,
+    public key: MessageKey,
   ) {
-    super(message);
+    super(key);
   }
 }
 
@@ -18,28 +19,29 @@ export function asyncHandler(fn: (req: Request, res: Response) => Promise<void>)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  const lang = langOf(req);
   if (res.headersSent) {
     res.end();
     return;
   }
   if (err instanceof HttpError) {
-    res.status(err.status).json({ error: err.message });
+    res.status(err.status).json({ error: t(lang, err.key) });
     return;
   }
   if (err instanceof ZodError) {
-    res.status(400).json({ error: "Dados inválidos.", details: err.issues });
+    res.status(400).json({ error: t(lang, "invalidData"), details: err.issues });
     return;
   }
   if (err instanceof AiError) {
-    res.status(502).json({ error: err.message });
+    res.status(502).json({ error: t(lang, err.key) });
     return;
   }
   const code = (err as { code?: string })?.code;
   if (code === "LIMIT_FILE_SIZE") {
-    res.status(413).json({ error: "O ficheiro é demasiado grande (máximo 25 MB)." });
+    res.status(413).json({ error: t(lang, "fileTooLarge") });
     return;
   }
   console.error(err);
-  res.status(500).json({ error: "Ocorreu um erro inesperado. Tenta novamente." });
+  res.status(500).json({ error: t(lang, "unexpected") });
 }

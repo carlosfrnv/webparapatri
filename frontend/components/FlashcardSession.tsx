@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { DueCard } from "@/lib/types";
 
+// Qualidade SM-2 de cada botão (os textos vêm do dicionário, pela mesma ordem).
 const GRADES = [
-  { quality: 1, label: "Não sabia", hint: "volta já", cls: "bg-danger-soft text-danger" },
-  { quality: 3, label: "Difícil", hint: "", cls: "bg-warning-soft" },
-  { quality: 4, label: "Bem", hint: "", cls: "bg-accent-soft text-accent" },
-  { quality: 5, label: "Fácil", hint: "", cls: "bg-success-soft text-success" },
+  { quality: 1, cls: "bg-danger-soft text-danger" },
+  { quality: 3, cls: "bg-warning-soft" },
+  { quality: 4, cls: "bg-accent-soft text-accent" },
+  { quality: 5, cls: "bg-success-soft text-success" },
 ];
 
 /** Sessão de revisão: vira o cartão, classifica de 0 a 5 (SM-2). */
@@ -22,6 +24,7 @@ export function FlashcardSession({
   onFinish?: () => void;
   showSource?: boolean;
 }) {
+  const t = useT();
   const [queue, setQueue] = useState(cards);
   const [flipped, setFlipped] = useState(false);
   const [done, setDone] = useState(0);
@@ -68,11 +71,11 @@ export function FlashcardSession({
         <span className="text-5xl" aria-hidden="true">
           🎉
         </span>
-        <p className="text-xl font-semibold">Revisão concluída!</p>
-        <p className="text-muted">Reviste {done} cartões. Os próximos aparecem quando chegar a altura certa.</p>
+        <p className="text-xl font-semibold">{t.flashcards.done}</p>
+        <p className="text-muted">{t.flashcards.doneText(done)}</p>
         {onFinish && (
           <button className="btn-primary" onClick={onFinish}>
-            Continuar
+            {t.flashcards.continue}
           </button>
         )}
       </div>
@@ -85,9 +88,9 @@ export function FlashcardSession({
     <div className="mx-auto max-w-2xl">
       <div className="text-muted mb-3 flex items-center justify-between text-sm">
         <span>
-          {done} de {total}
+          {t.flashcards.of(done, total)}
           {card.is_new && (
-            <span className="bg-accent-soft text-accent ml-2 rounded-full px-2 py-0.5 text-xs">novo</span>
+            <span className="bg-accent-soft text-accent ml-2 rounded-full px-2 py-0.5 text-xs">{t.flashcards.new}</span>
           )}
         </span>
         {showSource && (
@@ -103,16 +106,16 @@ export function FlashcardSession({
       <button
         className="flip block w-full text-left"
         onClick={() => setFlipped((f) => !f)}
-        aria-label={flipped ? "Mostrar pergunta" : "Mostrar resposta"}
+        aria-label={flipped ? t.flashcards.showQuestion : t.flashcards.showAnswer}
       >
         <div className={`flip-inner relative min-h-64 ${flipped ? "flipped" : ""}`}>
           <div className="flip-face card absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            <p className="text-muted text-xs font-semibold tracking-wide uppercase">Pergunta</p>
+            <p className="text-muted text-xs font-semibold tracking-wide uppercase">{t.flashcards.question}</p>
             <p className="mt-3 text-xl font-medium">{card.front}</p>
-            <p className="text-muted mt-6 text-sm">Toca para ver a resposta</p>
+            <p className="text-muted mt-6 text-sm">{t.flashcards.tapToSee}</p>
           </div>
           <div className="flip-face flip-back card bg-accent-soft absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            <p className="text-muted text-xs font-semibold tracking-wide uppercase">Resposta</p>
+            <p className="text-muted text-xs font-semibold tracking-wide uppercase">{t.flashcards.answer}</p>
             <p className="mt-3 text-lg">{card.back}</p>
           </div>
         </div>
@@ -129,14 +132,14 @@ export function FlashcardSession({
               disabled={saving}
               onClick={() => grade(g.quality)}
             >
-              <span>{g.label}</span>
-              <span className="hidden text-xs opacity-70 sm:inline">tecla {i + 1}</span>
+              <span>{t.flashcards.grades[i]}</span>
+              <span className="hidden text-xs opacity-70 sm:inline">{t.flashcards.key(i + 1)}</span>
             </button>
           ))}
         </div>
       ) : (
         <button className="btn-primary mt-4 w-full" onClick={() => setFlipped(true)}>
-          Mostrar resposta
+          {t.flashcards.showAnswer}
         </button>
       )}
     </div>

@@ -8,9 +8,11 @@ import { SubjectForm } from "@/components/SubjectForm";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
-import { AREA_LABELS, type DocumentItem, type Subject } from "@/lib/types";
+import { useT } from "@/lib/i18n";
+import type { DocumentItem, Subject } from "@/lib/types";
 
 export default function SubjectPage() {
+  const t = useT();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -45,8 +47,7 @@ export default function SubjectPage() {
 
   async function removeSubject() {
     if (!subject) return;
-    if (!confirm(`Apagar a disciplina "${subject.name}"? Os ficheiros não são apagados: ficam “sem disciplina”.`))
-      return;
+    if (!confirm(t.subject.confirmDelete(subject.name))) return;
     try {
       await api.del(`/subjects/${subject.id}`);
       router.push("/biblioteca");
@@ -65,13 +66,13 @@ export default function SubjectPage() {
         }}
       />
     );
-  if (!docs) return <Spinner label="A carregar…" />;
+  if (!docs) return <Spinner label={t.common.loading} />;
   if (!subject) {
     return (
       <div className="card p-6">
-        <p>Esta disciplina já não existe.</p>
+        <p>{t.subject.gone}</p>
         <Link href="/biblioteca" className="btn-primary mt-4">
-          Voltar à Biblioteca
+          {t.subject.backToLibrary}
         </Link>
       </div>
     );
@@ -80,13 +81,13 @@ export default function SubjectPage() {
   return (
     <>
       <Link href="/biblioteca" className="text-accent mb-3 inline-block text-sm font-medium">
-        ← Biblioteca
+        ← {t.nav.library}
       </Link>
       {editing ? (
         <div className="mb-6">
           <SubjectForm
             initial={subject}
-            submitLabel="Guardar"
+            submitLabel={t.common.save}
             onCancel={() => setEditing(false)}
             onSubmit={async (data) => {
               try {
@@ -102,16 +103,16 @@ export default function SubjectPage() {
       ) : (
         <PageHeader
           title={subject.name}
-          subtitle={[subject.year ? `${subject.year}.º ano` : null, subject.area ? AREA_LABELS[subject.area] : null]
+          subtitle={[subject.year ? t.library.yearN(subject.year) : null, subject.area ? t.areas[subject.area] : null]
             .filter(Boolean)
             .join(" · ")}
           actions={
             <>
               <button className="btn-secondary" onClick={() => setEditing(true)}>
-                ✏️ Editar
+                ✏️ {t.common.edit}
               </button>
               <button className="btn-ghost" onClick={removeSubject}>
-                🗑️ Apagar
+                🗑️ {t.common.delete}
               </button>
             </>
           }
@@ -123,13 +124,8 @@ export default function SubjectPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Ficheiros</h2>
-        <DocumentList
-          docs={docs}
-          setDocs={setDocsStable}
-          subjects={subjects}
-          emptyText="Ainda não tens ficheiros nesta disciplina. Arrasta para cima os apontamentos que recebeste por email."
-        />
+        <h2 className="mb-3 text-lg font-semibold">{t.subject.files}</h2>
+        <DocumentList docs={docs} setDocs={setDocsStable} subjects={subjects} emptyText={t.subject.empty} />
       </section>
     </>
   );

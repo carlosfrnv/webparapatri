@@ -1,17 +1,33 @@
-// ✏️ Carlos: muda estes textos à vontade. Aparecem na página inicial.
+// ✏️ Carlos: cambia estos textos como quieras. Aparecen en la página de inicio.
+// Hay una versión en español y otra en portugués (se muestra la del idioma elegido).
+// Deja una línea en blanco dentro del mensaje para empezar un párrafo nuevo.
+
+import { useLang } from "@/lib/i18n";
 
 export const dedicatoria = {
-  // Nome que aparece na saudação ("Olá, Patri!")
-  nome: "Patri",
+  es: {
+    // Nombre del saludo ("¡Buenos días, Patri!")
+    nome: "Patri",
+    // Mensaje de bienvenida: aparece la primera vez que entra.
+    titulo: "Una sorpresa para ti 💙",
+    mensagem: `Te he hecho este rincón para que estudies con más calma. Aquí puedes guardar todos los apuntes que te mandan por email, y la IA te ayuda con resúmenes, flashcards, tests y dudas.
 
-  // Mensagem que aparece no ecrã de boas-vindas, na primeira vez que ela entra.
-  titulo: "Uma surpresa para ti 💙",
-  // Deixa uma linha em branco para começar um parágrafo novo.
-  mensagem: `Fiz-te este cantinho para estudares com mais calma. Aqui podes guardar todos os apontamentos que te enviam por email, e a IA ajuda-te com resumos, flashcards, testes e dúvidas.
+Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
+    assinatura: "— Carlos",
+    // Frase corta que aparece siempre debajo del saludo.
+    frase: "Paso a paso. Hoy también cuenta. 💪",
+  },
+  pt: {
+    nome: "Patri",
+    titulo: "Uma surpresa para ti 💙",
+    mensagem: `Fiz-te este cantinho para estudares com mais calma. Aqui podes guardar todos os apontamentos que te enviam por email, e a IA ajuda-te com resumos, flashcards, testes e dúvidas.
 
 Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
-  assinatura: "— Carlos",
-
-  // Frase curta que aparece sempre por baixo da saudação.
-  frase: "Um passo de cada vez. Hoje também conta. 💪",
+    assinatura: "— Carlos",
+    frase: "Um passo de cada vez. Hoje também conta. 💪",
+  },
 };
+
+export function useDedicatoria() {
+  return dedicatoria[useLang()];
+}

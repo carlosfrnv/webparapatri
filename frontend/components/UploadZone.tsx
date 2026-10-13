@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { errorMessage, uploadFile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { DocumentItem } from "@/lib/types";
 
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -11,7 +12,7 @@ interface Pending {
   key: string;
   name: string;
   progress: number;
-  error?: string;
+  error?: "badType" | "tooBig" | string;
 }
 
 /** Zona grande de arrastar e largar, com progresso por ficheiro. */
@@ -22,6 +23,7 @@ export function UploadZone({
   subjectId: string | null;
   onUploaded: (doc: DocumentItem) => void;
 }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
@@ -37,11 +39,11 @@ export function UploadZone({
       setPending((list) => [...list, { key, name: file.name, progress: 0 }]);
 
       if (!["pdf", "docx", "pptx", "txt", "md"].includes(ext)) {
-        update(key, { error: "Tipo não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx) ou texto." });
+        update(key, { error: "badType" });
         continue;
       }
       if (file.size > MAX_BYTES) {
-        update(key, { error: "Demasiado grande (máximo 25 MB)." });
+        update(key, { error: "tooBig" });
         continue;
       }
       try {
@@ -54,12 +56,14 @@ export function UploadZone({
     }
   }
 
+  const errorText = (e: string) => (e === "badType" ? t.upload.badType : e === "tooBig" ? t.upload.tooBig : e);
+
   return (
     <div>
       <div
         role="button"
         tabIndex={0}
-        aria-label="Carregar ficheiros"
+        aria-label={t.upload.label}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
         onDragOver={(e) => {
@@ -79,8 +83,8 @@ export function UploadZone({
         <span className="text-4xl" aria-hidden="true">
           📥
         </span>
-        <p className="font-semibold">Arrasta para aqui os teus apontamentos</p>
-        <p className="text-muted text-sm">ou toca para escolher · PDF, Word, PowerPoint ou texto · até 25 MB</p>
+        <p className="font-semibold">{t.upload.title}</p>
+        <p className="text-muted text-sm">{t.upload.hint}</p>
         <input
           ref={inputRef}
           type="file"
@@ -105,16 +109,16 @@ export function UploadZone({
                     className="btn-ghost min-h-0 px-2 py-0 text-sm"
                     onClick={() => setPending((list) => list.filter((x) => x.key !== p.key))}
                   >
-                    Fechar
+                    {t.common.close}
                   </button>
                 ) : (
                   <span className="text-muted text-sm">
-                    {p.progress < 1 ? `${Math.round(p.progress * 100)}%` : "A guardar…"}
+                    {p.progress < 1 ? `${Math.round(p.progress * 100)}%` : t.upload.saving}
                   </span>
                 )}
               </div>
               {p.error ? (
-                <p className="text-danger mt-1 text-sm">{p.error}</p>
+                <p className="text-danger mt-1 text-sm">{errorText(p.error)}</p>
               ) : (
                 <div className="bg-surface-2 mt-2 h-2 overflow-hidden rounded-full">
                   <div

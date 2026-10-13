@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, Subject } from "@/lib/types";
 import { fileIcon, formatDate, StatusBadge } from "./ui";
 
@@ -28,6 +29,12 @@ export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: Docume
   }, [processingIds, setDocs]);
 }
 
+/** Traduz os códigos de erro do processamento guardados pelo backend. */
+export function useDocError() {
+  const t = useT();
+  return (message: string | null) => (message ? (t.docErrors[message] ?? message) : null);
+}
+
 export function DocumentList({
   docs,
   setDocs,
@@ -41,10 +48,13 @@ export function DocumentList({
   emptyText?: string;
   onAssigned?: (doc: DocumentItem) => void;
 }) {
+  const t = useT();
+  const lang = useLang();
+  const docError = useDocError();
   usePollProcessing(docs, setDocs);
 
   async function remove(doc: DocumentItem) {
-    if (!confirm(`Apagar "${doc.title}"? Os resumos, flashcards e testes deste ficheiro também são apagados.`)) return;
+    if (!confirm(t.docList.confirmDelete(doc.title))) return;
     try {
       await api.del(`/documents/${doc.id}`);
       setDocs((list) => list.filter((d) => d.id !== doc.id));
@@ -64,11 +74,7 @@ export function DocumentList({
   }
 
   if (docs.length === 0) {
-    return (
-      <p className="bg-surface-2 text-muted rounded-xl p-4 text-center">
-        {emptyText ?? "Ainda não há ficheiros aqui."}
-      </p>
-    );
+    return <p className="bg-surface-2 text-muted rounded-xl p-4 text-center">{emptyText ?? t.docList.empty}</p>;
   }
 
   const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name;
@@ -94,37 +100,37 @@ export function DocumentList({
                 )}
                 <div className="text-muted mt-1 flex flex-wrap items-center gap-2 text-sm">
                   <StatusBadge status={doc.status} />
-                  <span>{formatDate(doc.created_at)}</span>
+                  <span>{formatDate(doc.created_at, lang)}</span>
                   {doc.subject_id && subjectName(doc.subject_id) && <span>· {subjectName(doc.subject_id)}</span>}
                 </div>
                 {doc.status === "error" && doc.error_message && (
-                  <p className="text-danger mt-2 text-sm">{doc.error_message}</p>
+                  <p className="text-danger mt-2 text-sm">{docError(doc.error_message)}</p>
                 )}
                 {suggestion && (
                   <div className="bg-accent-soft mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3 text-sm">
                     <span>
-                      ✨ Parece ser de <strong>{suggestion}</strong>.
+                      {t.docList.suggestion} <strong>{suggestion}</strong>.
                     </span>
                     <button
                       className="btn-primary min-h-9 px-3 py-1 text-sm"
                       onClick={() => assign(doc, doc.suggested_subject_id)}
                     >
-                      Confirmar
+                      {t.docList.confirm}
                     </button>
                   </div>
                 )}
                 {!doc.subject_id && subjects.length > 0 && (
                   <label className="mt-2 flex items-center gap-2 text-sm">
-                    <span className="text-muted">Disciplina:</span>
+                    <span className="text-muted">{t.docList.subject}</span>
                     <select
                       className="input min-h-9 min-w-0 flex-1 py-1 text-sm sm:max-w-xs"
                       value=""
                       onChange={(e) => e.target.value && assign(doc, e.target.value)}
                     >
-                      <option value="">Escolher…</option>
+                      <option value="">{t.docList.choose}</option>
                       {subjects.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.year ? `${s.year}.º · ` : ""}
+                          {s.year ? `${t.docList.yearShort(s.year)} · ` : ""}
                           {s.name}
                         </option>
                       ))}
@@ -132,7 +138,11 @@ export function DocumentList({
                   </label>
                 )}
               </div>
-              <button className="btn-ghost px-3" onClick={() => remove(doc)} aria-label={`Apagar ${doc.title}`}>
+              <button
+                className="btn-ghost px-3"
+                onClick={() => remove(doc)}
+                aria-label={t.docList.deleteLabel(doc.title)}
+              >
                 🗑️
               </button>
             </div>

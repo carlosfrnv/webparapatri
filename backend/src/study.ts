@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { complete, completeJson } from "./ai";
+import type { Lang } from "./i18n";
 import { conceptsPrompt, flashcardsPrompt, partialSummaryPrompt, quizPrompt, summaryPrompt } from "./prompts";
 import { supabase } from "./supabase";
 
@@ -38,20 +39,23 @@ export async function documentText(documentId: string, userId: string): Promise<
   return (data ?? []).map((c) => c.content).join("\n\n");
 }
 
-async function condensedText(text: string): Promise<string> {
+async function condensedText(text: string, lang: Lang): Promise<string> {
   if (text.length <= DIRECT_LIMIT) return text;
   const parts: string[] = [];
   for (let i = 0; i < text.length; i += PART_SIZE) parts.push(text.slice(i, i + PART_SIZE));
   const partials = await Promise.all(
-    parts.map((part, i) => complete(partialSummaryPrompt(part, i + 1, parts.length), { effort: "low" })),
+    parts.map((part, i) => complete(partialSummaryPrompt(lang, part, i + 1, parts.length), { lang, effort: "low" })),
   );
   return partials.map((p, i) => `## Parte ${i + 1}\n${p}`).join("\n\n");
 }
 
 const inFlight = new Map<string, Promise<unknown>>();
 
-/** Gera (ou devolve em cache) os materiais de estudo de um documento. */
-export async function getOrGenerateStudy(documentId: string, userId: string, force = false) {
+/**
+ * Gera (ou devolve em cache) os materiais de estudo de um documento.
+ * A cache não depende do idioma: se ela mudar de idioma, o frontend oferece gerar de novo.
+ */
+export async function getOrGenerateStudy(documentId: string, userId: string, lang: Lang, force = false) {
   if (!force) {
     const { data } = await supabase
       .from("study_materials")
@@ -63,19 +67,20 @@ export async function getOrGenerateStudy(documentId: string, userId: string, for
   }
 
   // Evita gerar duas vezes o mesmo documento se ela abrir a página duas vezes.
-  const running = inFlight.get(documentId);
+  const jobKey = `${documentId}:${lang}`;
+  const running = inFlight.get(jobKey);
   if (running) return running;
 
   const job = (async () => {
     const text = await documentText(documentId, userId);
     if (!text.trim()) throw new Error("Documento sem texto");
-    const source = await condensedText(text);
+    const source = await condensedText(text, lang);
 
     const [summary, concepts, flashcards, quiz] = await Promise.all([
-      complete(summaryPrompt(source)),
-      completeJson(conceptsPrompt(source), conceptsSchema),
-      completeJson(flashcardsPrompt(source), flashcardsSchema),
-      completeJson(quizPrompt(source), quizSchema),
+      complete(summaryPrompt(lang, source), { lang }),
+      completeJson(conceptsPrompt(lang, source), conceptsSchema, { lang }),
+      completeJson(flashcardsPrompt(lang, source), flashcardsSchema, { lang }),
+      completeJson(quizPrompt(lang, source), quizSchema, { lang }),
     ]);
 
     const row = {
@@ -86,6 +91,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, for
       glossary: concepts.glossary,
       flashcards: flashcards.flashcards,
       quiz: quiz.quiz,
+      lang,
       generated_at: new Date().toISOString(),
     };
     const { data, error } = await supabase.from("study_materials").upsert(row).select("*").single();
@@ -98,10 +104,10 @@ export async function getOrGenerateStudy(documentId: string, userId: string, for
     return data;
   })();
 
-  inFlight.set(documentId, job);
+  inFlight.set(jobKey, job);
   try {
     return await job;
   } finally {
-    inFlight.delete(documentId);
+    inFlight.delete(jobKey);
   }
 }

@@ -1,12 +1,6 @@
 export type Area = "base" | "radiologia" | "medicina_nuclear" | "radioterapia" | "transversal";
 
-export const AREA_LABELS: Record<Area, string> = {
-  base: "Ciências básicas",
-  radiologia: "Radiologia",
-  medicina_nuclear: "Medicina Nuclear",
-  radioterapia: "Radioterapia",
-  transversal: "Transversal",
-};
+export const AREAS: Area[] = ["base", "radiologia", "medicina_nuclear", "radioterapia", "transversal"];
 
 export interface Subject {
   id: string;
@@ -57,6 +51,7 @@ export interface StudyMaterials {
   glossary: GlossaryItem[];
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
+  lang?: "es" | "pt";
   generated_at: string;
 }
 

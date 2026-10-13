@@ -7,11 +7,13 @@ import { SubjectForm } from "@/components/SubjectForm";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
-import { AREA_LABELS, type DocumentItem, type Source, type Subject } from "@/lib/types";
+import { useT } from "@/lib/i18n";
+import type { DocumentItem, Source, Subject } from "@/lib/types";
 
 const YEARS = [1, 2, 3, 4] as const;
 
 function SearchBox() {
+  const t = useT();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Source[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,8 @@ function SearchBox() {
         <input
           className="input"
           type="search"
-          placeholder="Procurar nos apontamentos (ex.: dose absorvida)"
-          aria-label="Procurar nos apontamentos"
+          placeholder={t.library.searchPlaceholder}
+          aria-label={t.library.searchLabel}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
@@ -46,14 +48,14 @@ function SearchBox() {
           }}
         />
         <button className="btn-secondary shrink-0" disabled={loading}>
-          {loading ? "…" : "🔍 Procurar"}
+          {loading ? "…" : t.library.search}
         </button>
       </form>
       {error && <p className="text-danger mt-2 text-sm">{error}</p>}
       {results && (
         <div className="mt-3">
           {results.length === 0 ? (
-            <p className="text-muted">Nada encontrado. Experimenta outras palavras, ou pergunta no Chat.</p>
+            <p className="text-muted">{t.library.noResults}</p>
           ) : (
             <ul className="space-y-2">
               {results.map((r) => (
@@ -61,7 +63,12 @@ function SearchBox() {
                   <Link href={`/documento/${r.document_id}`} className="card hover:border-accent block p-3">
                     <p className="text-sm font-semibold">
                       {r.document_title}
-                      {r.page ? <span className="text-muted font-normal"> · pág. {r.page}</span> : null}
+                      {r.page ? (
+                        <span className="text-muted font-normal">
+                          {" "}
+                          · {t.library.page} {r.page}
+                        </span>
+                      ) : null}
                     </p>
                     <p className="text-muted mt-1 text-sm">{r.excerpt}</p>
                   </Link>
@@ -76,6 +83,7 @@ function SearchBox() {
 }
 
 export default function LibraryPage() {
+  const t = useT();
   const [subjects, setSubjects] = useState<Subject[] | null>(null);
   const [unassigned, setUnassigned] = useState<DocumentItem[]>([]);
   const [year, setYear] = useState<number | "none">(() => {
@@ -128,24 +136,24 @@ export default function LibraryPage() {
 
   const visible = (subjects ?? []).filter((s) => (year === "none" ? !s.year : s.year === year));
   const hasNoYear = (subjects ?? []).some((s) => !s.year);
+  const tabClass = (active: boolean) =>
+    `min-h-10 rounded-lg px-4 text-sm font-medium whitespace-nowrap ${active ? "bg-surface text-text shadow-sm" : "text-muted"}`;
 
   return (
     <>
-      <PageHeader title="Biblioteca" subtitle="Os teus apontamentos, por ano e disciplina." />
+      <PageHeader title={t.library.title} subtitle={t.library.subtitle} />
 
       <SearchBox />
 
       <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Carregar ficheiros</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t.library.upload}</h2>
         <UploadZone subjectId={null} onUploaded={(doc) => setUnassigned((list) => [doc, ...list])} />
-        <p className="text-muted mt-2 text-sm">
-          Dica: se carregares dentro de uma disciplina, o ficheiro fica logo lá. Daqui, a IA sugere onde o guardar.
-        </p>
+        <p className="text-muted mt-2 text-sm">{t.library.uploadTip}</p>
       </section>
 
       {unassigned.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold">Ficheiros sem disciplina</h2>
+          <h2 className="mb-3 text-lg font-semibold">{t.library.unassigned}</h2>
           <DocumentList docs={unassigned} setDocs={setUnassigned} onAssigned={onAssigned} subjects={subjects ?? []} />
         </section>
       )}
@@ -159,36 +167,40 @@ export default function LibraryPage() {
           }}
         />
       )}
-      {!subjects && !error && <Spinner label="A carregar as disciplinas…" />}
+      {!subjects && !error && <Spinner label={t.library.loadingSubjects} />}
 
       {subjects && (
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="bg-surface-2 flex gap-1 overflow-x-auto rounded-xl p-1" role="tablist" aria-label="Ano">
+            <div
+              className="bg-surface-2 flex gap-1 overflow-x-auto rounded-xl p-1"
+              role="tablist"
+              aria-label={t.library.year}
+            >
               {YEARS.map((y) => (
                 <button
                   key={y}
                   role="tab"
                   aria-selected={year === y}
-                  className={`min-h-10 rounded-lg px-4 text-sm font-medium whitespace-nowrap ${year === y ? "bg-surface text-text shadow-sm" : "text-muted"}`}
+                  className={tabClass(year === y)}
                   onClick={() => chooseYear(y)}
                 >
-                  {y}.º ano
+                  {t.library.yearN(y)}
                 </button>
               ))}
               {hasNoYear && (
                 <button
                   role="tab"
                   aria-selected={year === "none"}
-                  className={`min-h-10 rounded-lg px-4 text-sm font-medium whitespace-nowrap ${year === "none" ? "bg-surface text-text shadow-sm" : "text-muted"}`}
+                  className={tabClass(year === "none")}
                   onClick={() => chooseYear("none")}
                 >
-                  Outras
+                  {t.library.other}
                 </button>
               )}
             </div>
             <button className="btn-secondary" onClick={() => setAdding(true)}>
-              + Nova disciplina
+              {t.library.newSubject}
             </button>
           </div>
 
@@ -196,7 +208,7 @@ export default function LibraryPage() {
             <div className="mb-4">
               <SubjectForm
                 initial={{ year: year === "none" ? null : year }}
-                submitLabel="Criar"
+                submitLabel={t.common.create}
                 onCancel={() => setAdding(false)}
                 onSubmit={async (data) => {
                   try {
@@ -213,7 +225,7 @@ export default function LibraryPage() {
           )}
 
           {visible.length === 0 ? (
-            <p className="card text-muted p-6 text-center">Ainda não há disciplinas neste ano.</p>
+            <p className="card text-muted p-6 text-center">{t.library.noSubjectsYear}</p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((s) => (
@@ -224,10 +236,8 @@ export default function LibraryPage() {
                   >
                     <p className="font-semibold">{s.name}</p>
                     <div className="text-muted flex items-center justify-between text-sm">
-                      <span>{s.area ? AREA_LABELS[s.area] : ""}</span>
-                      <span>
-                        {s.document_count ?? 0} {s.document_count === 1 ? "ficheiro" : "ficheiros"}
-                      </span>
+                      <span>{s.area ? t.areas[s.area] : ""}</span>
+                      <span>{t.library.files(s.document_count ?? 0)}</span>
                     </div>
                   </Link>
                 </li>

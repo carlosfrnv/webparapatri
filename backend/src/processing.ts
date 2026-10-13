@@ -2,6 +2,7 @@ import { z } from "zod";
 import { completeJson } from "./ai";
 import { chunkPages } from "./chunk";
 import { ExtractionError, extractText } from "./extract";
+import { PROCESSING_ERRORS } from "./i18n";
 import { classifyPrompt } from "./prompts";
 import { supabase } from "./supabase";
 
@@ -48,8 +49,8 @@ export async function processDocument(params: {
     }
   } catch (err) {
     console.error(`Erro a processar o documento ${documentId}:`, err);
-    const message =
-      err instanceof ExtractionError ? err.message : "Não foi possível processar este ficheiro. Tenta novamente.";
+    // Guardamos um código; o frontend mostra a mensagem no idioma escolhido.
+    const message = err instanceof ExtractionError ? err.message : PROCESSING_ERRORS.generic;
     await supabase
       .from("documents")
       .update({ status: "error", error_message: message })
@@ -72,6 +73,7 @@ async function suggestSubject(documentId: string, userId: string, title: string,
 
   const list = subjects.map((s) => `${s.id}: ${s.name}, ${s.year ?? "?"}.º ano`).join("\n");
   const result = await completeJson(classifyPrompt(title, text, list), classifySchema, {
+    lang: "pt",
     effort: "low",
     maxTokens: 2000,
   });

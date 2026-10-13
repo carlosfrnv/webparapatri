@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { onServerWaking } from "@/lib/api";
+import { type Dictionary, useT } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./LoginScreen";
 
-const NAV = [
-  { href: "/", label: "Início", icon: "🏠" },
-  { href: "/biblioteca", label: "Biblioteca", icon: "📚" },
-  { href: "/estudar", label: "Estudar", icon: "🧠" },
-  { href: "/chat", label: "Chat", icon: "💬" },
+const NAV: { href: string; key: keyof Dictionary["nav"]; icon: string }[] = [
+  { href: "/", key: "home", icon: "🏠" },
+  { href: "/biblioteca", key: "library", icon: "📚" },
+  { href: "/estudar", key: "study", icon: "🧠" },
+  { href: "/chat", key: "chat", icon: "💬" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -20,7 +22,8 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className = "" }: { className?: string }) {
+  const t = useT();
   const [dark, setDark] = useState(
     () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
   );
@@ -35,13 +38,9 @@ export function ThemeToggle() {
     }
   }
   return (
-    <button
-      className="btn-ghost"
-      onClick={toggle}
-      aria-label={dark ? "Mudar para modo claro" : "Mudar para modo escuro"}
-    >
+    <button className={`btn-ghost ${className}`} onClick={toggle} aria-label={dark ? t.nav.toLight : t.nav.toDark}>
       <span aria-hidden="true">{dark ? "☀️" : "🌙"}</span>
-      <span className="hidden lg:inline">{dark ? "Modo claro" : "Modo escuro"}</span>
+      <span className="hidden lg:inline">{dark ? t.nav.lightMode : t.nav.darkMode}</span>
     </button>
   );
 }
@@ -49,6 +48,7 @@ export function ThemeToggle() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [waking, setWaking] = useState(false);
+  const t = useT();
   useEffect(() => onServerWaking(setWaking), []);
 
   return (
@@ -57,9 +57,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="border-border bg-surface sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r p-4 md:flex">
         <Link href="/" className="mb-8 flex items-center gap-2 px-2">
           <Logo size={36} />
-          <span className="text-lg font-bold">Estudo IMR</span>
+          <span className="text-lg font-bold">{t.appName}</span>
         </Link>
-        <nav className="flex flex-col gap-1" aria-label="Navegação principal">
+        <nav className="flex flex-col gap-1" aria-label={t.nav.mainNav}>
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -72,14 +72,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }`}
             >
               <span aria-hidden="true">{item.icon}</span>
-              {item.label}
+              {t.nav[item.key]}
             </Link>
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
-          <ThemeToggle />
+          <div className="mb-2">
+            <LanguageSwitcher />
+          </div>
+          <ThemeToggle className="justify-start" />
           <button className="btn-ghost justify-start" onClick={() => supabase.auth.signOut()}>
-            <span aria-hidden="true">🚪</span> Sair
+            <span aria-hidden="true">🚪</span> {t.nav.logout}
           </button>
         </div>
       </aside>
@@ -89,11 +92,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="border-border bg-surface/90 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2 backdrop-blur md:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={30} />
-            <span className="font-bold">Estudo IMR</span>
+            <span className="font-bold">{t.appName}</span>
           </Link>
-          <div className="flex">
-            <ThemeToggle />
-            <button className="btn-ghost" onClick={() => supabase.auth.signOut()} aria-label="Sair">
+          <div className="flex items-center">
+            <LanguageSwitcher compact />
+            <ThemeToggle className="px-3" />
+            <button className="btn-ghost px-3" onClick={() => supabase.auth.signOut()} aria-label={t.nav.logout}>
               🚪
             </button>
           </div>
@@ -108,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="border-border border-t-accent h-4 w-4 animate-spin rounded-full border-2"
               aria-hidden="true"
             />
-            A acordar o servidor… (pode demorar até um minuto)
+            {t.nav.waking}
           </div>
         )}
 
@@ -118,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Barra inferior (telemóvel) */}
       <nav
         className="border-border bg-surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
-        aria-label="Navegação principal"
+        aria-label={t.nav.mainNav}
       >
         {NAV.map((item) => (
           <Link
@@ -132,7 +136,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-xl" aria-hidden="true">
               {item.icon}
             </span>
-            {item.label}
+            {t.nav[item.key]}
           </Link>
         ))}
       </nav>

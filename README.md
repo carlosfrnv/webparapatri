@@ -1,4 +1,4 @@
-# Estudo IMR 💙
+# Estudio IMR 💙
 
 Web privada de estudio para Patri (Licenciatura en Imagem Médica e Radioterapia, ESSCVP Alto Tâmega).
 
@@ -10,7 +10,10 @@ Ella sube los apuntes que le llegan por correo (PDF, Word, PowerPoint o texto) y
 - **Test** de 10 preguntas con corrección y explicación
 - **Chat** que responde dudas basándose en sus apuntes y cita de qué archivo y página sale cada dato
 
-La interfaz y las respuestas de la IA están en portugués de Portugal.
+La web está **en español** y tiene un selector para cambiarla a **portugués de Portugal** (🇪🇸 / 🇵🇹, en el menú y en
+la pantalla de acceso). La elección se guarda en el navegador. La IA escribe resúmenes, flashcards, tests y respuestas
+del chat en el idioma elegido, aunque los apuntes estén en portugués. Si un archivo ya tenía el material generado en el
+otro idioma, la web avisa y ofrece generarlo de nuevo con un clic.
 
 ## Cómo está montado
 
@@ -39,7 +42,14 @@ servicio extra.
 ## Puesta en marcha paso a paso
 
 Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](https://console.anthropic.com),
-[Render](https://render.com) y [Vercel](https://vercel.com). Todas se pueden crear con tu cuenta de GitHub.
+[Render](https://render.com) y [Vercel](https://vercel.com).
+
+> 🔗 **Render y Vercel tienen que estar conectados a GitHub.** Regístrate en cada una con **"Continue with GitHub"** y,
+> cuando te lo pida, dale acceso al repositorio `webparapatri` (puedes elegir "Only select repositories"). A partir de
+> ahí, cada cambio que se suba a la rama principal de GitHub se publica solo.
+>
+> ⚠️ El código está ahora en la rama `claude/crear-sitio-web-6yq9zv`. Antes de desplegar, fusiónala en `main`
+> (con una pull request) o elige esa rama al crear los servicios en Render y Vercel.
 
 ### 1. Supabase (base de datos, ficheros y login)
 
@@ -89,15 +99,23 @@ Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](ht
 2. En **Root Directory** elige `frontend`.
 3. En **Environment Variables** añade `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y
    `NEXT_PUBLIC_API_URL` (la URL de Render, sin barra al final).
-4. **Deploy**. Copia la URL que te da (por ejemplo `https://estudo-imr.vercel.app`).
+4. **Deploy**. Copia la URL que te da (por ejemplo `https://estudio-imr.vercel.app`).
 5. Pon esa URL en:
    - Render → variable `FRONTEND_ORIGIN`
    - Supabase → Authentication → URL Configuration → *Site URL* y *Redirect URLs*
 
+### Dominio propio (opcional)
+
+No hace falta comprar nada: Vercel da gratis una dirección `https://<nombre>.vercel.app` con HTTPS. Si más adelante
+quieres una dirección personal (por ejemplo `estudiopatri.com`, unos 10–15 €/año), puedes comprarla en Vercel
+(**Domains → Buy**) o en cualquier registrador (Namecheap, Cloudflare…) y añadirla en Vercel → tu proyecto →
+**Settings → Domains**. Después, pon el dominio nuevo también en `FRONTEND_ORIGIN` (Render) y en Supabase → URL
+Configuration.
+
 ### 5. Personaliza la dedicatoria ✏️
 
 Edita [`frontend/config/dedicatoria.ts`](frontend/config/dedicatoria.ts): el nombre, el mensaje de bienvenida que verá
-la primera vez que entre y la frase de la página de inicio. Al hacer commit, Vercel la vuelve a publicar sola.
+la primera vez que entre y la frase de la página de inicio. Hay una versión en español y otra en portugués. Al hacer commit, Vercel la vuelve a publicar sola.
 
 ### 6. Comprobación final
 
@@ -129,6 +147,9 @@ npm install
 npm run dev                  # http://localhost:3000
 ```
 
+Si ya habías ejecutado `supabase/schema.sql` antes de que existiera el selector de idioma, vuelve a ejecutarlo: añade la
+columna de idioma sin borrar nada.
+
 Antes de publicar cambios: `npm run build` en `backend/` y en `frontend/` (y `npm run lint` en `frontend/`).
 
 ## Estructura
@@ -142,12 +163,14 @@ backend/src/
   processing.ts     procesado en segundo plano + sugerencia de asignatura con IA
   study.ts          genera resumen, conceptos, flashcards y test (con caché)
   search.ts         búsqueda en los apuntes (full-text search en portugués)
-  prompts.ts        todos los prompts de la IA (portugués europeo)
+  prompts.ts        todos los prompts de la IA (español y portugués europeo)
+  i18n.ts           mensajes de error en los dos idiomas (cabecera X-Lang)
   sm2.ts            repetición espaciada
   routes/           subjects, documents, chat, flashcards, quiz, stats
 frontend/
   app/              páginas: Início, Biblioteca, Disciplina, Documento, Estudar, Chat
   components/       piezas reutilizables (subida, flashcards, test…)
+  lib/i18n.tsx      todos los textos de la web en español y portugués
   config/dedicatoria.ts   ✏️ el mensaje personal
 supabase/schema.sql  tablas, seguridad (RLS), búsqueda y bucket
 ```

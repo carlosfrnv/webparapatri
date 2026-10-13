@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
-import { dedicatoria } from "@/config/dedicatoria";
+import { useDedicatoria } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
+import { useLang, useT, type Dictionary } from "@/lib/i18n";
 import type { Stats } from "@/lib/types";
 
-function greeting() {
+function greeting(t: Dictionary) {
   const h = new Date().getHours();
-  if (h < 6) return "Boa noite";
-  if (h < 13) return "Bom dia";
-  if (h < 20) return "Boa tarde";
-  return "Boa noite";
+  if (h < 6) return t.home.greetingNight;
+  if (h < 13) return t.home.greetingMorning;
+  if (h < 20) return t.home.greetingAfternoon;
+  return t.home.greetingNight;
 }
 
 function WelcomeModal({ onClose }: { onClose: () => void }) {
+  const t = useT();
+  const dedicatoria = useDedicatoria();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -33,7 +36,7 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         <p className="text-muted mt-4 whitespace-pre-line">{dedicatoria.mensagem}</p>
         <p className="mt-4 font-medium">{dedicatoria.assinatura}</p>
         <button className="btn-primary mt-6 w-full" onClick={onClose} autoFocus>
-          Começar a estudar
+          {t.home.start}
         </button>
       </div>
     </div>
@@ -41,6 +44,9 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function HomePage() {
+  const t = useT();
+  const lang = useLang();
+  const dedicatoria = useDedicatoria();
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [error, setError] = useState("");
@@ -87,7 +93,8 @@ export default function HomePage() {
 
       <section className="mb-8">
         <h1 className="text-3xl font-bold">
-          {greeting()}, {dedicatoria.nome}! 👋
+          {lang === "es" ? "¡" : ""}
+          {greeting(t)}, {dedicatoria.nome}! 👋
         </h1>
         <p className="text-muted mt-1">{dedicatoria.frase}</p>
       </section>
@@ -101,32 +108,30 @@ export default function HomePage() {
           }}
         />
       )}
-      {!stats && !error && <Spinner label="A carregar o teu progresso…" />}
+      {!stats && !error && <Spinner label={t.home.loadingProgress} />}
 
       {stats && due && (
         <div className="space-y-8">
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="card bg-accent text-accent-contrast flex flex-col justify-between p-5 sm:col-span-2 lg:col-span-1">
               <div>
-                <p className="text-sm opacity-90">Flashcards para rever</p>
+                <p className="text-sm opacity-90">{t.home.dueCards}</p>
                 <p className="mt-1 text-4xl font-bold">{due.total_due}</p>
               </div>
               {due.total_due > 0 ? (
                 <Link href="/estudar" className="btn mt-4 bg-white/95 text-[#1859c4] hover:bg-white">
-                  Rever agora →
+                  {t.home.reviewNow}
                 </Link>
               ) : (
-                <p className="mt-4 text-sm opacity-90">
-                  {due.total_cards > 0 ? "Está tudo em dia. Muito bem! 🎉" : "Abre um ficheiro para criar flashcards."}
-                </p>
+                <p className="mt-4 text-sm opacity-90">{due.total_cards > 0 ? t.home.allDone : t.home.noCardsYet}</p>
               )}
             </div>
             <div className="card p-5">
-              <p className="text-muted text-sm">Revistos hoje</p>
+              <p className="text-muted text-sm">{t.home.reviewedToday}</p>
               <p className="mt-1 text-4xl font-bold">{stats.reviewed_today}</p>
             </div>
             <div className="card p-5">
-              <p className="text-muted text-sm">Dias de estudo (últimos 7)</p>
+              <p className="text-muted text-sm">{t.home.studyDays}</p>
               <div className="mt-2 flex items-end gap-2">
                 <p className="text-4xl font-bold">{stats.study_days_week}</p>
                 <p className="text-muted mb-1">/ 7</p>
@@ -147,19 +152,19 @@ export default function HomePage() {
               <span className="text-4xl" aria-hidden="true">
                 📥
               </span>
-              <p className="text-lg font-semibold">Ainda não tens ficheiros.</p>
-              <p className="text-muted max-w-md">Arrasta para a Biblioteca os apontamentos que recebeste por email.</p>
+              <p className="text-lg font-semibold">{t.home.noFilesTitle}</p>
+              <p className="text-muted max-w-md">{t.home.noFilesText}</p>
               <Link href="/biblioteca" className="btn-primary">
-                Ir para a Biblioteca
+                {t.home.goLibrary}
               </Link>
             </section>
           ) : (
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="min-w-0">
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Últimos ficheiros</h2>
+                  <h2 className="text-lg font-semibold">{t.home.recentFiles}</h2>
                   <Link href="/biblioteca" className="text-accent text-sm font-medium">
-                    Ver todos
+                    {t.home.seeAll}
                   </Link>
                 </div>
                 <ul className="card divide-border divide-y">
@@ -177,11 +182,9 @@ export default function HomePage() {
                 </ul>
               </div>
               <div className="min-w-0">
-                <h2 className="mb-3 text-lg font-semibold">Últimos testes</h2>
+                <h2 className="mb-3 text-lg font-semibold">{t.home.recentQuizzes}</h2>
                 {stats.recent_quizzes.length === 0 ? (
-                  <p className="card text-muted p-4">
-                    Ainda não fizeste nenhum teste. Abre um ficheiro e experimenta o separador “Teste”.
-                  </p>
+                  <p className="card text-muted p-4">{t.home.noQuizzes}</p>
                 ) : (
                   <ul className="card divide-border divide-y">
                     {stats.recent_quizzes.map((q, i) => {
@@ -190,7 +193,7 @@ export default function HomePage() {
                         <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
                           <div className="min-w-0">
                             <p className="truncate font-medium">{q.title}</p>
-                            <p className="text-muted text-sm">{formatDate(q.created_at)}</p>
+                            <p className="text-muted text-sm">{formatDate(q.created_at, lang)}</p>
                           </div>
                           <span
                             className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${
@@ -214,8 +217,8 @@ export default function HomePage() {
                 💬
               </span>
               <div>
-                <p className="font-semibold">Tens uma dúvida?</p>
-                <p className="text-muted text-sm">Pergunta ao tutor. Responde com base nos teus apontamentos.</p>
+                <p className="font-semibold">{t.home.askTitle}</p>
+                <p className="text-muted text-sm">{t.home.askText}</p>
               </div>
             </Link>
             <Link href="/biblioteca" className="card hover:border-accent flex items-center gap-4 p-5">
@@ -223,8 +226,8 @@ export default function HomePage() {
                 📚
               </span>
               <div>
-                <p className="font-semibold">Biblioteca</p>
-                <p className="text-muted text-sm">Os teus ficheiros organizados por ano e disciplina.</p>
+                <p className="font-semibold">{t.nav.library}</p>
+                <p className="text-muted text-sm">{t.home.libraryText}</p>
               </div>
             </Link>
           </section>

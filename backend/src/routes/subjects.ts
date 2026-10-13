@@ -62,7 +62,7 @@ subjectsRouter.patch(
       .select("*")
       .maybeSingle();
     if (error) throw error;
-    if (!data) throw new HttpError(404, "Disciplina não encontrada.");
+    if (!data) throw new HttpError(404, "subjectNotFound");
     res.json(data);
   }),
 );

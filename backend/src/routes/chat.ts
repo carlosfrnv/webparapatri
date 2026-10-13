@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AiError, streamAnswer } from "../ai";
 import { userIdOf } from "../auth";
 import { asyncHandler } from "../http";
+import { langOf, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { chatPrompt } from "../prompts";
 import { findSources, formatSources } from "../search";
@@ -22,6 +23,7 @@ chatRouter.post(
   aiLimiter,
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
+    const lang = langOf(req);
     const body = chatSchema.parse(req.body);
     const conversationId = body.conversation_id ?? randomUUID();
 
@@ -35,10 +37,10 @@ chatRouter.post(
       .limit(6);
     const history = (recent ?? [])
       .reverse()
-      .map((m) => `${m.role === "user" ? "Estudante" : "Tutor"}: ${m.content.slice(0, 1500)}`)
+      .map((m) => `${m.role === "user" ? (lang === "es" ? "Estudiante" : "Estudante") : "Tutor"}: ${m.content.slice(0, 1500)}`)
       .join("\n");
 
-    const sources = await findSources(userId, body.question, { documentId: body.document_id });
+    const sources = await findSources(userId, body.question, { documentId: body.document_id, lang });
 
     await supabase.from("chat_messages").insert({
       user_id: userId,
@@ -62,7 +64,7 @@ chatRouter.post(
     send("meta", { conversation_id: conversationId, sources: publicSources });
 
     try {
-      const answer = await streamAnswer(chatPrompt(formatSources(sources), history, body.question), [], (text) =>
+      const answer = await streamAnswer(lang, chatPrompt(lang, formatSources(sources), history, body.question), [], (text) =>
         send("delta", { text }),
       );
       await supabase.from("chat_messages").insert({
@@ -75,7 +77,7 @@ chatRouter.post(
       send("done", {});
     } catch (err) {
       console.error("Erro no chat:", err);
-      const message = err instanceof AiError ? err.message : "Não foi possível responder agora. Tenta novamente.";
+      const message = t(lang, err instanceof AiError ? err.key : "chatFailed");
       send("error", { error: message });
     }
     res.end();

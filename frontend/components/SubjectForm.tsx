@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AREA_LABELS, type Area, type Subject } from "@/lib/types";
+import { useT } from "@/lib/i18n";
+import { AREAS, type Area, type Subject } from "@/lib/types";
 
 export interface SubjectInput {
   name: string;
@@ -20,6 +21,7 @@ export function SubjectForm({
   onCancel: () => void;
   submitLabel: string;
 }) {
+  const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [year, setYear] = useState<string>(initial?.year ? String(initial.year) : "1");
   const [area, setArea] = useState<string>(initial?.area ?? "");
@@ -39,7 +41,7 @@ export function SubjectForm({
       }}
     >
       <label className="block">
-        <span className="mb-1 block text-sm font-medium">Nome da disciplina</span>
+        <span className="mb-1 block text-sm font-medium">{t.subjectForm.name}</span>
         <input
           className="input"
           required
@@ -51,23 +53,23 @@ export function SubjectForm({
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium">Ano</span>
+          <span className="mb-1 block text-sm font-medium">{t.subjectForm.year}</span>
           <select className="input" value={year} onChange={(e) => setYear(e.target.value)}>
             {[1, 2, 3, 4].map((y) => (
               <option key={y} value={y}>
-                {y}.º ano
+                {t.library.yearN(y)}
               </option>
             ))}
-            <option value="">Sem ano</option>
+            <option value="">{t.subjectForm.noYear}</option>
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium">Área</span>
+          <span className="mb-1 block text-sm font-medium">{t.subjectForm.area}</span>
           <select className="input" value={area} onChange={(e) => setArea(e.target.value)}>
             <option value="">—</option>
-            {Object.entries(AREA_LABELS).map(([value, label]) => (
+            {AREAS.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {t.areas[value]}
               </option>
             ))}
           </select>
@@ -75,10 +77,10 @@ export function SubjectForm({
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost" onClick={onCancel}>
-          Cancelar
+          {t.common.cancel}
         </button>
         <button className="btn-primary" disabled={saving || !name.trim()}>
-          {saving ? "A guardar…" : submitLabel}
+          {saving ? t.common.saving : submitLabel}
         </button>
       </div>
     </form>

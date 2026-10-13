@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { completeJson } from "./ai";
+import type { Lang } from "./i18n";
 import { keywordsPrompt } from "./prompts";
 import { supabase } from "./supabase";
 
@@ -36,19 +37,22 @@ const keywordsSchema = z.object({ keywords: z.array(z.string()).min(1).max(8) })
 
 /**
  * Procura os fragmentos mais relevantes. Se a pergunta usar palavras diferentes das dos
- * apontamentos e não houver resultados, pede à IA palavras-chave e tenta com "or".
+ * apontamentos (por exemplo, se for feita em espanhol e os apontamentos estiverem em português)
+ * e houver poucos resultados, pede à IA palavras-chave em português e tenta com "or".
  */
 export async function findSources(
   userId: string,
   question: string,
-  opts: { limit?: number; documentId?: string; expand?: boolean } = {},
+  opts: { limit?: number; documentId?: string; expand?: boolean; lang?: Lang } = {},
 ): Promise<Source[]> {
   const limit = opts.limit ?? 8;
   let hits = await runSearch(userId, question, limit, opts.documentId);
+  const minHits = opts.lang === "es" ? 3 : 1;
 
-  if (hits.length === 0 && opts.expand !== false) {
+  if (hits.length < minHits && opts.expand !== false) {
     try {
       const { keywords } = await completeJson(keywordsPrompt(question), keywordsSchema, {
+        lang: "pt",
         effort: "low",
         maxTokens: 1000,
       });
@@ -56,7 +60,11 @@ export async function findSources(
         .map((k) => k.replace(/["()]/g, "").trim())
         .filter(Boolean)
         .join(" or ");
-      if (orQuery) hits = await runSearch(userId, orQuery, limit, opts.documentId);
+      if (orQuery) {
+        const extra = await runSearch(userId, orQuery, limit, opts.documentId);
+        const seen = new Set(hits.map((h) => h.id));
+        hits = [...hits, ...extra.filter((h) => !seen.has(h.id))].slice(0, limit);
+      }
     } catch (err) {
       console.error("Falha na pesquisa por palavras-chave:", err);
     }

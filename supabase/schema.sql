@@ -52,8 +52,11 @@ create table if not exists study_materials (
   glossary jsonb,
   flashcards jsonb,
   quiz jsonb,
+  lang text default 'es' check (lang in ('es','pt')),
   generated_at timestamptz default now()
 );
+-- Para bases de dados criadas antes de haver idiomas:
+alter table study_materials add column if not exists lang text default 'pt' check (lang in ('es','pt'));
 
 -- Repetição espaçada (SM-2)
 create table if not exists flashcard_reviews (

@@ -3,28 +3,23 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useDocError } from "@/components/DocumentList";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { Quiz } from "@/components/Quiz";
 import { ErrorBox, fileIcon, Markdown, Spinner, StatusBadge } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard, StudyMaterials } from "@/lib/types";
 
-const TABS = [
-  { id: "resumo", label: "Resumo" },
-  { id: "conceitos", label: "Conceitos" },
-  { id: "glossario", label: "Glossário" },
-  { id: "flashcards", label: "Flashcards" },
-  { id: "teste", label: "Teste" },
-  { id: "ficheiro", label: "Ficheiro original" },
-] as const;
-type TabId = (typeof TABS)[number]["id"];
+const TABS = ["resumo", "conceitos", "glossario", "flashcards", "teste", "ficheiro"] as const;
+type TabId = (typeof TABS)[number];
 
 function useHashTab(): [TabId, (t: TabId) => void] {
   const [tab, setTab] = useState<TabId>("resumo");
   useEffect(() => {
     const read = () => {
       const h = window.location.hash.slice(1) as TabId;
-      if (TABS.some((t) => t.id === h)) setTab(h);
+      if (TABS.includes(h)) setTab(h);
     };
     read();
     window.addEventListener("hashchange", read);
@@ -40,6 +35,7 @@ function useHashTab(): [TabId, (t: TabId) => void] {
 }
 
 function OriginalFile({ doc }: { doc: DocumentItem }) {
+  const t = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -50,12 +46,12 @@ function OriginalFile({ doc }: { doc: DocumentItem }) {
   }, [doc.id]);
 
   if (error) return <ErrorBox message={error} />;
-  if (!url) return <Spinner label="A abrir o ficheiro…" />;
+  if (!url) return <Spinner label={t.document.openingFile} />;
   const isPdf = doc.mime_type?.includes("pdf");
   return (
     <div className="space-y-3">
       <a href={url} target="_blank" rel="noreferrer" className="btn-secondary">
-        {fileIcon(doc.mime_type)} {isPdf ? "Abrir numa nova janela" : "Descarregar o ficheiro"}
+        {fileIcon(doc.mime_type)} {isPdf ? t.document.openNewWindow : t.document.download}
       </a>
       {isPdf && (
         <iframe
@@ -69,6 +65,7 @@ function OriginalFile({ doc }: { doc: DocumentItem }) {
 }
 
 function FlashcardsTab({ doc, materials }: { doc: DocumentItem; materials: StudyMaterials }) {
+  const t = useT();
   const [due, setDue] = useState<DueCard[] | null>(null);
   const [reviewing, setReviewing] = useState(false);
 
@@ -96,11 +93,9 @@ function FlashcardsTab({ doc, materials }: { doc: DocumentItem; materials: Study
   return (
     <div>
       <div className="card mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
-        <p>
-          <strong>{due?.length ?? "…"}</strong> de {materials.flashcards.length} cartões para rever agora.
-        </p>
+        <p>{t.document.cardsDue(due?.length ?? "…", materials.flashcards.length)}</p>
         <button className="btn-primary" disabled={!due?.length} onClick={() => setReviewing(true)}>
-          🧠 Rever cartões
+          {t.document.reviewCards}
         </button>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2">
@@ -116,6 +111,9 @@ function FlashcardsTab({ doc, materials }: { doc: DocumentItem; materials: Study
 }
 
 export default function DocumentPage() {
+  const t = useT();
+  const lang = useLang();
+  const docError = useDocError();
   const { id } = useParams<{ id: string }>();
   const [doc, setDoc] = useState<DocumentItem | null>(null);
   const [materials, setMaterials] = useState<StudyMaterials | null>(null);
@@ -153,14 +151,17 @@ export default function DocumentPage() {
   }, [id, loadStudy]);
 
   if (error) return <ErrorBox message={error} />;
-  if (!doc) return <Spinner label="A carregar…" />;
+  if (!doc) return <Spinner label={t.common.loading} />;
 
   const backHref = doc.subject_id ? `/disciplina/${doc.subject_id}` : "/biblioteca";
+  // Material gerado noutro idioma (a cache é por ficheiro): oferecemos gerá-lo de novo.
+  const materialsLang = materials?.lang ?? "pt";
+  const otherLang = materials && materialsLang !== lang;
 
   return (
     <>
       <Link href={backHref} className="text-accent mb-3 inline-block text-sm font-medium">
-        ← Voltar
+        ← {t.common.back}
       </Link>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -170,40 +171,52 @@ export default function DocumentPage() {
           </div>
         </div>
         <Link href={`/chat#doc=${doc.id}`} className="btn-secondary">
-          💬 Perguntar sobre este ficheiro
+          {t.document.ask}
         </Link>
       </div>
 
       <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="bg-surface-2 flex w-max gap-1 rounded-xl p-1" role="tablist" aria-label="Materiais de estudo">
-          {TABS.map((t) => (
+        <div className="bg-surface-2 flex w-max gap-1 rounded-xl p-1" role="tablist" aria-label={t.document.tabsLabel}>
+          {TABS.map((id) => (
             <button
-              key={t.id}
+              key={id}
               role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
               className={`min-h-10 rounded-lg px-4 text-sm font-medium whitespace-nowrap ${
-                tab === t.id ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
+                tab === id ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
               }`}
             >
-              {t.label}
+              {t.document.tabs[id]}
             </button>
           ))}
         </div>
       </div>
 
+      {otherLang && tab !== "ficheiro" && (
+        <div className="bg-accent-soft mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 text-sm">
+          <span>{t.document.otherLang(t.document.langName[materialsLang])}</span>
+          <button
+            className="btn-primary min-h-9 px-3 py-1 text-sm"
+            disabled={generating}
+            onClick={() => {
+              if (confirm(t.document.confirmRegenerate)) loadStudy(true);
+            }}
+          >
+            {generating ? t.document.regenerating : t.document.generateIn(t.document.langName[lang])}
+          </button>
+        </div>
+      )}
+
       {tab === "ficheiro" ? (
         <OriginalFile doc={doc} />
       ) : doc.status !== "ready" ? (
-        <ErrorBox message={doc.error_message ?? "O ficheiro ainda está a ser processado. Volta daqui a pouco."} />
+        <ErrorBox message={docError(doc.error_message) ?? t.document.notReady} />
       ) : generating && !materials ? (
         <div className="card flex flex-col items-center gap-3 p-10 text-center">
           <Spinner />
-          <p className="font-semibold">A preparar o teu material de estudo…</p>
-          <p className="text-muted max-w-md text-sm">
-            A IA está a ler os apontamentos e a criar o resumo, os conceitos, as flashcards e o teste. Na primeira vez
-            pode demorar um ou dois minutos. Depois fica guardado.
-          </p>
+          <p className="font-semibold">{t.document.preparingTitle}</p>
+          <p className="text-muted max-w-md text-sm">{t.document.preparingText}</p>
         </div>
       ) : studyError && !materials ? (
         <ErrorBox message={studyError} onRetry={() => loadStudy()} />
@@ -222,7 +235,7 @@ export default function DocumentPage() {
                   <p className="text-lg font-semibold">{c.concept}</p>
                   <p className="mt-2">{c.explanation}</p>
                   <p className="bg-accent-soft mt-3 rounded-xl p-3 text-sm">
-                    <strong>Porque importa:</strong> {c.why_it_matters}
+                    <strong>{t.document.whyItMatters}</strong> {c.why_it_matters}
                   </p>
                 </li>
               ))}
@@ -232,7 +245,7 @@ export default function DocumentPage() {
           {tab === "glossario" && (
             <dl className="card divide-border divide-y">
               {[...materials.glossary]
-                .sort((a, b) => a.term.localeCompare(b.term, "pt"))
+                .sort((a, b) => a.term.localeCompare(b.term, lang))
                 .map((g, i) => (
                   <div key={i} className="p-4 sm:grid sm:grid-cols-3 sm:gap-4">
                     <dt className="font-semibold">{g.term}</dt>
@@ -242,27 +255,20 @@ export default function DocumentPage() {
             </dl>
           )}
 
-          {tab === "flashcards" && <FlashcardsTab doc={doc} materials={materials} />}
+          {tab === "flashcards" && <FlashcardsTab key={materials.generated_at} doc={doc} materials={materials} />}
 
           {tab === "teste" && <Quiz key={materials.generated_at} documentId={doc.id} questions={materials.quiz} />}
 
           <div className="border-border text-muted mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
-            <span>
-              Gerado pela IA a partir dos teus apontamentos. Confirma sempre valores e protocolos com os professores.
-            </span>
+            <span>{t.document.disclaimer}</span>
             <button
               className="btn-ghost"
               disabled={generating}
               onClick={() => {
-                if (
-                  confirm(
-                    "Gerar de novo o resumo, as flashcards e o teste? O progresso das flashcards deste ficheiro recomeça.",
-                  )
-                )
-                  loadStudy(true);
+                if (confirm(t.document.confirmRegenerate)) loadStudy(true);
               }}
             >
-              {generating ? "A gerar…" : "🔄 Gerar de novo"}
+              {generating ? t.document.regenerating : t.document.regenerate}
             </button>
           </div>
           {studyError && <p className="text-danger mt-2 text-sm">{studyError}</p>}

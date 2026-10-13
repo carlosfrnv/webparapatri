@@ -1,3 +1,4 @@
+import { dict, getLang } from "./i18n";
 import { supabase } from "./supabase";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:10000").replace(/\/$/, "");
@@ -29,7 +30,8 @@ function setWaking(delta: number) {
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  // O backend responde (e a IA escreve) no idioma escolhido.
+  return { "X-Lang": getLang(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -50,7 +52,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
         return res;
       } catch (err) {
         if (!(err instanceof TypeError) || attempt >= maxAttempts) {
-          throw new ApiError(0, "Não foi possível ligar ao servidor. Verifica a internet e tenta novamente.");
+          throw new ApiError(0, dict().common.networkError);
         }
         if (!waking) {
           waking = true;
@@ -69,7 +71,7 @@ async function handle<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401) await supabase.auth.signOut();
-    throw new ApiError(res.status, (body as { error?: string }).error ?? "Ocorreu um erro. Tenta novamente.");
+    throw new ApiError(res.status, (body as { error?: string }).error ?? dict().common.genericError);
   }
   return body as T;
 }
@@ -119,14 +121,14 @@ export async function uploadFile<T>(
         /* resposta vazia */
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
-      else reject(new ApiError(xhr.status, body.error ?? "Não foi possível carregar este ficheiro. Tenta novamente."));
+      else reject(new ApiError(xhr.status, body.error ?? dict().common.uploadError));
     };
-    xhr.onerror = () => reject(new ApiError(0, "Falhou a ligação durante o envio. Tenta novamente."));
+    xhr.onerror = () => reject(new ApiError(0, dict().common.uploadNetworkError));
     xhr.send(form);
   });
 }
 
 export function errorMessage(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
-  return "Ocorreu um erro. Tenta novamente.";
+  return dict().common.genericError;
 }

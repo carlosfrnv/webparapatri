@@ -1,6 +1,7 @@
 import mammoth from "mammoth";
 import { OfficeParser } from "officeparser";
 import { PDFParse } from "pdf-parse";
+import { PROCESSING_ERRORS } from "./i18n";
 
 export interface ExtractedPage {
   page: number | null;
@@ -37,9 +38,7 @@ async function extractPdf(buffer: Buffer): Promise<ExtractedPage[]> {
   }
   const totalChars = pages.reduce((n, p) => n + p.text.trim().length, 0);
   if (totalChars < 50) {
-    throw new ExtractionError(
-      "Este PDF é uma imagem digitalizada e não tem texto que se possa ler. Experimenta outra versão do ficheiro.",
-    );
+    throw new ExtractionError(PROCESSING_ERRORS.scanned);
   }
   return pages;
 }
@@ -65,10 +64,10 @@ export async function extractText(buffer: Buffer, kind: string): Promise<Extract
       pages = [{ page: null, text: buffer.toString("utf8") }];
       break;
     default:
-      throw new ExtractionError("Tipo de ficheiro não suportado.");
+      throw new ExtractionError(PROCESSING_ERRORS.unsupported);
   }
   if (pages.every((p) => p.text.trim().length === 0)) {
-    throw new ExtractionError("Não foi encontrado texto neste ficheiro.");
+    throw new ExtractionError(PROCESSING_ERRORS.noText);
   }
   return pages;
 }

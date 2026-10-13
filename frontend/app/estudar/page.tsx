@@ -5,9 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard } from "@/lib/types";
 
 export default function StudyPage() {
+  const t = useT();
   const [due, setDue] = useState<{ total_due: number; total_cards: number; cards: DueCard[] } | null>(null);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [session, setSession] = useState(false);
@@ -36,7 +38,7 @@ export default function StudyPage() {
     return (
       <>
         <button className="btn-ghost mb-4 px-0" onClick={() => setSession(false)}>
-          ← Sair da revisão
+          {t.studyPage.exit}
         </button>
         <FlashcardSession
           cards={due.cards}
@@ -51,7 +53,7 @@ export default function StudyPage() {
 
   return (
     <>
-      <PageHeader title="Estudar" subtitle="Flashcards com repetição espaçada e testes de autoavaliação." />
+      <PageHeader title={t.studyPage.title} subtitle={t.studyPage.subtitle} />
       {error && (
         <ErrorBox
           message={error}
@@ -61,31 +63,31 @@ export default function StudyPage() {
           }}
         />
       )}
-      {!due && !error && <Spinner label="A carregar…" />}
+      {!due && !error && <Spinner label={t.common.loading} />}
 
       {due && (
         <div className="space-y-8">
           <section className="card flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">🧠 Revisão de flashcards</h2>
+              <h2 className="text-lg font-semibold">{t.studyPage.reviewTitle}</h2>
               <p className="text-muted mt-1">
                 {due.total_cards === 0
-                  ? "Ainda não há flashcards. Abre um ficheiro na Biblioteca e elas são criadas automaticamente."
+                  ? t.studyPage.noCards
                   : due.total_due === 0
-                    ? "Não tens nada para rever agora. Volta mais tarde! 🎉"
-                    : `Tens ${due.total_due} ${due.total_due === 1 ? "cartão" : "cartões"} para rever${due.total_due > due.cards.length ? ` (começamos por ${due.cards.length})` : ""}.`}
+                    ? t.studyPage.nothingDue
+                    : t.studyPage.due(due.total_due, due.cards.length)}
               </p>
             </div>
             <button className="btn-primary" disabled={due.cards.length === 0} onClick={() => setSession(true)}>
-              Começar revisão
+              {t.studyPage.start}
             </button>
           </section>
 
           <section>
-            <h2 className="mb-1 text-lg font-semibold">📝 Testes</h2>
-            <p className="text-muted mb-3">Escolhe um ficheiro para fazeres o teste de 10 perguntas.</p>
+            <h2 className="mb-1 text-lg font-semibold">{t.studyPage.quizzesTitle}</h2>
+            <p className="text-muted mb-3">{t.studyPage.quizzesText}</p>
             {docs.length === 0 ? (
-              <p className="card text-muted p-4">Ainda não tens ficheiros prontos.</p>
+              <p className="card text-muted p-4">{t.studyPage.noReady}</p>
             ) : (
               <ul className="grid gap-2 sm:grid-cols-2">
                 {docs.map((d) => (

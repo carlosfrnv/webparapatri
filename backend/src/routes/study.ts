@@ -3,6 +3,7 @@ import { z } from "zod";
 import { complete } from "../ai";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
+import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { quizExplainPrompt } from "../prompts";
 import { findSources, formatSources } from "../search";
@@ -85,7 +86,7 @@ studyRouter.post(
       .eq("id", body.document_id)
       .eq("user_id", userId)
       .maybeSingle();
-    if (!doc) throw new HttpError(404, "Documento não encontrado.");
+    if (!doc) throw new HttpError(404, "documentNotFound");
 
     const { data: prev } = await supabase
       .from("flashcard_reviews")
@@ -134,16 +135,17 @@ studyRouter.post(
     const question = (material?.quiz as { question: string; options: string[]; correct_index: number }[] | null)?.[
       body.question_index
     ];
-    if (!question) throw new HttpError(404, "Pergunta não encontrada.");
+    if (!question) throw new HttpError(404, "questionNotFound");
 
+    const lang = langOf(req);
     const sources = await findSources(userId, question.question, {
       documentId: body.document_id,
       limit: 4,
       expand: false,
     });
     const explanation = await complete(
-      quizExplainPrompt(question.question, question.options, question.correct_index, body.chosen_index, formatSources(sources)),
-      { effort: "low", maxTokens: 4000 },
+      quizExplainPrompt(lang, question.question, question.options, question.correct_index, body.chosen_index, formatSources(sources)),
+      { lang, effort: "low", maxTokens: 4000 },
     );
     res.json({ explanation });
   }),

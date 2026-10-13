@@ -2,17 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { z } from "zod";
 import { config } from "./config";
+import type { Lang, MessageKey } from "./i18n";
+import { BASE_SYSTEM } from "./prompts";
 
 export const anthropic = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
-
-// Base comum a todos os prompts (português europeu).
-export const BASE_SYSTEM = `És um tutor especializado na Licenciatura em Imagem Médica e Radioterapia
-(Radiologia, Medicina Nuclear e Radioterapia), a ajudar uma estudante em Portugal.
-Escreve sempre em português europeu, de forma clara e didática.
-Baseia-te nos apontamentos fornecidos. Nunca inventes valores de dose,
-parâmetros técnicos, protocolos ou dados clínicos. Se algo não estiver nos
-apontamentos e tiveres de usar conhecimento geral, assinala-o com
-"Fora dos teus apontamentos:". Se não souberes, diz que não sabes.`;
 
 type Effort = "low" | "medium" | "high";
 
@@ -20,29 +13,39 @@ type Effort = "low" | "medium" | "high";
 // por um falso positivo dos filtros de segurança, a API tenta outro modelo.
 const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"]);
 
-function requestBase(effort: Effort) {
+function requestBase(lang: Lang, effort: Effort) {
   const useFallback = FALLBACK_MODELS.has(config.ANTHROPIC_MODEL);
   return {
     model: config.ANTHROPIC_MODEL,
-    system: BASE_SYSTEM,
+    system: BASE_SYSTEM[lang],
     output_config: { effort },
     ...(useFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
   };
 }
 
-export class AiError extends Error {}
+export class AiError extends Error {
+  constructor(public key: MessageKey) {
+    super(key);
+  }
+}
+
+interface AiOptions {
+  lang: Lang;
+  effort?: Effort;
+  maxTokens?: number;
+}
 
 /** Pedido simples que devolve o texto completo da resposta. */
-export async function complete(prompt: string, opts: { effort?: Effort; maxTokens?: number } = {}): Promise<string> {
+export async function complete(prompt: string, opts: AiOptions): Promise<string> {
   // Em streaming para não bater nos limites de tempo com textos longos.
   const stream = anthropic.beta.messages.stream({
-    ...requestBase(opts.effort ?? "medium"),
+    ...requestBase(opts.lang, opts.effort ?? "medium"),
     max_tokens: opts.maxTokens ?? 32000,
     messages: [{ role: "user", content: prompt }],
   });
   const message = await stream.finalMessage();
   if (message.stop_reason === "refusal") {
-    throw new AiError("A IA não conseguiu responder a este pedido.");
+    throw new AiError("aiRefused");
   }
   return message.content
     .map((block) => (block.type === "text" ? block.text : ""))
@@ -62,7 +65,7 @@ function stripCodeFences(text: string): string {
 export async function completeJson<T extends z.ZodType>(
   prompt: string,
   schema: T,
-  opts: { effort?: Effort; maxTokens?: number } = {},
+  opts: AiOptions,
 ): Promise<z.infer<T>> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -74,24 +77,25 @@ export async function completeJson<T extends z.ZodType>(
     }
   }
   console.error("JSON inválido da IA:", lastError);
-  throw new AiError("A IA devolveu uma resposta num formato inesperado. Tenta regenerar.");
+  throw new AiError("aiBadFormat");
 }
 
 /** Resposta em streaming para o chat. Chama onText com cada pedaço de texto. */
 export async function streamAnswer(
+  lang: Lang,
   prompt: string,
   history: BetaMessageParam[],
   onText: (text: string) => void,
 ): Promise<string> {
   const stream = anthropic.beta.messages.stream({
-    ...requestBase("low"),
+    ...requestBase(lang, "low"),
     max_tokens: 16000,
     messages: [...history, { role: "user", content: prompt }],
   });
   stream.on("text", onText);
   const message = await stream.finalMessage();
   if (message.stop_reason === "refusal") {
-    throw new AiError("A IA não conseguiu responder a esta pergunta.");
+    throw new AiError("aiRefused");
   }
   return message.content
     .map((block) => (block.type === "text" ? block.text : ""))

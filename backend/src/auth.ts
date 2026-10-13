@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { config } from "./config";
+import { langOf, t } from "./i18n";
 import { supabase } from "./supabase";
 
 export interface AuthedRequest extends Request {
@@ -14,7 +15,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const header = req.headers.authorization ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   if (!token) {
-    res.status(401).json({ error: "Sessão em falta. Entra novamente." });
+    res.status(401).json({ error: t(langOf(req), "missingSession") });
     return;
   }
 
@@ -27,12 +28,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) {
-    res.status(401).json({ error: "Sessão expirada. Entra novamente." });
+    res.status(401).json({ error: t(langOf(req), "expiredSession") });
     return;
   }
 
   if ((data.user.email ?? "").toLowerCase() !== config.ALLOWED_EMAIL) {
-    res.status(403).json({ error: "Este email não tem acesso a esta web." });
+    res.status(403).json({ error: t(langOf(req), "forbiddenEmail") });
     return;
   }
 
