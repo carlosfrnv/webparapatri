@@ -1,0 +1,11 @@
+{
+  "name": "Estudo IMR",
+  "short_name": "Estudo IMR",
+  "description": "O teu espaço de estudo de Imagem Médica e Radioterapia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#1f6feb",
+  "lang": "pt-PT",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import { api, errorMessage } from "@/lib/api";
+import type { QuizQuestion } from "@/lib/types";
+import { Markdown, Spinner } from "./ui";
+
+const LETTERS = ["A", "B", "C", "D"];
+
+/** Teste de escolha múltipla com correção imediata e explicação. */
+export function Quiz({ documentId, questions }: { documentId: string; questions: QuizQuestion[] }) {
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
+  const [extra, setExtra] = useState<Record<number, string>>({});
+  const [loadingExtra, setLoadingExtra] = useState(false);
+  const [finished, setFinished] = useState(false);
+
+  const q = questions[index];
+  const chosen = answers[index];
+  const score = answers.filter((a, i) => a === questions[i].correct_index).length;
+
+  function choose(option: number) {
+    if (chosen !== null) return;
+    setAnswers((a) => a.map((v, i) => (i === index ? option : v)));
+  }
+
+  async function next() {
+    if (index + 1 < questions.length) {
+      setIndex(index + 1);
+    } else {
+      setFinished(true);
+      api.post("/quiz/attempts", { document_id: documentId, score, total: questions.length }).catch(() => undefined);
+    }
+  }
+
+  async function explainMore() {
+    if (chosen === null) return;
+    setLoadingExtra(true);
+    try {
+      const { explanation } = await api.post<{ explanation: string }>("/quiz/explain", {
+        document_id: documentId,
+        question_index: index,
+        chosen_index: chosen,
+      });
+      setExtra((e) => ({ ...e, [index]: explanation }));
+    } catch (err) {
+      setExtra((e) => ({ ...e, [index]: errorMessage(err) }));
+    } finally {
+      setLoadingExtra(false);
+    }
+  }
+
+  function restart() {
+    setAnswers(questions.map(() => null));
+    setExtra({});
+    setIndex(0);
+    setFinished(false);
+  }
+
+  if (finished) {
+    const pct = Math.round((score / questions.length) * 100);
+    return (
+      <div className="card flex flex-col items-center gap-3 p-10 text-center">
+        <span className="text-5xl" aria-hidden="true">
+          {pct >= 80 ? "🏆" : pct >= 50 ? "👏" : "💪"}
+        </span>
+        <p className="text-3xl font-bold">
+          {score} / {questions.length}
+        </p>
+        <p className="text-muted">
+          {pct >= 80
+            ? "Excelente! Estás pronta para o exame."
+            : pct >= 50
+              ? "Bom trabalho! Revê as que falhaste."
+              : "Não desanimes: revê o resumo e tenta outra vez."}
+        </p>
+        <button className="btn-primary" onClick={restart}>
+          Repetir o teste
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="text-muted mb-3 flex justify-between text-sm">
+        <span>
+          Pergunta {index + 1} de {questions.length}
+        </span>
+        <span>
+          {score} {score === 1 ? "certa" : "certas"}
+        </span>
+      </div>
+      <div className="card p-5">
+        <p className="text-lg font-medium">{q.question}</p>
+        <ul className="mt-4 space-y-2">
+          {q.options.map((opt, i) => {
+            let cls = "border-border hover:border-accent";
+            if (chosen !== null) {
+              if (i === q.correct_index) cls = "border-success bg-success-soft";
+              else if (i === chosen) cls = "border-danger bg-danger-soft";
+              else cls = "border-border opacity-70";
+            }
+            return (
+              <li key={i}>
+                <button
+                  className={`flex min-h-12 w-full items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors ${cls}`}
+                  onClick={() => choose(i)}
+                  disabled={chosen !== null}
+                  aria-pressed={chosen === i}
+                >
+                  <span className="font-semibold">{LETTERS[i]})</span>
+                  <span>{opt}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {chosen !== null && (
+          <div className="bg-surface-2 mt-4 rounded-xl p-4">
+            <p className="font-semibold">
+              {chosen === q.correct_index ? "✅ Certo!" : `❌ A resposta certa é a ${LETTERS[q.correct_index]}.`}
+            </p>
+            <p className="mt-2">{q.explanation}</p>
+            {extra[index] ? (
+              <div className="border-border mt-3 border-t pt-3">
+                <Markdown>{extra[index]}</Markdown>
+              </div>
+            ) : loadingExtra ? (
+              <div className="mt-3">
+                <Spinner label="A preparar uma explicação…" />
+              </div>
+            ) : (
+              <button className="btn-ghost text-accent mt-2 px-0" onClick={explainMore}>
+                Explica-me melhor
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {chosen !== null && (
+        <button className="btn-primary mt-4 w-full" onClick={next}>
+          {index + 1 < questions.length ? "Próxima pergunta →" : "Ver resultado"}
+        </button>
+      )}
+    </div>
+  );
+}

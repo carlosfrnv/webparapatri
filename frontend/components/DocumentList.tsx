@@ -1,0 +1,144 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect } from "react";
+import { api, errorMessage } from "@/lib/api";
+import type { DocumentItem, Subject } from "@/lib/types";
+import { fileIcon, formatDate, StatusBadge } from "./ui";
+
+/** Consulta o estado enquanto houver ficheiros "A processar…". */
+export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: DocumentItem[]) => DocumentItem[]) => void) {
+  const processingIds = docs
+    .filter((d) => d.status === "processing")
+    .map((d) => d.id)
+    .join(",");
+  useEffect(() => {
+    if (!processingIds) return;
+    const timer = setInterval(async () => {
+      for (const id of processingIds.split(",")) {
+        try {
+          const updated = await api.get<DocumentItem>(`/documents/${id}`);
+          if (updated.status !== "processing") setDocs((list) => list.map((d) => (d.id === id ? updated : d)));
+        } catch {
+          /* tenta de novo no próximo ciclo */
+        }
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [processingIds, setDocs]);
+}
+
+export function DocumentList({
+  docs,
+  setDocs,
+  subjects,
+  emptyText,
+  onAssigned,
+}: {
+  docs: DocumentItem[];
+  setDocs: (fn: (d: DocumentItem[]) => DocumentItem[]) => void;
+  subjects: Subject[];
+  emptyText?: string;
+  onAssigned?: (doc: DocumentItem) => void;
+}) {
+  usePollProcessing(docs, setDocs);
+
+  async function remove(doc: DocumentItem) {
+    if (!confirm(`Apagar "${doc.title}"? Os resumos, flashcards e testes deste ficheiro também são apagados.`)) return;
+    try {
+      await api.del(`/documents/${doc.id}`);
+      setDocs((list) => list.filter((d) => d.id !== doc.id));
+    } catch (err) {
+      alert(errorMessage(err));
+    }
+  }
+
+  async function assign(doc: DocumentItem, subjectId: string | null) {
+    try {
+      const updated = await api.patch<DocumentItem>(`/documents/${doc.id}`, { subject_id: subjectId });
+      if (onAssigned) onAssigned(updated);
+      else setDocs((list) => list.map((d) => (d.id === doc.id ? updated : d)));
+    } catch (err) {
+      alert(errorMessage(err));
+    }
+  }
+
+  if (docs.length === 0) {
+    return (
+      <p className="bg-surface-2 text-muted rounded-xl p-4 text-center">
+        {emptyText ?? "Ainda não há ficheiros aqui."}
+      </p>
+    );
+  }
+
+  const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name;
+
+  return (
+    <ul className="space-y-2">
+      {docs.map((doc) => {
+        const suggestion =
+          !doc.subject_id && doc.suggested_subject_id ? subjectName(doc.suggested_subject_id) : undefined;
+        return (
+          <li key={doc.id} className="card p-3 sm:p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 text-2xl" aria-hidden="true">
+                {fileIcon(doc.mime_type)}
+              </span>
+              <div className="min-w-0 flex-1">
+                {doc.status === "ready" ? (
+                  <Link href={`/documento/${doc.id}`} className="hover:text-accent block font-semibold">
+                    {doc.title}
+                  </Link>
+                ) : (
+                  <p className="font-semibold">{doc.title}</p>
+                )}
+                <div className="text-muted mt-1 flex flex-wrap items-center gap-2 text-sm">
+                  <StatusBadge status={doc.status} />
+                  <span>{formatDate(doc.created_at)}</span>
+                  {doc.subject_id && subjectName(doc.subject_id) && <span>· {subjectName(doc.subject_id)}</span>}
+                </div>
+                {doc.status === "error" && doc.error_message && (
+                  <p className="text-danger mt-2 text-sm">{doc.error_message}</p>
+                )}
+                {suggestion && (
+                  <div className="bg-accent-soft mt-3 flex flex-wrap items-center gap-2 rounded-xl p-3 text-sm">
+                    <span>
+                      ✨ Parece ser de <strong>{suggestion}</strong>.
+                    </span>
+                    <button
+                      className="btn-primary min-h-9 px-3 py-1 text-sm"
+                      onClick={() => assign(doc, doc.suggested_subject_id)}
+                    >
+                      Confirmar
+                    </button>
+                  </div>
+                )}
+                {!doc.subject_id && subjects.length > 0 && (
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <span className="text-muted">Disciplina:</span>
+                    <select
+                      className="input min-h-9 min-w-0 flex-1 py-1 text-sm sm:max-w-xs"
+                      value=""
+                      onChange={(e) => e.target.value && assign(doc, e.target.value)}
+                    >
+                      <option value="">Escolher…</option>
+                      {subjects.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.year ? `${s.year}.º · ` : ""}
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <button className="btn-ghost px-3" onClick={() => remove(doc)} aria-label={`Apagar ${doc.title}`}>
+                🗑️
+              </button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

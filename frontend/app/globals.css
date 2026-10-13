@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Paleta calma para muitas horas de estudo. Acento: azul clínico. */
+:root {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --border: #dde3ec;
+  --text: #17202e;
+  --muted: #5b6678;
+  --accent: #1f6feb;
+  --accent-strong: #1859c4;
+  --accent-soft: #e3edfd;
+  --accent-contrast: #ffffff;
+  --success: #15803d;
+  --success-soft: #dcfce7;
+  --danger: #c2410c;
+  --danger-soft: #ffedd5;
+  --warning-soft: #fef3c7;
+}
+
+.dark {
+  --bg: #0f141b;
+  --surface: #171d26;
+  --surface-2: #1f2733;
+  --border: #2c3542;
+  --text: #e6ebf2;
+  --muted: #9aa6b8;
+  --accent: #5b9bff;
+  --accent-strong: #7fb0ff;
+  --accent-soft: #1b2b45;
+  --accent-contrast: #0b1220;
+  --success: #4ade80;
+  --success-soft: #14321f;
+  --danger: #fb923c;
+  --danger-soft: #3a2314;
+  --warning-soft: #3a3214;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning-soft: var(--warning-soft);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-accent text-accent-contrast hover:bg-accent-strong;
+}
+@utility btn-secondary {
+  @apply btn border-border bg-surface text-text hover:bg-surface-2 border;
+}
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-surface-2 hover:text-text;
+}
+@utility card {
+  @apply border-border bg-surface rounded-2xl border;
+}
+@utility input {
+  @apply border-border bg-surface text-text placeholder:text-muted min-h-11 w-full rounded-xl border px-3 py-2;
+}
+
+/* Texto em Markdown (resumos e respostas do chat) */
+.prose-study {
+  overflow-wrap: anywhere;
+}
+.prose-study h1 {
+  @apply mt-2 mb-3 text-2xl font-bold;
+}
+.prose-study h2 {
+  @apply mt-6 mb-2 text-xl font-semibold;
+}
+.prose-study h3 {
+  @apply mt-5 mb-2 text-lg font-semibold;
+}
+.prose-study p {
+  @apply my-3;
+}
+.prose-study ul {
+  @apply my-3 list-disc pl-6;
+}
+.prose-study ol {
+  @apply my-3 list-decimal pl-6;
+}
+.prose-study li {
+  @apply my-1;
+}
+.prose-study strong {
+  @apply font-semibold;
+}
+.prose-study a {
+  @apply text-accent underline;
+}
+.prose-study code {
+  @apply bg-surface-2 rounded px-1 py-0.5 text-[0.9em];
+}
+.prose-study blockquote {
+  @apply border-accent text-muted my-3 border-l-4 pl-4;
+}
+.prose-study table {
+  @apply my-4 block w-full border-collapse overflow-x-auto text-sm;
+}
+.prose-study th {
+  @apply border-border bg-surface-2 border px-3 py-2 text-left font-semibold;
+}
+.prose-study td {
+  @apply border-border border px-3 py-2 align-top;
+}
+
+/* Cartão que vira */
+.flip {
+  perspective: 1200px;
+}
+.flip-inner {
+  transition: transform 0.45s ease;
+  transform-style: preserve-3d;
+}
+.flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner {
+    transition: none;
+  }
+}
