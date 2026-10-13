@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { localSourceHref, SourceChips } from "@/components/Sources";
 import { Markdown } from "@/components/ui";
 import { apiFetch, api, errorMessage } from "@/lib/api";
 import { dict, useT } from "@/lib/i18n";
-import type { ChatMessage, DocumentItem, Source } from "@/lib/types";
+import { isWebSource, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
 
 interface Conversation {
   conversation_id: string;
@@ -13,33 +13,17 @@ interface Conversation {
   updated_at: string;
 }
 
-function SourceChips({ sources }: { sources: Source[] }) {
-  const t = useT();
-  if (!sources.length) return null;
-  return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {sources.map((s) => (
-        <Link
-          key={s.n}
-          href={`/documento/${s.document_id}`}
-          title={s.excerpt}
-          className="border-border bg-surface hover:border-accent inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border px-3 py-1 text-xs"
-        >
-          <span className="text-accent font-semibold">[{s.n}]</span>
-          <span className="truncate">
-            {s.document_title}
-            {s.page ? `, ${t.chat.pageShort} ${s.page}` : ""}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
+type WebPhase = "web_search" | "web_fetch";
 
-/** Lê o stream SSE do backend (event: meta | delta | done | error). */
+/** Lê o stream SSE do backend (event: meta | delta | status | done | error). */
 async function streamChat(
   body: { question: string; conversation_id?: string; document_id?: string },
-  handlers: { meta: (d: { conversation_id: string; sources: Source[] }) => void; delta: (t: string) => void },
+  handlers: {
+    meta: (d: { conversation_id: string; sources: AnySource[] }) => void;
+    delta: (t: string) => void;
+    status: (phase: WebPhase) => void;
+    done: (d: { text: string; sources: AnySource[] }) => void;
+  },
 ) {
   const res = await apiFetch("/chat", {
     method: "POST",
@@ -67,6 +51,8 @@ async function streamChat(
       const data = JSON.parse(dataLine);
       if (event === "meta") handlers.meta(data);
       else if (event === "delta") handlers.delta(data.text);
+      else if (event === "status") handlers.status(data.phase);
+      else if (event === "done") handlers.done(data);
       else if (event === "error") throw new Error(data.error);
     }
   }
@@ -82,6 +68,7 @@ export default function ChatPage() {
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [docFilter, setDocFilter] = useState<DocumentItem | null>(null);
+  const [webPhase, setWebPhase] = useState<WebPhase | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(() => {
@@ -150,7 +137,17 @@ export default function ChatPage() {
             setConversationId(conversation_id);
             updateLast((msg) => ({ ...msg, sources }));
           },
-          delta: (t) => updateLast((msg) => ({ ...msg, content: msg.content + t })),
+          delta: (t) => {
+            setWebPhase(null);
+            updateLast((msg) => ({ ...msg, content: msg.content + t }));
+          },
+          // A IA começou a consultar a web: mostramos o estado e apagamos qualquer preâmbulo.
+          status: (phase) => {
+            setWebPhase(phase);
+            updateLast((msg) => ({ ...msg, content: "" }));
+          },
+          // Resposta final (só o texto depois das pesquisas) e todas as fontes, incluindo as web.
+          done: ({ text, sources }) => updateLast((msg) => ({ ...msg, content: text || msg.content, sources })),
         },
       );
       loadConversations();
@@ -159,6 +156,7 @@ export default function ChatPage() {
       setMessages((m) => (m[m.length - 1]?.content ? m : m.slice(0, -1)));
     } finally {
       setBusy(false);
+      setWebPhase(null);
     }
   }
 
@@ -259,12 +257,20 @@ export default function ChatPage() {
                   {m.content ? (
                     <Markdown
                       citeHref={(n) => {
-                        const s = m.sources?.find((x) => x.n === n);
-                        return s ? `/documento/${s.document_id}` : undefined;
+                        const s = m.sources?.find((x) => !isWebSource(x) && x.n === n);
+                        return s && !isWebSource(s) ? localSourceHref(s) : undefined;
                       }}
                     >
                       {m.content}
                     </Markdown>
+                  ) : webPhase && i === messages.length - 1 ? (
+                    <span className="text-muted flex items-center gap-2 py-2 text-sm" role="status">
+                      <span
+                        className="border-border border-t-accent h-4 w-4 animate-spin rounded-full border-2"
+                        aria-hidden="true"
+                      />
+                      🌐 {t.sources.searching[webPhase]}
+                    </span>
                   ) : (
                     <span className="flex gap-1 py-2" aria-label={t.chat.typing}>
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full" />
@@ -272,7 +278,7 @@ export default function ChatPage() {
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
                     </span>
                   )}
-                  {m.sources && <SourceChips sources={m.sources} />}
+                  {m.sources && m.content && <SourceChips sources={m.sources} />}
                 </div>
               </div>
             ),

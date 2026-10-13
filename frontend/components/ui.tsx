@@ -4,6 +4,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { dateLocale, type Lang, useT } from "@/lib/i18n";
+import { markOrigins, OriginBadge } from "./Sources";
 import type { DocumentItem } from "@/lib/types";
 
 export function Spinner({ label }: { label?: string }) {
@@ -83,21 +84,24 @@ export function StatusBadge({ status }: { status: DocumentItem["status"] }) {
   );
 }
 
-/** Markdown com links internos para as citações [n]. */
+/** Markdown com selos de origem ([Os teus apontamentos], [IAEA]…) e links internos para as citações [n]. */
 export function Markdown({ children, citeHref }: { children: string; citeHref?: (n: number) => string | undefined }) {
+  const withOrigins = markOrigins(children);
   const text = citeHref
-    ? children.replace(/\[(\d{1,2})\](?!\()/g, (m, n) => {
+    ? withOrigins.replace(/\[(\d{1,2})\](?!\()/g, (m, n) => {
         const href = citeHref(Number(n));
         return href ? `[\\[${n}\\]](${href})` : m;
       })
-    : children;
+    : withOrigins;
   return (
     <div className="prose-study">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) =>
-            href?.startsWith("/") ? (
+            href?.startsWith("#origem-") ? (
+              <OriginBadge href={href}>{children}</OriginBadge>
+            ) : href?.startsWith("/") ? (
               <Link href={href} className="text-accent font-medium no-underline">
                 {children}
               </Link>

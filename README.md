@@ -10,6 +10,20 @@ Ella sube los apuntes que le llegan por correo (PDF, Word, PowerPoint o texto) y
 - **Test** de 10 preguntas con corrección y explicación
 - **Chat** que responde dudas basándose en sus apuntes y cita de qué archivo y página sale cada dato
 
+### De dónde saca la información la IA (por orden de prioridad)
+
+1. **Sus apuntes**: siempre primero, son la fuente principal.
+2. **Biblioteca de referencia** (PDF gratuitos de la IAEA y la EFRS que subes tú): sección aparte, no se mezcla
+   con sus apuntes, pero se usa en la búsqueda.
+3. **Consulta en vivo** a radiopaedia.org, iaea.org y efrs.eu: solo si 1 y 2 no tienen relevancia suficiente,
+   con un máximo de 3 búsquedas por pregunta. El texto de esas páginas no se guarda nunca; solo la respuesta
+   y el nombre/enlace de la fuente.
+4. **Conocimiento general**: último recurso, marcado como "Fuera de tus apuntes:".
+
+Cada parte de la respuesta lleva una etiqueta de origen ([Tus apuntes], [Biblioteca de referencia – IAEA],
+[Radiopaedia]…). Si las fuentes se contradicen, mandan sus apuntes. Detalles y umbral de relevancia:
+[`docs/prompts-ia.md`](docs/prompts-ia.md).
+
 La web está **en español** y tiene un selector para cambiarla a **portugués de Portugal** (🇪🇸 / 🇵🇹, en el menú y en
 la pantalla de acceso). La elección se guarda en el navegador. La IA escribe resúmenes, flashcards, tests y respuestas
 del chat en el idioma elegido, aunque los apuntes estén en portugués. Si un archivo ya tenía el material generado en el
@@ -112,6 +126,34 @@ quieres una dirección personal (por ejemplo `estudiopatri.com`, unos 10–15 �
 **Settings → Domains**. Después, pon el dominio nuevo también en `FRONTEND_ORIGIN` (Render) y en Supabase → URL
 Configuration.
 
+### Biblioteca de referencia (IAEA / EFRS)
+
+Descarga los PDF gratuitos que quieras (por ejemplo, de la colección de publicaciones de la IAEA o de la web de
+la EFRS) y súbelos de una de estas dos formas:
+
+- **Desde la web**: Biblioteca → «Biblioteca de referencia» → elige IAEA o EFRS → arrastra el PDF (máx. 25 MB).
+- **Desde tu ordenador** (para PDF grandes o muchos a la vez, hasta 50 MB cada uno), dentro de `backend/` con el
+  `.env` relleno:
+
+  ```bash
+  npm run referencia -- --org IAEA ~/Descargas/IAEA/        # una carpeta entera
+  npm run referencia -- --org EFRS ~/Descargas/efrs-guia.pdf
+  ```
+
+Para probar el chat desde la terminal con el mismo motor que la web:
+
+```bash
+npm run probar -- "O que é a unidade Hounsfield?"
+npm run probar -- --lang es "¿Qué es la unidad Hounsfield?"
+```
+
+Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las fuentes.
+
+> 💶 La búsqueda web cuesta 10 $ por cada 1.000 búsquedas más los tokens de lo que se lee. Con un máximo de 3
+> búsquedas y solo cuando sus apuntes y la referencia no bastan, el coste extra por pregunta es de céntimos.
+> Si en la consola de Anthropic tienes la búsqueda web desactivada a nivel de organización, actívala
+> (Settings → Capabilities).
+
 ### 5. Personaliza la dedicatoria ✏️
 
 Edita [`frontend/config/dedicatoria.ts`](frontend/config/dedicatoria.ts): el nombre, el mensaje de bienvenida que verá
@@ -147,8 +189,8 @@ npm install
 npm run dev                  # http://localhost:3000
 ```
 
-Si ya habías ejecutado `supabase/schema.sql` antes de que existiera el selector de idioma, vuelve a ejecutarlo: añade la
-columna de idioma sin borrar nada.
+Si ya habías ejecutado `supabase/schema.sql` antes, vuelve a ejecutarlo tras cada actualización: añade las
+columnas nuevas (idioma, biblioteca de referencia…) sin borrar nada.
 
 Antes de publicar cambios: `npm run build` en `backend/` y en `frontend/` (y `npm run lint` en `frontend/`).
 
@@ -162,7 +204,11 @@ backend/src/
   chunk.ts          trocea en fragmentos de ~1.500 caracteres con solapamiento
   processing.ts     procesado en segundo plano + sugerencia de asignatura con IA
   study.ts          genera resumen, conceptos, flashcards y test (con caché)
-  search.ts         búsqueda en los apuntes (full-text search en portugués)
+  search.ts         búsqueda por niveles (apuntes → referencia) y umbral de relevancia
+  web.ts            consulta en vivo a radiopaedia.org, iaea.org y efrs.eu
+  chatEngine.ts     motor del chat (lo usan la web y `npm run probar`)
+  ingest.ts         subida + extracción + troceado (apuntes y referencia)
+  scripts/          `npm run referencia` y `npm run probar`
   prompts.ts        todos los prompts de la IA (español y portugués europeo)
   i18n.ts           mensajes de error en los dos idiomas (cabecera X-Lang)
   sm2.ts            repetición espaciada

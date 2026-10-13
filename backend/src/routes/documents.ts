@@ -1,32 +1,18 @@
-import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { userIdOf } from "../auth";
 import { MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
-import { detectKind } from "../extract";
+import { DOC_FIELDS, ingestDocument } from "../ingest";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
-import { processDocument } from "../processing";
 import { getOrGenerateStudy } from "../study";
 import { supabase } from "../supabase";
 
 export const documentsRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
-
-const DOC_FIELDS = "id, title, subject_id, suggested_subject_id, mime_type, status, error_message, created_at";
-
-function safeFileName(name: string): string {
-  return (
-    name
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .replace(/[^a-zA-Z0-9._-]+/g, "_")
-      .slice(-120) || "ficheiro"
-  );
-}
 
 async function ownedDocument(id: string, userId: string) {
   const { data, error } = await supabase
@@ -40,6 +26,12 @@ async function ownedDocument(id: string, userId: string) {
   return data;
 }
 
+const uploadFieldsSchema = z.object({
+  subject_id: z.string().uuid().nullable().catch(null),
+  source_type: z.enum(["apontamentos", "referencia"]).catch("apontamentos"),
+  reference_org: z.enum(["IAEA", "EFRS"]).nullable().catch(null),
+});
+
 documentsRouter.post(
   "/",
   upload.single("file"),
@@ -50,51 +42,32 @@ documentsRouter.post(
 
     // O multer lê o nome em latin1; convertemos para manter acentos.
     const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-    const kind = detectKind(file.mimetype, originalName);
-    if (!kind) {
-      throw new HttpError(415, "unsupportedType");
-    }
+    const fields = uploadFieldsSchema.parse({
+      subject_id: req.body?.subject_id || null,
+      source_type: req.body?.source_type,
+      reference_org: req.body?.reference_org || null,
+    });
+    if (fields.source_type === "referencia" && !fields.reference_org) throw new HttpError(400, "invalidData");
 
-    const subjectId = z.string().uuid().nullable().catch(null).parse(req.body?.subject_id || null);
-    if (subjectId) {
+    if (fields.subject_id) {
       const { data: subject } = await supabase
         .from("subjects")
         .select("id")
-        .eq("id", subjectId)
+        .eq("id", fields.subject_id)
         .eq("user_id", userId)
         .maybeSingle();
       if (!subject) throw new HttpError(400, "invalidSubject");
     }
 
-    const id = randomUUID();
-    const storagePath = `${userId}/${id}/${safeFileName(originalName)}`;
-    const { error: uploadError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
-    if (uploadError) {
-      console.error(uploadError);
-      throw new HttpError(500, "saveFailed");
-    }
-
-    const title = originalName.replace(/\.[^.]+$/, "");
-    const { data, error } = await supabase
-      .from("documents")
-      .insert({
-        id,
-        user_id: userId,
-        subject_id: subjectId,
-        title,
-        storage_path: storagePath,
-        mime_type: file.mimetype,
-        status: "processing",
-      })
-      .select(DOC_FIELDS)
-      .single();
-    if (error) throw error;
-
-    // Processa em segundo plano; o frontend vai consultando o estado.
-    void processDocument({ documentId: id, userId, buffer: file.buffer, kind, title, hasSubject: !!subjectId });
-
+    const data = await ingestDocument({
+      userId,
+      buffer: file.buffer,
+      originalName,
+      mimetype: file.mimetype,
+      subjectId: fields.subject_id,
+      sourceType: fields.source_type,
+      referenceOrg: fields.reference_org,
+    });
     res.status(201).json(data);
   }),
 );
@@ -102,10 +75,13 @@ documentsRouter.post(
 documentsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
+    // Por defeito só os apontamentos dela; a Biblioteca de referência pede-se à parte.
+    const sourceType = req.query.source_type === "referencia" ? "referencia" : "apontamentos";
     let query = supabase
       .from("documents")
       .select(DOC_FIELDS)
       .eq("user_id", userIdOf(req))
+      .eq("source_type", sourceType)
       .order("created_at", { ascending: false });
     const subjectId = typeof req.query.subject_id === "string" ? req.query.subject_id : undefined;
     if (subjectId === "none") query = query.is("subject_id", null);
@@ -184,6 +160,8 @@ documentsRouter.get(
 async function studyHandler(req: Parameters<Parameters<typeof asyncHandler>[0]>[0], force: boolean) {
   const userId = userIdOf(req);
   const doc = await ownedDocument(String(req.params.id), userId);
+  // A Biblioteca de referência só serve para pesquisa: não gera resumos nem flashcards.
+  if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
   if (doc.status === "processing") throw new HttpError(409, "stillProcessing");
   if (doc.status === "error") throw new HttpError(409, "documentHasError");
   return getOrGenerateStudy(doc.id, userId, langOf(req), force);

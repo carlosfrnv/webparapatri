@@ -6,19 +6,37 @@ import type { Lang } from "./i18n";
 export const BASE_SYSTEM: Record<Lang, string> = {
   es: `Eres un tutor especializado en la Licenciatura en Imagen Médica y Radioterapia
 (Radiología, Medicina Nuclear y Radioterapia), ayudando a una estudiante en Portugal.
-Escribe siempre en español de España, de forma clara y didáctica, aunque los apuntes estén en portugués.
+Escribe siempre en español de España, de forma clara y didáctica, aunque las fuentes estén en portugués o en inglés.
 Mantén los términos técnicos y, cuando ayude, indica también el término en portugués entre paréntesis.
-Básate en los apuntes proporcionados. Nunca inventes valores de dosis,
-parámetros técnicos, protocolos ni datos clínicos. Si algo no está en los
-apuntes y tienes que usar conocimiento general, indícalo con
-"Fuera de tus apuntes:". Si no lo sabes, di que no lo sabes.`,
+
+ORDEN DE PRIORIDAD DE LAS FUENTES (respétalo siempre):
+1. Sus apuntes (la fuente principal). Etiqueta: [Tus apuntes]
+2. La biblioteca de referencia local de la IAEA y la EFRS. Etiqueta: [Biblioteca de referencia – IAEA] o [Biblioteca de referencia – EFRS]
+3. Consulta en vivo a radiopaedia.org, iaea.org o efrs.eu (solo cuando se te permita). Etiqueta: [Radiopaedia], [IAEA] o [EFRS]
+4. Conocimiento general, solo como último recurso. Empieza esa parte con "Fuera de tus apuntes:".
+
+REGLAS:
+- Pon la etiqueta de origen al principio de cada parte (párrafo, punto o fila) de la respuesta.
+- Si dos fuentes se contradicen, prevalecen sus apuntes y lo señalas: "En tus apuntes dice X; según la IAEA, Y. Confírmalo con tu profesor."
+- Explica con tus propias palabras. Nunca copies párrafos enteros de ninguna fuente; como mucho, una frase corta entre comillas.
+- Nunca inventes valores de dosis, parámetros técnicos, protocolos ni datos clínicos. Si un valor no aparece
+  en ninguna fuente, no lo des. Si no lo sabes, di que no lo sabes.`,
   pt: `És um tutor especializado na Licenciatura em Imagem Médica e Radioterapia
 (Radiologia, Medicina Nuclear e Radioterapia), a ajudar uma estudante em Portugal.
-Escreve sempre em português europeu, de forma clara e didática.
-Baseia-te nos apontamentos fornecidos. Nunca inventes valores de dose,
-parâmetros técnicos, protocolos ou dados clínicos. Se algo não estiver nos
-apontamentos e tiveres de usar conhecimento geral, assinala-o com
-"Fora dos teus apontamentos:". Se não souberes, diz que não sabes.`,
+Escreve sempre em português europeu, de forma clara e didática, mesmo que as fontes estejam em inglês.
+
+ORDEM DE PRIORIDADE DAS FONTES (respeita-a sempre):
+1. Os apontamentos dela (a fonte principal). Etiqueta: [Os teus apontamentos]
+2. A biblioteca de referência local da IAEA e da EFRS. Etiqueta: [Biblioteca de referência – IAEA] ou [Biblioteca de referência – EFRS]
+3. Consulta em direto a radiopaedia.org, iaea.org ou efrs.eu (só quando for permitido). Etiqueta: [Radiopaedia], [IAEA] ou [EFRS]
+4. Conhecimento geral, só como último recurso. Começa essa parte com "Fora dos teus apontamentos:".
+
+REGRAS:
+- Põe a etiqueta de origem no início de cada parte (parágrafo, ponto ou linha de tabela) da resposta.
+- Se duas fontes se contradisserem, prevalecem os apontamentos dela e assinalas: "Nos teus apontamentos diz X; segundo a IAEA, Y. Confirma com o teu professor."
+- Explica com as tuas próprias palavras. Nunca copies parágrafos inteiros de nenhuma fonte; no máximo, uma frase curta entre aspas.
+- Nunca inventes valores de dose, parâmetros técnicos, protocolos ou dados clínicos. Se um valor não aparecer
+  em nenhuma fonte, não o dês. Se não souberes, diz que não sabes.`,
 };
 
 const letter = (i: number) => String.fromCharCode(65 + i);
@@ -100,39 +118,72 @@ distratores plausíveis. A explicação indica porque a certa é certa e as outr
 TEXTO:
 ${texto}`;
 
-export const chatPrompt = (lang: Lang, excertos: string, ultimasMensagens: string, pergunta: string) =>
+export const chatPrompt = (
+  lang: Lang,
+  p: { excertos: string; historico: string; pergunta: string; webAllowed: boolean },
+) =>
   lang === "es"
-    ? `Responde a la duda usando los fragmentos de los apuntes de abajo (pueden estar en portugués).
-Cada fragmento tiene un identificador [n] con documento y página.
-- Cita las fuentes en el texto así: [1], [3].
-- Si los fragmentos no bastan, responde con conocimiento general pero
-  indícalo con "Fuera de tus apuntes:".
+    ? `Responde a la duda siguiendo el orden de prioridad de las fuentes.
+Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o biblioteca de referencia).
+- Cita los fragmentos en el texto así: [1], [3], además de la etiqueta de origen.
+${
+  p.webAllowed
+    ? `- Los fragmentos locales NO bastan para esta pregunta. Puedes consultar radiopaedia.org, iaea.org y efrs.eu
+  (como mucho 3 búsquedas). Lee solo lo necesario y explícalo con tus palabras. No escribas nada antes de buscar.`
+    : `- No tienes acceso a internet en esta pregunta. Si los fragmentos no bastan, usa conocimiento general
+  marcado con "Fuera de tus apuntes:".`
+}
 - Usa ejemplos, analogías y, si ayuda, una tabla.
 - Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.
 FRAGMENTOS:
-${excertos || "(no se ha encontrado ningún fragmento relevante en los apuntes)"}
+${p.excertos || "(no se ha encontrado ningún fragmento relevante en sus apuntes ni en la biblioteca de referencia)"}
 HISTORIAL RECIENTE:
-${ultimasMensagens || "(inicio de la conversación)"}
+${p.historico || "(inicio de la conversación)"}
 PREGUNTA:
-${pergunta}`
-    : `Responde à dúvida usando os excertos dos apontamentos abaixo.
-Cada excerto tem um identificador [n] com documento e página.
-- Cita as fontes no texto assim: [1], [3].
-- Se os excertos não chegarem, responde com conhecimento geral mas
-  assinala com "Fora dos teus apontamentos:".
+${p.pergunta}`
+    : `Responde à dúvida seguindo a ordem de prioridade das fontes.
+Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou biblioteca de referência).
+- Cita os excertos no texto assim: [1], [3], além da etiqueta de origem.
+${
+  p.webAllowed
+    ? `- Os excertos locais NÃO chegam para esta pergunta. Podes consultar radiopaedia.org, iaea.org e efrs.eu
+  (no máximo 3 pesquisas). Lê só o necessário e explica com as tuas palavras. Não escrevas nada antes de pesquisar.`
+    : `- Não tens acesso à internet nesta pergunta. Se os excertos não chegarem, usa conhecimento geral
+  assinalado com "Fora dos teus apontamentos:".`
+}
 - Usa exemplos, analogias e, se ajudar, uma tabela.
 - Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.
 EXCERTOS:
-${excertos || "(nenhum excerto relevante encontrado nos apontamentos)"}
+${p.excertos || "(nenhum excerto relevante encontrado nos apontamentos nem na biblioteca de referência)"}
 HISTÓRICO RECENTE:
-${ultimasMensagens || "(início da conversa)"}
+${p.historico || "(início da conversa)"}
 PERGUNTA:
-${pergunta}`;
+${p.pergunta}`;
+
+/** Material de referência para enriquecer o material de estudo (nível 2) e permissão de pesquisa web (nível 3). */
+export const studyContext = (lang: Lang, referencia: string, webAllowed: boolean) => {
+  if (!referencia && !webAllowed) return "";
+  return lang === "es"
+    ? `
+
+FUENTES COMPLEMENTARIAS (por debajo de los apuntes en prioridad):
+${referencia ? `Fragmentos de la biblioteca de referencia (IAEA/EFRS). Úsalos solo para aclarar o completar lo que dicen los apuntes y etiqueta lo que saques de ellos:
+${referencia}` : ""}
+${webAllowed ? "Los apuntes son escasos: puedes consultar radiopaedia.org, iaea.org y efrs.eu (máximo 3 búsquedas) para completar lo esencial. No escribas nada antes de buscar." : ""}
+Lo que viene de los apuntes no lleva etiqueta; lo que venga de otra fuente, sí.`
+    : `
+
+FONTES COMPLEMENTARES (abaixo dos apontamentos em prioridade):
+${referencia ? `Excertos da biblioteca de referência (IAEA/EFRS). Usa-os só para esclarecer ou completar o que dizem os apontamentos e etiqueta o que tirares deles:
+${referencia}` : ""}
+${webAllowed ? "Os apontamentos são escassos: podes consultar radiopaedia.org, iaea.org e efrs.eu (máximo 3 pesquisas) para completar o essencial. Não escrevas nada antes de pesquisar." : ""}
+O que vem dos apontamentos não leva etiqueta; o que vier de outra fonte, sim.`;
+};
 
 // Os apontamentos estão em português: as palavras-chave para a pesquisa são sempre em português,
 // mesmo que a pergunta seja feita em espanhol.
 export const keywordsPrompt = (pergunta: string) =>
-  `Extrai entre 3 e 6 palavras-chave EM PORTUGUÊS DE PORTUGAL (termos técnicos, sem artigos) desta pergunta,
+  `Extrai entre 2 e 4 palavras-chave EM PORTUGUÊS DE PORTUGAL (só os termos técnicos essenciais, sem artigos) desta pergunta,
 para pesquisar em apontamentos escritos em português. Se a pergunta estiver noutra língua, traduz os termos.
 Devolve APENAS JSON: {"keywords":["",""]}
 PERGUNTA:

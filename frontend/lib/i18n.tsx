@@ -276,6 +276,29 @@ const es = {
     quizzesText: "Elige un archivo para hacer el test de 10 preguntas.",
     noReady: "Todavía no tienes archivos listos.",
   },
+  sources: {
+    notes: "Tus apuntes",
+    reference: "Biblioteca de referencia",
+    web: "Consulta online",
+    general: "Fuera de tus apuntes",
+    openOriginal: (site: string) => `Abrir el original en ${site} (nueva pestaña)`,
+    consulted: "Fuentes consultadas",
+    searching: { web_search: "Buscando en Radiopaedia, IAEA y EFRS…", web_fetch: "Leyendo la fuente…" },
+    tierInfoWeb: "No estaba en tus apuntes ni en la biblioteca de referencia: he consultado fuentes online.",
+  },
+  reference: {
+    title: "Biblioteca de referencia",
+    subtitle:
+      "Publicaciones de la IAEA y la EFRS. No se mezclan con tus apuntes, pero la IA las consulta cuando tus apuntes no bastan.",
+    cardText: "Documentos de la IAEA y la EFRS que la IA consulta como segunda fuente.",
+    upload: "Añadir documento de referencia",
+    dropTitle: (org: string) => `Arrastra aquí un documento de la ${org}`,
+    org: "Organización",
+    empty: "Todavía no hay documentos de referencia.",
+    onlySearch:
+      "Este documento es de la biblioteca de referencia: solo se usa para buscar, por eso no tiene resumen ni test.",
+    badge: (org: string) => `Referencia ${org}`,
+  },
   chat: {
     title: "Chat",
     suggestions: [
@@ -523,6 +546,29 @@ const pt: Dictionary = {
     quizzesTitle: "📝 Testes",
     quizzesText: "Escolhe um ficheiro para fazeres o teste de 10 perguntas.",
     noReady: "Ainda não tens ficheiros prontos.",
+  },
+  sources: {
+    notes: "Os teus apontamentos",
+    reference: "Biblioteca de referência",
+    web: "Consulta online",
+    general: "Fora dos teus apontamentos",
+    openOriginal: (site: string) => `Abrir o original em ${site} (novo separador)`,
+    consulted: "Fontes consultadas",
+    searching: { web_search: "A pesquisar na Radiopaedia, IAEA e EFRS…", web_fetch: "A ler a fonte…" },
+    tierInfoWeb: "Não estava nos teus apontamentos nem na biblioteca de referência: consultei fontes online.",
+  },
+  reference: {
+    title: "Biblioteca de referência",
+    subtitle:
+      "Publicações da IAEA e da EFRS. Não se misturam com os teus apontamentos, mas a IA consulta-as quando os apontamentos não chegam.",
+    cardText: "Documentos da IAEA e da EFRS que a IA consulta como segunda fonte.",
+    upload: "Adicionar documento de referência",
+    dropTitle: (org: string) => `Arrasta para aqui um documento da ${org}`,
+    org: "Organização",
+    empty: "Ainda não há documentos de referência.",
+    onlySearch:
+      "Este documento é da biblioteca de referência: só serve para pesquisa, por isso não tem resumo nem teste.",
+    badge: (org: string) => `Referência ${org}`,
   },
   chat: {
     title: "Chat",

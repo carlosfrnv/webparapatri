@@ -16,7 +16,8 @@ export async function processDocument(params: {
   buffer: Buffer;
   kind: string;
   title: string;
-  hasSubject: boolean;
+  sourceType: "apontamentos" | "referencia";
+  suggestSubject: boolean;
 }) {
   const { documentId, userId } = params;
   try {
@@ -30,6 +31,7 @@ export async function processDocument(params: {
         position: c.position,
         page: c.page,
         content: c.content,
+        source_type: params.sourceType,
       }));
       const { error } = await supabase.from("chunks").insert(batch);
       if (error) throw error;
@@ -41,7 +43,7 @@ export async function processDocument(params: {
       .eq("id", documentId)
       .eq("user_id", userId);
 
-    if (!params.hasSubject) {
+    if (params.suggestSubject) {
       const firstText = pages.map((p) => p.text).join("\n").split(/\s+/).slice(0, 2000).join(" ");
       await suggestSubject(documentId, userId, params.title, firstText).catch((err) =>
         console.error("Falha ao sugerir disciplina:", err),

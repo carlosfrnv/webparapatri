@@ -34,6 +34,10 @@ const messages = {
   },
   openFailed: { es: "No se ha podido abrir el archivo original.", pt: "Não foi possível abrir o ficheiro original." },
   stillProcessing: { es: "El archivo todavía se está procesando.", pt: "O ficheiro ainda está a ser processado." },
+  referenceNoStudy: {
+    es: "Los documentos de la biblioteca de referencia solo se usan para buscar; no generan resúmenes ni tests.",
+    pt: "Os documentos da biblioteca de referência só servem para pesquisa; não geram resumos nem testes.",
+  },
   documentHasError: { es: "Este archivo tiene un error.", pt: "Este ficheiro tem um erro." },
   aiRefused: { es: "La IA no ha podido responder a esta petición.", pt: "A IA não conseguiu responder a este pedido." },
   aiBadFormat: {

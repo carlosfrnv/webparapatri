@@ -141,10 +141,9 @@ studyRouter.post(
     const sources = await findSources(userId, question.question, {
       documentId: body.document_id,
       limit: 4,
-      expand: false,
     });
     const explanation = await complete(
-      quizExplainPrompt(lang, question.question, question.options, question.correct_index, body.chosen_index, formatSources(sources)),
+      quizExplainPrompt(lang, question.question, question.options, question.correct_index, body.chosen_index, formatSources(sources, lang)),
       { lang, effort: "low", maxTokens: 4000 },
     );
     res.json({ explanation });
@@ -178,7 +177,11 @@ studyRouter.get(
     const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
 
     const [docs, reviewsToday, reviewsWeek, attempts, recentDocs] = await Promise.all([
-      supabase.from("documents").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase
+        .from("documents")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("source_type", "apontamentos"),
       supabase
         .from("flashcard_reviews")
         .select("id", { count: "exact", head: true })
@@ -199,6 +202,7 @@ studyRouter.get(
         .from("documents")
         .select("id, title, status, created_at")
         .eq("user_id", userId)
+        .eq("source_type", "apontamentos")
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
@@ -226,7 +230,8 @@ studyRouter.get(
   "/search",
   asyncHandler(async (req, res) => {
     const q = z.string().trim().min(2).max(200).parse(req.query.q);
-    const sources = await findSources(userIdOf(req), q, { limit: 20, expand: false });
-    res.json(sources.map(({ content: _c, ...s }) => s));
+    // Inclui a Biblioteca de referência (aparece identificada como tal nos resultados).
+    const sources = await findSources(userIdOf(req), q, { limit: 20, includeReference: true });
+    res.json(sources.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s));
   }),
 );

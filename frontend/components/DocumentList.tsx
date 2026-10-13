@@ -92,7 +92,10 @@ export function DocumentList({
               </span>
               <div className="min-w-0 flex-1">
                 {doc.status === "ready" ? (
-                  <Link href={`/documento/${doc.id}`} className="hover:text-accent block font-semibold">
+                  <Link
+                    href={`/documento/${doc.id}${doc.source_type === "referencia" ? "#ficheiro" : ""}`}
+                    className="hover:text-accent block font-semibold"
+                  >
                     {doc.title}
                   </Link>
                 ) : (
@@ -100,6 +103,11 @@ export function DocumentList({
                 )}
                 <div className="text-muted mt-1 flex flex-wrap items-center gap-2 text-sm">
                   <StatusBadge status={doc.status} />
+                  {doc.source_type === "referencia" && (
+                    <span className="bg-warning-soft rounded-full px-2.5 py-0.5 text-xs font-medium">
+                      {t.reference.badge(doc.reference_org ?? "IAEA / EFRS")}
+                    </span>
+                  )}
                   <span>{formatDate(doc.created_at, lang)}</span>
                   {doc.subject_id && subjectName(doc.subject_id) && <span>· {subjectName(doc.subject_id)}</span>}
                 </div>

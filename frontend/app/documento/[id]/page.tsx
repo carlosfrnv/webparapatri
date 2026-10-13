@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDocError } from "@/components/DocumentList";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { Quiz } from "@/components/Quiz";
+import { SourceChips } from "@/components/Sources";
 import { ErrorBox, fileIcon, Markdown, Spinner, StatusBadge } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
@@ -145,7 +146,8 @@ export default function DocumentPage() {
       .get<DocumentItem>(`/documents/${id}`)
       .then((d) => {
         setDoc(d);
-        if (d.status === "ready") loadStudy();
+        // A Biblioteca de referência só serve para pesquisa: não tem material de estudo.
+        if (d.status === "ready" && d.source_type !== "referencia") loadStudy();
       })
       .catch((err) => setError(errorMessage(err)));
   }, [id, loadStudy]);
@@ -153,7 +155,10 @@ export default function DocumentPage() {
   if (error) return <ErrorBox message={error} />;
   if (!doc) return <Spinner label={t.common.loading} />;
 
-  const backHref = doc.subject_id ? `/disciplina/${doc.subject_id}` : "/biblioteca";
+  const isRef = doc.source_type === "referencia";
+  const backHref = isRef ? "/referencia" : doc.subject_id ? `/disciplina/${doc.subject_id}` : "/biblioteca";
+  const visibleTabs = isRef ? (["ficheiro"] as const) : TABS;
+  const activeTab: TabId = isRef ? "ficheiro" : tab;
   // Material gerado noutro idioma (a cache é por ficheiro): oferecemos gerá-lo de novo.
   const materialsLang = materials?.lang ?? "pt";
   const otherLang = materials && materialsLang !== lang;
@@ -170,21 +175,23 @@ export default function DocumentPage() {
             <StatusBadge status={doc.status} />
           </div>
         </div>
-        <Link href={`/chat#doc=${doc.id}`} className="btn-secondary">
-          {t.document.ask}
-        </Link>
+        {!isRef && (
+          <Link href={`/chat#doc=${doc.id}`} className="btn-secondary">
+            {t.document.ask}
+          </Link>
+        )}
       </div>
 
       <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="bg-surface-2 flex w-max gap-1 rounded-xl p-1" role="tablist" aria-label={t.document.tabsLabel}>
-          {TABS.map((id) => (
+          {visibleTabs.map((id) => (
             <button
               key={id}
               role="tab"
-              aria-selected={tab === id}
+              aria-selected={activeTab === id}
               onClick={() => setTab(id)}
               className={`min-h-10 rounded-lg px-4 text-sm font-medium whitespace-nowrap ${
-                tab === id ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
+                activeTab === id ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
               }`}
             >
               {t.document.tabs[id]}
@@ -193,7 +200,9 @@ export default function DocumentPage() {
         </div>
       </div>
 
-      {otherLang && tab !== "ficheiro" && (
+      {isRef && <p className="bg-warning-soft mb-5 rounded-xl p-4 text-sm">{t.reference.onlySearch}</p>}
+
+      {otherLang && activeTab !== "ficheiro" && (
         <div className="bg-accent-soft mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 text-sm">
           <span>{t.document.otherLang(t.document.langName[materialsLang])}</span>
           <button
@@ -208,7 +217,7 @@ export default function DocumentPage() {
         </div>
       )}
 
-      {tab === "ficheiro" ? (
+      {activeTab === "ficheiro" ? (
         <OriginalFile doc={doc} />
       ) : doc.status !== "ready" ? (
         <ErrorBox message={docError(doc.error_message) ?? t.document.notReady} />
@@ -225,6 +234,11 @@ export default function DocumentPage() {
           {tab === "resumo" && (
             <article className="card p-5 sm:p-8">
               <Markdown>{materials.summary}</Markdown>
+              {materials.sources && materials.sources.length > 0 && (
+                <div className="border-border mt-6 border-t pt-4">
+                  <SourceChips sources={materials.sources} title={t.sources.consulted} />
+                </div>
+              )}
             </article>
           )}
 

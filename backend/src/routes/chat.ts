@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
-import { AiError, streamAnswer } from "../ai";
+import { AiError } from "../ai";
 import { userIdOf } from "../auth";
+import { answerQuestion } from "../chatEngine";
 import { asyncHandler } from "../http";
 import { langOf, t } from "../i18n";
 import { aiLimiter } from "../limits";
-import { chatPrompt } from "../prompts";
-import { findSources, formatSources } from "../search";
 import { supabase } from "../supabase";
 
 export const chatRouter = Router();
@@ -40,8 +39,6 @@ chatRouter.post(
       .map((m) => `${m.role === "user" ? (lang === "es" ? "Estudiante" : "Estudante") : "Tutor"}: ${m.content.slice(0, 1500)}`)
       .join("\n");
 
-    const sources = await findSources(userId, body.question, { documentId: body.document_id, lang });
-
     await supabase.from("chat_messages").insert({
       user_id: userId,
       conversation_id: conversationId,
@@ -59,26 +56,35 @@ chatRouter.post(
     const send = (event: string, data: unknown) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-
-    const publicSources = sources.map(({ content: _c, ...s }) => s);
-    send("meta", { conversation_id: conversationId, sources: publicSources });
+    // As pesquisas web podem demorar: um "ping" mantém a ligação aberta.
+    const keepAlive = setInterval(() => res.write(": ping\n\n"), 15000);
 
     try {
-      const answer = await streamAnswer(lang, chatPrompt(lang, formatSources(sources), history, body.question), [], (text) =>
-        send("delta", { text }),
-      );
+      const result = await answerQuestion({
+        userId,
+        lang,
+        question: body.question,
+        history,
+        documentId: body.document_id,
+        onMeta: ({ sources, tiers }) => send("meta", { conversation_id: conversationId, sources, tiers }),
+        onText: (text) => send("delta", { text }),
+        // O frontend mostra "A consultar…" e apaga qualquer preâmbulo: só conta a resposta final.
+        onWebTool: (tool) => send("status", { phase: tool }),
+      });
+      // Guardamos a resposta gerada e os nomes/endereços das fontes. Nunca o texto das páginas web.
       await supabase.from("chat_messages").insert({
         user_id: userId,
         conversation_id: conversationId,
         role: "assistant",
-        content: answer,
-        sources: publicSources,
+        content: result.text,
+        sources: result.sources,
       });
-      send("done", {});
+      send("done", { text: result.text, sources: result.sources, web_searches: result.webSearches });
     } catch (err) {
       console.error("Erro no chat:", err);
-      const message = t(lang, err instanceof AiError ? err.key : "chatFailed");
-      send("error", { error: message });
+      send("error", { error: t(lang, err instanceof AiError ? err.key : "chatFailed") });
+    } finally {
+      clearInterval(keepAlive);
     }
     res.end();
   }),

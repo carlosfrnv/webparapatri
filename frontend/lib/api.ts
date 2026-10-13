@@ -94,9 +94,16 @@ export const api = {
 };
 
 /** Envio de ficheiro com barra de progresso (o fetch não dá progresso de envio). */
+export interface UploadFields {
+  subjectId?: string | null;
+  /** "referencia" = Biblioteca de referência (IAEA / EFRS), separada dos apontamentos. */
+  sourceType?: "apontamentos" | "referencia";
+  referenceOrg?: "IAEA" | "EFRS";
+}
+
 export async function uploadFile<T>(
   file: File,
-  subjectId: string | null,
+  fields: UploadFields,
   onProgress: (fraction: number) => void,
 ): Promise<T> {
   // Acorda o servidor primeiro, para o envio não falhar a meio.
@@ -104,7 +111,9 @@ export async function uploadFile<T>(
   const headers = await authHeader();
   const form = new FormData();
   form.append("file", file);
-  if (subjectId) form.append("subject_id", subjectId);
+  if (fields.subjectId) form.append("subject_id", fields.subjectId);
+  if (fields.sourceType) form.append("source_type", fields.sourceType);
+  if (fields.referenceOrg) form.append("reference_org", fields.referenceOrg);
 
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();

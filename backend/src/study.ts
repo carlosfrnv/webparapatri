@@ -1,7 +1,15 @@
 import { z } from "zod";
-import { complete, completeJson } from "./ai";
+import { complete, completeJson, generate } from "./ai";
 import type { Lang } from "./i18n";
-import { conceptsPrompt, flashcardsPrompt, partialSummaryPrompt, quizPrompt, summaryPrompt } from "./prompts";
+import {
+  conceptsPrompt,
+  flashcardsPrompt,
+  partialSummaryPrompt,
+  quizPrompt,
+  studyContext,
+  summaryPrompt,
+} from "./prompts";
+import { findReferenceForDocument, formatSources } from "./search";
 import { supabase } from "./supabase";
 
 export const conceptsSchema = z.object({
@@ -25,6 +33,8 @@ export const quizSchema = z.object({ quiz: z.array(quizQuestionSchema).min(1) })
 // Acima disto, o resumo é feito por partes (map-reduce) para conter o custo.
 const DIRECT_LIMIT = 60_000;
 const PART_SIZE = 40_000;
+// Abaixo disto consideramos os apontamentos "escassos" e o resumo pode consultar a web (nível 3).
+const SCARCE_NOTES = 2_500;
 
 export async function documentText(documentId: string, userId: string): Promise<string> {
   const { data, error } = await supabase
@@ -76,12 +86,31 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
     if (!text.trim()) throw new Error("Documento sem texto");
     const source = await condensedText(text, lang);
 
-    const [summary, concepts, flashcards, quiz] = await Promise.all([
-      complete(summaryPrompt(lang, source), { lang }),
-      completeJson(conceptsPrompt(lang, source), conceptsSchema, { lang }),
-      completeJson(flashcardsPrompt(lang, source), flashcardsSchema, { lang }),
-      completeJson(quizPrompt(lang, source), quizSchema, { lang }),
+    // Nível 2: Biblioteca de referência relacionada (se houver). Nível 3: web, só para o resumo
+    // e só se os apontamentos forem escassos e a referência não tiver nada.
+    const references = await findReferenceForDocument(userId, documentId).catch((err) => {
+      console.error("Falha ao procurar referência:", err);
+      return [];
+    });
+    const refText = formatSources(references, lang);
+    const webForSummary = text.length < SCARCE_NOTES && references.length === 0;
+    const withRefs = (prompt: string) => prompt + studyContext(lang, refText, false);
+
+    const [summaryResult, concepts, flashcards, quiz] = await Promise.all([
+      generate(summaryPrompt(lang, source) + studyContext(lang, refText, webForSummary), {
+        lang,
+        web: webForSummary,
+      }),
+      completeJson(withRefs(conceptsPrompt(lang, source)), conceptsSchema, { lang }),
+      completeJson(withRefs(flashcardsPrompt(lang, source)), flashcardsSchema, { lang }),
+      completeJson(withRefs(quizPrompt(lang, source)), quizSchema, { lang }),
     ]);
+    const summary = summaryResult.text;
+    // Só nomes e endereços das fontes (nunca o texto das páginas web).
+    const sources = [
+      ...references.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s),
+      ...summaryResult.webSources,
+    ];
 
     const row = {
       document_id: documentId,
@@ -91,6 +120,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       glossary: concepts.glossary,
       flashcards: flashcards.flashcards,
       quiz: quiz.quiz,
+      sources,
       lang,
       generated_at: new Date().toISOString(),
     };

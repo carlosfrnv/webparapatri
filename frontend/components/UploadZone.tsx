@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { errorMessage, uploadFile } from "@/lib/api";
+import { errorMessage, uploadFile, type UploadFields } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import type { DocumentItem } from "@/lib/types";
 
@@ -18,9 +18,15 @@ interface Pending {
 /** Zona grande de arrastar e largar, com progresso por ficheiro. */
 export function UploadZone({
   subjectId,
+  fields,
+  title,
   onUploaded,
 }: {
+  /** Texto principal da zona (por defeito, "Arrasta para aqui os teus apontamentos"). */
+  title?: string;
   subjectId: string | null;
+  /** Campos extra (ex.: documento da Biblioteca de referência). */
+  fields?: Omit<UploadFields, "subjectId">;
   onUploaded: (doc: DocumentItem) => void;
 }) {
   const t = useT();
@@ -47,7 +53,9 @@ export function UploadZone({
         continue;
       }
       try {
-        const doc = await uploadFile<DocumentItem>(file, subjectId, (progress) => update(key, { progress }));
+        const doc = await uploadFile<DocumentItem>(file, { ...fields, subjectId }, (progress) =>
+          update(key, { progress }),
+        );
         setPending((list) => list.filter((p) => p.key !== key));
         onUploaded(doc);
       } catch (err) {
@@ -83,7 +91,7 @@ export function UploadZone({
         <span className="text-4xl" aria-hidden="true">
           📥
         </span>
-        <p className="font-semibold">{t.upload.title}</p>
+        <p className="font-semibold">{title ?? t.upload.title}</p>
         <p className="text-muted text-sm">{t.upload.hint}</p>
         <input
           ref={inputRef}

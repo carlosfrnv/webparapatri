@@ -10,6 +10,9 @@ export interface Subject {
   document_count?: number;
 }
 
+export type SourceType = "apontamentos" | "referencia";
+export type ReferenceOrg = "IAEA" | "EFRS";
+
 export interface DocumentItem {
   id: string;
   title: string;
@@ -19,6 +22,8 @@ export interface DocumentItem {
   status: "processing" | "ready" | "error";
   error_message: string | null;
   created_at: string;
+  source_type?: SourceType;
+  reference_org?: ReferenceOrg | null;
 }
 
 export interface KeyConcept {
@@ -51,6 +56,7 @@ export interface StudyMaterials {
   glossary: GlossaryItem[];
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
+  sources?: AnySource[] | null;
   lang?: "es" | "pt";
   generated_at: string;
 }
@@ -64,8 +70,11 @@ export interface DueCard {
   is_new: boolean;
 }
 
+/** Excerto local: dos apontamentos dela ou da Biblioteca de referência. */
 export interface Source {
   n: number;
+  kind?: SourceType; // mensagens antigas não têm este campo: são apontamentos
+  org?: ReferenceOrg | null;
   chunk_id: number;
   document_id: string;
   document_title: string;
@@ -73,11 +82,22 @@ export interface Source {
   excerpt: string;
 }
 
+/** Fonte consultada em direto (só nome e endereço; o texto da página nunca é guardado). */
+export interface WebSource {
+  kind: "web";
+  site: "Radiopaedia" | "IAEA" | "EFRS";
+  title: string;
+  url: string;
+}
+
+export type AnySource = Source | WebSource;
+export const isWebSource = (s: AnySource): s is WebSource => s.kind === "web";
+
 export interface ChatMessage {
   id?: number | string;
   role: "user" | "assistant";
   content: string;
-  sources?: Source[] | null;
+  sources?: AnySource[] | null;
 }
 
 export interface Stats {

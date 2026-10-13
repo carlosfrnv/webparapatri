@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { DocumentList } from "@/components/DocumentList";
 import { SubjectForm } from "@/components/SubjectForm";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
+import { localSourceHref } from "@/components/Sources";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -60,8 +61,12 @@ function SearchBox() {
             <ul className="space-y-2">
               {results.map((r) => (
                 <li key={r.chunk_id}>
-                  <Link href={`/documento/${r.document_id}`} className="card hover:border-accent block p-3">
+                  <Link
+                    href={localSourceHref(r)}
+                    className={`card hover:border-accent block p-3 ${r.kind === "referencia" ? "bg-warning-soft" : ""}`}
+                  >
                     <p className="text-sm font-semibold">
+                      {r.kind === "referencia" && <span>📚 {t.reference.badge(r.org ?? "IAEA / EFRS")} · </span>}
                       {r.document_title}
                       {r.page ? (
                         <span className="text-muted font-normal">
@@ -246,6 +251,18 @@ export default function LibraryPage() {
           )}
         </section>
       )}
+
+      <section className="mt-10">
+        <Link href="/referencia" className="card hover:border-accent flex items-center gap-4 p-5">
+          <span className="text-3xl" aria-hidden="true">
+            📚
+          </span>
+          <div>
+            <p className="font-semibold">{t.reference.title}</p>
+            <p className="text-muted text-sm">{t.reference.cardText}</p>
+          </div>
+        </Link>
+      </section>
     </>
   );
 }
