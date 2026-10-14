@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ExamPlanCard, localToday } from "@/components/ExamPlan";
+import { SpecialDay } from "@/components/SpecialDay";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
@@ -106,6 +107,9 @@ export default function HomePage() {
         </h1>
         <p className="text-muted mt-1">{dedicatoria.frase}</p>
       </section>
+
+      {/* El 21 de cada mes, el aniversario y el 8 de octubre (después de la bienvenida, si coincide). */}
+      <SpecialDay suppressModal={showWelcome} />
 
       {error && (
         <ErrorBox
