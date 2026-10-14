@@ -1,4 +1,5 @@
 import type { Lang } from "./i18n";
+import { PERSONAL } from "./personal";
 
 // Prompts en español y en portugués europeo. Los apuntes pueden estar en portugués:
 // la IA responde siempre en el idioma elegido en la web.
@@ -119,6 +120,9 @@ export const chatPrompt = (
 motivación o estrés por los estudios, y saludos o agradecimientos breves. Si la pregunta NO tiene nada que ver con eso
 (recetas, series, deportes, política, cotilleos, programación, deberes de otras cosas...), responde EXACTAMENTE con
 ${OFF_TOPIC_MARKER} y nada más: sin buscar en internet, sin explicaciones. Ante la duda, considera que sí es de estudio.
+EXCEPCIÓN: si pregunta por Bob, por su novio o dice que lo echa de menos, NO uses la marca. Responde tú, en 2-4 frases,
+con cariño y usando solo estos datos (no inventes nada más), y anímala a seguir estudiando. Sin buscar en internet, sin fragmentos ni etiquetas de origen:
+${PERSONAL.es}
 
 Responde a la duda siguiendo el orden de prioridad de las fuentes.
 Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o biblioteca de referencia).
@@ -145,6 +149,9 @@ ${p.pregunta}`
 motivação ou stress com os estudos, e cumprimentos ou agradecimentos breves. Se a pergunta NÃO tiver nada a ver com isso
 (receitas, séries, desporto, política, mexericos, programação, trabalhos de outras coisas...), responde EXATAMENTE com
 ${OFF_TOPIC_MARKER} e mais nada: sem pesquisar na internet, sem explicações. Na dúvida, considera que é de estudo.
+EXCEÇÃO: se perguntar pelo Bob, pelo namorado ou disser que tem saudades dele, NÃO uses a marca. Responde tu, em 2-4 frases,
+com carinho e usando só estes dados (não inventes mais nada), e anima-a a continuar a estudar. Sem pesquisar na internet, sem excertos nem etiquetas de origem:
+${PERSONAL.pt}
 
 Responde à dúvida seguindo a ordem de prioridade das fontes.
 Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou biblioteca de referência).

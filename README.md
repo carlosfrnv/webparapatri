@@ -191,7 +191,9 @@ Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las
 
 Edita [`frontend/config/dedicatoria.ts`](frontend/config/dedicatoria.ts): el nombre, el mensaje de bienvenida que verá
 la primera vez que entre, la frase de la página de inicio y `fueraDeTema`, las respuestas del chat (sale una u otra) cuando pregunta algo que no tiene
-que ver con sus estudios (la IA lo detecta y la web muestra uno de esos textos tal cual; puedes añadir o quitar). Hay una versión en español y otra en portugués. Al hacer commit, Vercel la vuelve a publicar sola.
+que ver con sus estudios (la IA lo detecta y la web muestra uno de esos textos tal cual; puedes añadir o quitar).
+En [`backend/src/personal.ts`](backend/src/personal.ts) están los datos personales (Bob, la distancia...) que la IA usa
+cuando ella pregunta por Bob, por ti o dice que te echa de menos. Hay una versión en español y otra en portugués. Al hacer commit, Vercel la vuelve a publicar sola.
 
 ### 6. Comprobación final
 
