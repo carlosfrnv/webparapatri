@@ -105,7 +105,7 @@ PREGUNTA:
 ```
 
 **Preguntas fuera de tema.** Si la IA responde `[[FUERA_DE_TEMA]]`, el servidor no envía esa marca mientras se escribe
-(`backend/src/chatEngine.ts`), quita las fuentes y la web muestra en su lugar el texto `fueraDeTema` de
+(`backend/src/chatEngine.ts`), quita las fuentes y la web muestra en su lugar uno de los textos `fueraDeTema` de
 `frontend/config/dedicatoria.ts`.
 
 Se envían como máximo 8 fragmentos de los apuntes y 5 de la referencia, y las últimas 6 líneas del historial.

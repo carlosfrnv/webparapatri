@@ -14,6 +14,13 @@ interface Conversation {
   updated_at: string;
 }
 
+/** Elige una de las respuestas de "fuera de tema" según la pregunta (siempre la misma para la misma pregunta). */
+function pickOffTopic(options: string[], question: string): string {
+  let h = 0;
+  for (const c of question) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return options[h % options.length];
+}
+
 type WebPhase = "web_search" | "web_fetch";
 
 /** Lee el stream SSE del backend (event: meta | delta | status | done | error). */
@@ -261,7 +268,7 @@ export default function ChatPage() {
               <div key={i} className="flex justify-start">
                 <div className="card max-w-[95%] rounded-bl-md px-4 py-3 sm:max-w-[85%]">
                   {m.content.trim() === OFF_TOPIC_MARKER ? (
-                    <p className="whitespace-pre-wrap">{dedicatoria.fueraDeTema}</p>
+                    <p className="whitespace-pre-wrap">{pickOffTopic(dedicatoria.fueraDeTema, messages[i - 1]?.content ?? String(i))}</p>
                   ) : m.content ? (
                     <Markdown
                       citeHref={(n) => {
