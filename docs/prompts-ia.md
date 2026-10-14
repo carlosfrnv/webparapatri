@@ -76,6 +76,13 @@ REGLAS:
 ## Chat
 
 ```
+ANTES DE NADA, decide si la pregunta tiene que ver con sus estudios. Cuentan como estudio: cualquier materia de la carrera
+(anatomía, fisiología, física, radiología, TC, RM, ecografía, medicina nuclear, radioterapia, protección radiológica, patología,
+ética y deontología, prácticas clínicas, inglés técnico...), sus apuntes, técnicas para estudiar u organizarse, exámenes,
+motivación o estrés por los estudios, y saludos o agradecimientos breves. Si la pregunta NO tiene nada que ver con eso
+(recetas, series, deportes, política, cotilleos, programación, deberes de otras cosas...), responde EXACTAMENTE con
+[[FUERA_DE_TEMA]] y nada más: sin buscar en internet, sin explicaciones. Ante la duda, considera que sí es de estudio.
+
 Responde a la duda siguiendo el orden de prioridad de las fuentes.
 Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o biblioteca de referencia).
 - Cita los fragmentos en el texto así: [1], [3], además de la etiqueta de origen.
@@ -96,6 +103,10 @@ HISTORIAL RECIENTE:
 PREGUNTA:
 {pregunta}
 ```
+
+**Preguntas fuera de tema.** Si la IA responde `[[FUERA_DE_TEMA]]`, el servidor no envía esa marca mientras se escribe
+(`backend/src/chatEngine.ts`), quita las fuentes y la web muestra en su lugar el texto `fueraDeTema` de
+`frontend/config/dedicatoria.ts`.
 
 Se envían como máximo 8 fragmentos de los apuntes y 5 de la referencia, y las últimas 6 líneas del historial.
 

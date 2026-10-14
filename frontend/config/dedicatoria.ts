@@ -16,6 +16,9 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
     firma: "— Carlos",
     // Frase corta que aparece siempre debajo del saludo.
     frase: "Paso a paso. Hoy también cuenta. 💪",
+    // Respuesta del chat cuando pregunta algo que no tiene que ver con sus estudios.
+    fueraDeTema:
+      "Tu novio me ha configurado únicamente para que hablemos de tus estudios. Dice que te centres en estudiar y que te ama mucho 💙. Eso pregúntaselo a ChatGPT 😉",
   },
   pt: {
     nombre: "Patri",
@@ -25,6 +28,8 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
 Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
     firma: "— Carlos",
     frase: "Um passo de cada vez. Hoje também conta. 💪",
+    fueraDeTema:
+      "O teu namorado configurou-me só para falarmos dos teus estudos. Diz que te concentres a estudar e que te ama muito 💙. Isso pergunta ao ChatGPT 😉",
   },
 };
 

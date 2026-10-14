@@ -105,12 +105,22 @@ ${texto}`
 TEXTO:
 ${texto}`;
 
+/** Marca interna: la IA la devuelve cuando la pregunta no tiene que ver con sus estudios. La web la sustituye por el mensaje de `dedicatoria.ts`. */
+export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
+
 export const chatPrompt = (
   lang: Lang,
   p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean },
 ) =>
   lang === "es"
-    ? `Responde a la duda siguiendo el orden de prioridad de las fuentes.
+    ? `ANTES DE NADA, decide si la pregunta tiene que ver con sus estudios. Cuentan como estudio: cualquier materia de la carrera
+(anatomía, fisiología, física, radiología, TC, RM, ecografía, medicina nuclear, radioterapia, protección radiológica, patología,
+ética y deontología, prácticas clínicas, inglés técnico...), sus apuntes, técnicas para estudiar u organizarse, exámenes,
+motivación o estrés por los estudios, y saludos o agradecimientos breves. Si la pregunta NO tiene nada que ver con eso
+(recetas, series, deportes, política, cotilleos, programación, deberes de otras cosas...), responde EXACTAMENTE con
+${OFF_TOPIC_MARKER} y nada más: sin buscar en internet, sin explicaciones. Ante la duda, considera que sí es de estudio.
+
+Responde a la duda siguiendo el orden de prioridad de las fuentes.
 Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o biblioteca de referencia).
 - Cita los fragmentos en el texto así: [1], [3], además de la etiqueta de origen.
 ${
@@ -129,7 +139,14 @@ HISTORIAL RECIENTE:
 ${p.historial || "(inicio de la conversación)"}
 PREGUNTA:
 ${p.pregunta}`
-    : `Responde à dúvida seguindo a ordem de prioridade das fontes.
+    : `ANTES DE MAIS, decide se a pergunta tem a ver com os estudos dela. Contam como estudo: qualquer disciplina do curso
+(anatomia, fisiologia, física, radiologia, TC, RM, ecografia, medicina nuclear, radioterapia, proteção radiológica, patologia,
+ética e deontologia, estágios clínicos, inglês técnico...), os apontamentos, técnicas para estudar ou organizar-se, exames,
+motivação ou stress com os estudos, e cumprimentos ou agradecimentos breves. Se a pergunta NÃO tiver nada a ver com isso
+(receitas, séries, desporto, política, mexericos, programação, trabalhos de outras coisas...), responde EXATAMENTE com
+${OFF_TOPIC_MARKER} e mais nada: sem pesquisar na internet, sem explicações. Na dúvida, considera que é de estudo.
+
+Responde à dúvida seguindo a ordem de prioridade das fontes.
 Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou biblioteca de referência).
 - Cita os excertos no texto assim: [1], [3], além da etiqueta de origem.
 ${

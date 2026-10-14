@@ -5,7 +5,8 @@ import { localSourceHref, SourceChips } from "@/components/Sources";
 import { Markdown } from "@/components/ui";
 import { apiFetch, api, errorMessage } from "@/lib/api";
 import { dict, useT } from "@/lib/i18n";
-import { isLocalSource, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
+import { useDedicatoria } from "@/config/dedicatoria";
+import { isLocalSource, OFF_TOPIC_MARKER, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
 
 interface Conversation {
   conversation_id: string;
@@ -62,6 +63,7 @@ async function streamChat(
 
 export default function ChatPage() {
   const t = useT();
+  const dedicatoria = useDedicatoria();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -258,7 +260,9 @@ export default function ChatPage() {
             ) : (
               <div key={i} className="flex justify-start">
                 <div className="card max-w-[95%] rounded-bl-md px-4 py-3 sm:max-w-[85%]">
-                  {m.content ? (
+                  {m.content.trim() === OFF_TOPIC_MARKER ? (
+                    <p className="whitespace-pre-wrap">{dedicatoria.fueraDeTema}</p>
+                  ) : m.content ? (
                     <Markdown
                       citeHref={(n) => {
                         const s = m.sources?.filter(isLocalSource).find((x) => x.n === n);
@@ -282,7 +286,7 @@ export default function ChatPage() {
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
                     </span>
                   )}
-                  {m.sources && m.content && <SourceChips sources={m.sources} />}
+                  {m.sources && m.content && m.content.trim() !== OFF_TOPIC_MARKER && <SourceChips sources={m.sources} />}
                 </div>
               </div>
             ),

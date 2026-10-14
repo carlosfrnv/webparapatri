@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AiError } from "../ai";
 import { userIdOf } from "../auth";
 import { answerQuestion } from "../chatEngine";
+import { OFF_TOPIC_MARKER } from "../prompts";
 import { asyncHandler } from "../http";
 import { langOf, t } from "../i18n";
 import { aiLimiter } from "../limits";
@@ -36,7 +37,10 @@ chatRouter.post(
       .limit(6);
     const history = (recent ?? [])
       .reverse()
-      .map((m) => `${m.role === "user" ? (lang === "es" ? "Estudiante" : "Estudante") : "Tutor"}: ${m.content.slice(0, 1500)}`)
+      .map((m) => {
+        const content = m.content === OFF_TOPIC_MARKER ? (lang === "es" ? "(pregunta ajena a los estudios)" : "(pergunta alheia aos estudos)") : m.content;
+        return `${m.role === "user" ? (lang === "es" ? "Estudiante" : "Estudante") : "Tutor"}: ${content.slice(0, 1500)}`;
+      })
       .join("\n");
 
     await supabase.from("chat_messages").insert({

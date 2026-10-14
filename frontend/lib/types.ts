@@ -118,3 +118,6 @@ export interface Stats {
   recent_quizzes: { score: number; total: number; created_at: string; title: string }[];
   recent_documents: { id: string; title: string; status: DocumentItem["status"]; created_at: string }[];
 }
+
+/** Marca que devuelve el chat cuando la pregunta no tiene que ver con sus estudios (ver backend/src/prompts.ts). */
+export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";

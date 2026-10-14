@@ -190,7 +190,8 @@ Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las
 ### 5. Personaliza la dedicatoria ✏️
 
 Edita [`frontend/config/dedicatoria.ts`](frontend/config/dedicatoria.ts): el nombre, el mensaje de bienvenida que verá
-la primera vez que entre y la frase de la página de inicio. Hay una versión en español y otra en portugués. Al hacer commit, Vercel la vuelve a publicar sola.
+la primera vez que entre, la frase de la página de inicio y `fueraDeTema`, la respuesta del chat cuando pregunta algo que no tiene
+que ver con sus estudios (la IA lo detecta y la web muestra ese texto tal cual). Hay una versión en español y otra en portugués. Al hacer commit, Vercel la vuelve a publicar sola.
 
 ### 6. Comprobación final
 
