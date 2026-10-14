@@ -1,4 +1,5 @@
 import type { BetaContentBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { config } from "./config";
 
 /**
  * NIVEL 3: consulta en vivo a radiopaedia.org, iaea.org y efrs.eu.
@@ -13,7 +14,9 @@ import type { BetaContentBlock } from "@anthropic-ai/sdk/resources/beta/messages
  * Guardamos únicamente el nombre y el enlace de las fuentes (para los chips) y la respuesta generada.
  */
 export const WEB_DOMAINS = ["radiopaedia.org", "iaea.org", "efrs.eu"];
-export const WEB_MAX_SEARCHES = 3;
+// Se configura con la variable WEB_MAX_SEARCHES (por defecto 3; 0 desactiva la consulta online).
+export const WEB_MAX_SEARCHES = config.WEB_MAX_SEARCHES;
+export const WEB_ENABLED = WEB_MAX_SEARCHES > 0;
 
 export const WEB_TOOLS = [
   {

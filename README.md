@@ -85,11 +85,27 @@ Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](ht
 
 1. En [console.anthropic.com](https://console.anthropic.com) → **API Keys → Create Key** → copia la clave
    (`ANTHROPIC_API_KEY`).
-2. En **Billing**, añade algo de saldo y pon un **límite de gasto mensual** bajo (por ejemplo 10 €) para evitar
-   sustos.
-3. El modelo se elige con `ANTHROPIC_MODEL` (por defecto `claude-opus-5-5`, el más capaz). Si quieres gastar menos,
-   puedes poner `claude-sonnet-5-5` (aprox. la mitad de precio). Los nombres vigentes están en
-   [docs.claude.com](https://docs.claude.com).
+2. En **Billing**, añade un poco de saldo (5 € dan para muchos meses) y pon un **límite de gasto mensual** bajo
+   (por ejemplo 3 €) para evitar sustos. Algunas cuentas nuevas reciben un pequeño crédito de bienvenida.
+3. El modelo se elige con `ANTHROPIC_MODEL`. Por defecto es **`claude-haiku-5-5`**, el más barato. Si algún día
+   quieres más calidad, puedes poner `claude-sonnet-5-5` (unas 20 veces más caro) o `claude-opus-5-5` (unas 40 veces).
+   Los nombres vigentes están en [docs.claude.com](https://docs.claude.com).
+
+#### Cuánto cuesta la IA (Claude Haiku 5.5)
+
+Precio: 0,10 $ por millón de tokens leídos y 0,50 $ por millón de tokens escritos (un token es unos ¾ de palabra; si la petición tiene menos de
+100.000 tokens), más 10 $ por cada 1.000 búsquedas web. Aproximadamente:
+
+| Uso | Coste aproximado |
+|---|---|
+| Generar resumen, conceptos, flashcards y test de un archivo de ~20 páginas (una sola vez) | ~1 céntimo |
+| Una pregunta en el chat con sus apuntes | ~0,1 céntimos |
+| Una pregunta que consulta Radiopaedia/IAEA/EFRS (hasta 3 búsquedas) | ~1–3 céntimos |
+| **Un mes de uso intenso** (40 archivos, 300 preguntas, 60 de ellas con búsqueda web) | **~1–2 $** |
+
+Lo que más gasta son las búsquedas web. Para gastar todavía menos, pon `WEB_MAX_SEARCHES=1` en Render
+(una búsqueda por pregunta) o `WEB_MAX_SEARCHES=0` (sin consulta online: entonces la IA usa sus apuntes, la
+biblioteca de referencia y su conocimiento general marcado como "Fuera de tus apuntes").
 
 > 💡 El material de estudio de cada fichero se genera **una sola vez** y queda guardado. El coste principal es al
 > abrir cada fichero nuevo por primera vez y al usar el chat. El backend limita a 10 peticiones a la IA por minuto.
@@ -149,8 +165,8 @@ npm run probar -- --lang pt "O que é a unidade Hounsfield?"   # para probar la 
 
 Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las fuentes.
 
-> 💶 La búsqueda web cuesta 10 $ por cada 1.000 búsquedas más los tokens de lo que se lee. Con un máximo de 3
-> búsquedas y solo cuando sus apuntes y la referencia no bastan, el coste extra por pregunta es de céntimos.
+> 💶 La búsqueda web cuesta 10 $ por cada 1.000 búsquedas más los tokens de lo que se lee. Solo se usa cuando sus
+> apuntes y la referencia no bastan, con un máximo de `WEB_MAX_SEARCHES` búsquedas por pregunta (3 por defecto).
 > Si en la consola de Anthropic tienes la búsqueda web desactivada a nivel de organización, actívala
 > (Settings → Capabilities).
 

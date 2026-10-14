@@ -10,6 +10,7 @@ import {
   summaryPrompt,
 } from "./prompts";
 import { findReferenceForDocument, formatSources } from "./search";
+import { WEB_ENABLED } from "./web";
 import { supabase } from "./supabase";
 
 export const conceptsSchema = z.object({
@@ -93,7 +94,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       return [];
     });
     const refText = formatSources(references, lang);
-    const webForSummary = text.length < SCARCE_NOTES && references.length === 0;
+    const webForSummary = WEB_ENABLED && text.length < SCARCE_NOTES && references.length === 0;
     const withRefs = (prompt: string) => prompt + studyContext(lang, refText, false);
 
     const [summaryResult, concepts, flashcards, quiz] = await Promise.all([

@@ -15,7 +15,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ANTHROPIC_MODEL
-        value: claude-opus-5-5
+        value: claude-haiku-5-5
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
@@ -24,3 +24,5 @@ services:
         sync: false
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: WEB_MAX_SEARCHES
+        value: "3"

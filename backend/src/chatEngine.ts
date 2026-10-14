@@ -2,7 +2,7 @@ import { generate, type GenerateResult } from "./ai";
 import type { Lang } from "./i18n";
 import { chatPrompt } from "./prompts";
 import { findTieredSources, formatSources, type Source } from "./search";
-import type { WebSource } from "./web";
+import { WEB_ENABLED, type WebSource } from "./web";
 
 export type PublicSource = Omit<Source, "content" | "rank" | "coverage" | "proximity">;
 
@@ -41,7 +41,7 @@ export async function answerQuestion(p: {
   const tiers: ChatTiers = {
     notes: found.notesSufficient,
     reference: found.referencesSufficient,
-    web: !found.notesSufficient && !found.referencesSufficient && !p.documentId,
+    web: WEB_ENABLED && !found.notesSufficient && !found.referencesSufficient && !p.documentId,
   };
   const publicLocal: PublicSource[] = localSources.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s);
   p.onMeta?.({ sources: publicLocal, tiers });
