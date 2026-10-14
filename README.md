@@ -98,10 +98,14 @@ Precio: 0,10 $ por millón de tokens leídos y 0,50 $ por millón de tokens escr
 
 | Uso | Coste aproximado |
 |---|---|
-| Generar resumen, conceptos, flashcards y test de un archivo de ~20 páginas (una sola vez) | ~1 céntimo |
+| Generar resumen, conceptos, flashcards y test de un archivo de ~20 páginas (una sola vez) | ~1,3 céntimos |
 | Una pregunta en el chat con sus apuntes | ~0,1 céntimos |
-| Una pregunta que consulta Radiopaedia/IAEA/EFRS (hasta 3 búsquedas) | ~1–3 céntimos |
-| **Un mes de uso intenso** (40 archivos, 300 preguntas, 60 de ellas con búsqueda web) | **~1–2 $** |
+| «Explícamelo mejor» en un test | ~0,05 céntimos |
+| Una pregunta que consulta Radiopaedia/IAEA/EFRS (normalmente 1–2 búsquedas, máx. 3) | ~1,5–3,5 céntimos |
+| Repasar flashcards, hacer tests, buscar en la Biblioteca | gratis (no usan IA) |
+| **Un mes tranquilo** (15 archivos, 100 preguntas, 15 con búsqueda web) | **~0,70 $** |
+| **Un mes de uso intenso** (40 archivos, 300 preguntas, 60 con búsqueda web) | **~2,30 $** |
+| Mes intenso con `WEB_MAX_SEARCHES=1` / `=0` | ~1,50 $ / ~0,80 $ |
 
 Lo que más gasta son las búsquedas web. Para gastar todavía menos, pon `WEB_MAX_SEARCHES=1` en Render
 (una búsqueda por pregunta) o `WEB_MAX_SEARCHES=0` (sin consulta online: entonces la IA usa sus apuntes, la
