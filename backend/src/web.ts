@@ -1,16 +1,16 @@
 import type { BetaContentBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 
 /**
- * NÍVEL 3: consulta em direto a radiopaedia.org, iaea.org e efrs.eu.
+ * NIVEL 3: consulta en vivo a radiopaedia.org, iaea.org y efrs.eu.
  *
- * Usa as ferramentas de servidor da API da Anthropic (executadas pela própria API):
- *  - web_search: pesquisa, limitada a estes três domínios e a 3 pesquisas por pergunta.
- *  - web_fetch: lê uma página encontrada na pesquisa (só pode abrir URLs que já apareceram
- *    nos resultados), com um limite de tamanho para controlar o custo.
- * Os subdomínios estão incluídos automaticamente (ex.: www-pub.iaea.org).
+ * Usa las herramientas de servidor de la API de Anthropic (las ejecuta la propia API):
+ *  - web_search: búsqueda, limitada a estos tres dominios y a 3 búsquedas por pregunta.
+ *  - web_fetch: lee una página encontrada en la búsqueda (solo puede abrir URL que ya hayan salido
+ *    en los resultados), con un límite de tamaño para controlar el coste.
+ * Los subdominios se incluyen automáticamente (p. ej., www-pub.iaea.org).
  *
- * O texto das páginas NUNCA é guardado: só se usa para responder naquele momento.
- * Guardamos apenas o nome e o endereço das fontes (para os chips) e a resposta gerada.
+ * El texto de las páginas NUNCA se guarda: solo se usa para responder en ese momento.
+ * Guardamos únicamente el nombre y el enlace de las fuentes (para los chips) y la respuesta generada.
  */
 export const WEB_DOMAINS = ["radiopaedia.org", "iaea.org", "efrs.eu"];
 export const WEB_MAX_SEARCHES = 3;
@@ -47,7 +47,7 @@ export function siteOf(url: string): WebSite | null {
     if (host === "iaea.org" || host.endsWith(".iaea.org")) return "IAEA";
     if (host === "efrs.eu" || host.endsWith(".efrs.eu")) return "EFRS";
   } catch {
-    /* URL inválido */
+    /* URL no válida */
   }
   return null;
 }
@@ -65,8 +65,8 @@ function cleanTitle(title: string | null | undefined, url: string): string {
 }
 
 /**
- * Fontes web efetivamente usadas: as citadas no texto da resposta e as páginas lidas com web_fetch.
- * (Os resultados de pesquisa que a IA não usou não aparecem.)
+ * Fuentes web usadas de verdad: las citadas en el texto de la respuesta y las páginas leídas con web_fetch.
+ * (Los resultados de búsqueda que la IA no ha usado no aparecen.)
  */
 export function extractWebSources(content: BetaContentBlock[]): WebSource[] {
   const found = new Map<string, WebSource>();
@@ -87,7 +87,7 @@ export function extractWebSources(content: BetaContentBlock[]): WebSource[] {
   return [...found.values()].slice(0, 6);
 }
 
-/** Texto final da resposta: só o que vem depois da última pesquisa/leitura (sem preâmbulos). */
+/** Texto final de la respuesta: solo lo que viene después de la última búsqueda/lectura (sin preámbulos). */
 export function finalAnswerText(content: BetaContentBlock[]): string {
   let lastTool = -1;
   content.forEach((b, i) => {

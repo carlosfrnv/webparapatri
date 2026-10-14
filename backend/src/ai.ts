@@ -14,8 +14,8 @@ export const anthropic = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
 
 type Effort = "low" | "medium" | "high";
 
-// Modelos que aceitam o "fallback" do lado do servidor: se o pedido for recusado
-// por um falso positivo dos filtros de segurança, a API tenta outro modelo.
+// Modelos que aceptan el "fallback" del lado del servidor: si la petición se rechaza
+// por un falso positivo de los filtros de seguridad, la API prueba con otro modelo.
 const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fable-5-1", "claude-sonnet-5-5"]);
 
 function requestBase(lang: Lang, effort: Effort) {
@@ -41,10 +41,10 @@ interface AiOptions {
 }
 
 interface GenerateOptions extends AiOptions {
-  /** Ativa a consulta em direto a radiopaedia.org, iaea.org e efrs.eu (nível 3). */
+  /** Activa la consulta en vivo a radiopaedia.org, iaea.org y efrs.eu (nivel 3). */
   web?: boolean;
   onText?: (delta: string) => void;
-  /** Chamado quando a IA começa uma pesquisa ou leitura web. */
+  /** Se llama cuando la IA empieza una búsqueda o lectura web. */
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
 }
 
@@ -54,10 +54,10 @@ export interface GenerateResult {
   webSearches: number;
 }
 
-// Uma pergunta pode ser "pausada" pela API durante pesquisas longas; retomamos no máximo 3 vezes.
+// La API puede "pausar" una pregunta durante búsquedas largas; la reanudamos como máximo 3 veces.
 const MAX_CONTINUATIONS = 3;
 
-/** Pedido à IA (em streaming), opcionalmente com pesquisa web restrita aos domínios de referência. */
+/** Petición a la IA (en streaming), opcionalmente con búsqueda web restringida a los dominios de referencia. */
 export async function generate(prompt: string, opts: GenerateOptions): Promise<GenerateResult> {
   const messages: BetaMessageParam[] = [{ role: "user", content: prompt }];
   const content: BetaContentBlock[] = [];
@@ -85,7 +85,7 @@ export async function generate(prompt: string, opts: GenerateOptions): Promise<G
     webSearches += message.usage.server_tool_use?.web_search_requests ?? 0;
 
     if (message.stop_reason === "pause_turn") {
-      // A API pausou a pesquisa: devolvemos a resposta parcial tal como veio para ela continuar.
+      // La API ha pausado la búsqueda: le devolvemos la respuesta parcial tal cual para que continúe.
       messages.push({ role: "assistant", content: message.content as BetaContentBlockParam[] });
       continue;
     }
@@ -99,7 +99,7 @@ export async function generate(prompt: string, opts: GenerateOptions): Promise<G
   };
 }
 
-/** Pedido simples que devolve o texto completo da resposta. */
+/** Petición sencilla que devuelve el texto completo de la respuesta. */
 export async function complete(prompt: string, opts: AiOptions): Promise<string> {
   return (await generate(prompt, opts)).text;
 }
@@ -112,7 +112,7 @@ function stripCodeFences(text: string): string {
   return start >= 0 && end > start ? body.slice(start, end + 1) : body;
 }
 
-/** Pede JSON, valida com zod e tenta mais uma vez se falhar. */
+/** Pide JSON, lo valida con zod y lo intenta una vez más si falla. */
 export async function completeJson<T extends z.ZodType>(
   prompt: string,
   schema: T,
@@ -127,6 +127,6 @@ export async function completeJson<T extends z.ZodType>(
       lastError = err;
     }
   }
-  console.error("JSON inválido da IA:", lastError);
+  console.error("JSON no válido de la IA:", lastError);
   throw new AiError("aiBadFormat");
 }

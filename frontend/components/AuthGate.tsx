@@ -10,7 +10,7 @@ import { Spinner } from "./ui";
 const SessionContext = createContext<Session | null>(null);
 export const useSession = () => useContext(SessionContext);
 
-/** Mostra o ecrã de entrada se não houver sessão; caso contrário, a aplicação. */
+/** Muestra la pantalla de acceso si no hay sesión; si la hay, la aplicación. */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);

@@ -7,7 +7,7 @@ export interface AuthedRequest extends Request {
   userId: string;
 }
 
-// Pequena cache para não perguntar ao Supabase em cada pedido.
+// Pequeña caché para no preguntar a Supabase en cada petición.
 const cache = new Map<string, { userId: string; expires: number }>();
 const CACHE_MS = 5 * 60 * 1000;
 

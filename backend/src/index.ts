@@ -10,12 +10,12 @@ import { studyRouter } from "./routes/study";
 import { subjectsRouter } from "./routes/subjects";
 
 const app = express();
-app.set("trust proxy", 1); // O Render está atrás de um proxy.
+app.set("trust proxy", 1); // Render está detrás de un proxy.
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Pedidos sem origem (ex.: health check do Render) são permitidos.
+      // Se permiten las peticiones sin origen (p. ej., el health check de Render).
       if (!origin || config.FRONTEND_ORIGINS.includes(origin.replace(/\/$/, ""))) callback(null, true);
       else callback(null, false);
     },
@@ -36,5 +36,5 @@ app.use("/", studyRouter);
 app.use(errorHandler);
 
 app.listen(config.PORT, () => {
-  console.log(`Estudo IMR API a correr na porta ${config.PORT} (modelo: ${config.ANTHROPIC_MODEL})`);
+  console.log(`API de Estudio IMR funcionando en el puerto ${config.PORT} (modelo: ${config.ANTHROPIC_MODEL})`);
 });

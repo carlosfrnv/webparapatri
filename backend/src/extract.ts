@@ -30,7 +30,7 @@ async function extractPdf(buffer: Buffer): Promise<ExtractedPage[]> {
   const parser = new PDFParse({ data: buffer });
   let pages: ExtractedPage[];
   try {
-    // Guardamos o texto página a página para poder citar a página nas fontes.
+    // Guardamos el texto página a página para poder citar la página en las fuentes.
     const result = await parser.getText();
     pages = result.pages.map((p) => ({ page: p.num, text: p.text }));
   } finally {

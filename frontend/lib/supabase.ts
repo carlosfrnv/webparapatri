@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Só a chave pública (anon) vive no navegador; serve apenas para o login.
+// En el navegador solo está la clave pública (anon); sirve únicamente para el login.
 export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co",
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "placeholder",

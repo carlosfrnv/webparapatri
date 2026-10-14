@@ -35,7 +35,7 @@ export function LoginScreen() {
           <Logo />
           <div>
             <h1 className="text-2xl font-bold">{t.appName}</h1>
-            <p className="text-muted text-sm">{t.auth.subtitle(dedicatoria.nome)}</p>
+            <p className="text-muted text-sm">{t.auth.subtitle(dedicatoria.nombre)}</p>
           </div>
         </div>
 

@@ -17,13 +17,13 @@ function safeFileName(name: string): string {
       .normalize("NFD")
       .replace(/[̀-ͯ]/g, "")
       .replace(/[^a-zA-Z0-9._-]+/g, "_")
-      .slice(-120) || "ficheiro"
+      .slice(-120) || "archivo"
   );
 }
 
 /**
- * Guarda o ficheiro no Storage, cria o registo e lança a extração + divisão em fragmentos.
- * Serve tanto para os apontamentos dela como para a Biblioteca de referência (mesmo fluxo).
+ * Guarda el archivo en Storage, crea el registro y lanza la extracción + troceado en fragmentos.
+ * Sirve tanto para sus apuntes como para la biblioteca de referencia (mismo flujo).
  */
 export async function ingestDocument(params: {
   userId: string;
@@ -33,7 +33,7 @@ export async function ingestDocument(params: {
   subjectId: string | null;
   sourceType: SourceKind;
   referenceOrg: ReferenceOrg | null;
-  /** O script de linha de comandos espera pelo fim do processamento; a web não. */
+  /** El script de terminal espera a que termine el procesado; la web no. */
   wait?: boolean;
 }) {
   const kind = detectKind(params.mimetype, params.originalName);
@@ -75,8 +75,8 @@ export async function ingestDocument(params: {
     kind,
     title,
     sourceType: params.sourceType,
-    // A referência não precisa de disciplina; os apontamentos sem disciplina recebem uma sugestão da IA.
-    suggestSubject: params.sourceType === "apontamentos" && !params.subjectId,
+    // La referencia no necesita asignatura; los apuntes sin asignatura reciben una sugerencia de la IA.
+    suggestSubject: params.sourceType === "apuntes" && !params.subjectId,
   });
   if (params.wait) await job;
   else void job;

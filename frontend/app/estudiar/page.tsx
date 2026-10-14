@@ -29,7 +29,7 @@ export default function StudyPage() {
   }, []);
 
   useEffect(() => {
-    // O estado só muda depois do pedido (após o await), não de forma síncrona.
+    // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
@@ -93,7 +93,7 @@ export default function StudyPage() {
                 {docs.map((d) => (
                   <li key={d.id}>
                     <Link
-                      href={`/documento/${d.id}#teste`}
+                      href={`/documento/${d.id}#test`}
                       className="card hover:border-accent flex min-h-14 items-center justify-between gap-3 p-4"
                     >
                       <span className="truncate font-medium">{d.title}</span>

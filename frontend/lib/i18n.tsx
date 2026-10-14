@@ -11,7 +11,7 @@ export const LANGS: { id: Lang; label: string; flag: string }[] = [
 const STORAGE_KEY = "lang";
 const DEFAULT_LANG: Lang = "es";
 
-// ---------- Estado global do idioma (guardado no navegador) ----------
+// ---------- Estado global del idioma (guardado en el navegador) ----------
 
 const listeners = new Set<() => void>();
 
@@ -28,7 +28,7 @@ export function setLang(lang: Lang) {
   try {
     localStorage.setItem(STORAGE_KEY, lang);
   } catch {
-    /* sem armazenamento: só muda nesta sessão */
+    /* sin almacenamiento: solo cambia en esta sesión */
   }
   document.documentElement.lang = lang === "pt" ? "pt-PT" : "es";
   listeners.forEach((l) => l());
@@ -41,12 +41,12 @@ function subscribe(listener: () => void) {
   };
 }
 
-/** Idioma atual. No servidor é sempre o espanhol (o idioma por defeito). */
+/** Idioma actual. En el servidor siempre es español (el idioma por defecto). */
 export function useLang(): Lang {
   return useSyncExternalStore(subscribe, getLang, () => DEFAULT_LANG);
 }
 
-/** Textos da interface no idioma atual. */
+/** Textos de la interfaz en el idioma actual. */
 export function useT() {
   return dictionaries[useLang()];
 }
@@ -203,12 +203,12 @@ const es = {
   },
   document: {
     tabs: {
-      resumo: "Resumen",
-      conceitos: "Conceptos",
-      glossario: "Glosario",
+      resumen: "Resumen",
+      conceptos: "Conceptos",
+      glosario: "Glosario",
       flashcards: "Flashcards",
-      teste: "Test",
-      ficheiro: "Archivo original",
+      test: "Test",
+      archivo: "Archivo original",
     },
     tabsLabel: "Material de estudio",
     ask: "💬 Preguntar sobre este archivo",
@@ -473,12 +473,12 @@ const pt: Dictionary = {
   },
   document: {
     tabs: {
-      resumo: "Resumo",
-      conceitos: "Conceitos",
-      glossario: "Glossário",
+      resumen: "Resumo",
+      conceptos: "Conceitos",
+      glosario: "Glossário",
       flashcards: "Flashcards",
-      teste: "Teste",
-      ficheiro: "Ficheiro original",
+      test: "Teste",
+      archivo: "Ficheiro original",
     },
     tabsLabel: "Materiais de estudo",
     ask: "💬 Perguntar sobre este ficheiro",
@@ -598,7 +598,7 @@ const pt: Dictionary = {
 
 const dictionaries: Record<Lang, Dictionary> = { es, pt };
 
-/** Para código fora de componentes (ex.: mensagens de erro do cliente da API). */
+/** Para código fuera de componentes (p. ej., mensajes de error del cliente de la API). */
 export function dict(): Dictionary {
   return dictionaries[getLang()];
 }

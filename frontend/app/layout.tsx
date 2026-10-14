@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   themeColor: "#1f6feb",
 };
 
-// Aplica o tema e o idioma antes de pintar, para não haver "flash" claro no modo escuro.
+// Aplica el tema y el idioma antes de pintar, para que no haya un "destello" claro en modo oscuro.
 const themeScript = `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark");if(localStorage.getItem("lang")==="pt")document.documentElement.lang="pt-PT"}catch(e){}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

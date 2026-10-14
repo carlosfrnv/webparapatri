@@ -4,16 +4,16 @@ import Link from "next/link";
 import { useT } from "@/lib/i18n";
 import { isWebSource, type AnySource, type Source, type WebSource } from "@/lib/types";
 
-/** Endereço interno de um excerto local: abre o documento dentro da própria web. */
+/** Dirección interna de un fragmento local: abre el documento dentro de la propia web. */
 export function localSourceHref(s: Source) {
-  return s.kind === "referencia" ? `/documento/${s.document_id}#ficheiro` : `/documento/${s.document_id}`;
+  return s.kind === "referencia" ? `/documento/${s.document_id}#archivo` : `/documento/${s.document_id}`;
 }
 
 function WebChip({ s }: { s: WebSource }) {
   const t = useT();
   return (
-    // O chip não tira a estudante da web: a explicação está na resposta.
-    // Só um ícone discreto abre o original, num separador novo.
+    // El chip no saca a la estudiante de la web: la explicación está en la respuesta.
+    // Solo un icono discreto abre el original, en una pestaña nueva.
     <span
       className="border-border bg-surface inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-xs"
       title={s.url}
@@ -71,7 +71,7 @@ export function SourceChips({ sources, title }: { sources: AnySource[]; title?: 
   );
 }
 
-// ---------- Selos de origem dentro do texto ----------
+// ---------- Sellos de origen dentro del texto ----------
 
 type Origin = "notes" | "reference" | "web" | "general";
 
@@ -92,15 +92,15 @@ function originOf(label: string): Origin {
   return "web";
 }
 
-/** Converte as etiquetas em ligações especiais (#origem-…) que o Markdown desenha como selos. */
+/** Convierte las etiquetas en enlaces especiales (#origen-…) que el Markdown pinta como sellos. */
 export function markOrigins(markdown: string): string {
   return markdown
-    .replace(LABEL_RE, (_m, label: string) => `[${label}](#origem-${originOf(label)})`)
-    .replace(GENERAL_RE, (_m, label: string) => `[${label}](#origem-general)`);
+    .replace(LABEL_RE, (_m, label: string) => `[${label}](#origen-${originOf(label)})`)
+    .replace(GENERAL_RE, (_m, label: string) => `[${label}](#origen-general)`);
 }
 
 export function OriginBadge({ href, children }: { href: string; children: React.ReactNode }) {
-  const origin = href.replace("#origem-", "") as Origin;
+  const origin = href.replace("#origen-", "") as Origin;
   return (
     <span
       className={`mr-1 inline-block rounded-md px-1.5 py-0.5 align-[1px] text-[0.78em] font-semibold whitespace-nowrap ${

@@ -4,6 +4,7 @@ import { userIdOf } from "../auth";
 import { seedSubjectsIfEmpty } from "../seed";
 import { supabase } from "../supabase";
 import { asyncHandler, HttpError } from "../http";
+import { langOf } from "../i18n";
 
 export const subjectsRouter = Router();
 
@@ -19,7 +20,7 @@ subjectsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
-    await seedSubjectsIfEmpty(userId);
+    await seedSubjectsIfEmpty(userId, langOf(req));
     const { data, error } = await supabase
       .from("subjects")
       .select("id, name, year, area, created_at, documents(count)")
@@ -70,7 +71,7 @@ subjectsRouter.patch(
 subjectsRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
-    // Os documentos ficam sem disciplina (on delete set null), não são apagados.
+    // Los documentos se quedan sin asignatura (on delete set null), no se borran.
     const { error } = await supabase
       .from("subjects")
       .delete()

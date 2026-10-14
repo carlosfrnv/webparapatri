@@ -10,7 +10,7 @@ export interface Subject {
   document_count?: number;
 }
 
-export type SourceType = "apontamentos" | "referencia";
+export type SourceType = "apuntes" | "referencia";
 export type ReferenceOrg = "IAEA" | "EFRS";
 
 export interface DocumentItem {
@@ -70,10 +70,10 @@ export interface DueCard {
   is_new: boolean;
 }
 
-/** Excerto local: dos apontamentos dela ou da Biblioteca de referência. */
+/** Fragmento local: de sus apuntes o de la biblioteca de referencia. */
 export interface Source {
   n: number;
-  kind?: SourceType; // mensagens antigas não têm este campo: são apontamentos
+  kind?: SourceType; // los mensajes antiguos no tienen este campo: son apuntes
   org?: ReferenceOrg | null;
   chunk_id: number;
   document_id: string;
@@ -82,7 +82,7 @@ export interface Source {
   excerpt: string;
 }
 
-/** Fonte consultada em direto (só nome e endereço; o texto da página nunca é guardado). */
+/** Fuente consultada en vivo (solo nombre y enlace; el texto de la página nunca se guarda). */
 export interface WebSource {
   kind: "web";
   site: "Radiopaedia" | "IAEA" | "EFRS";

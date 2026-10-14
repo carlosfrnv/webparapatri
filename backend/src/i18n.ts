@@ -2,7 +2,7 @@ import type { Request } from "express";
 
 export type Lang = "es" | "pt";
 
-/** Idioma pedido pelo frontend (cabeçalho X-Lang). Por defeito, espanhol. */
+/** Idioma pedido por el frontend (cabecera X-Lang). Por defecto, español. */
 export function langOf(req: Request): Lang {
   return req.header("x-lang")?.toLowerCase().startsWith("pt") ? "pt" : "es";
 }
@@ -57,8 +57,8 @@ export function t(lang: Lang, key: MessageKey): string {
 }
 
 /**
- * Erros do processamento em segundo plano: guardamos um código na base de dados
- * (documents.error_message) e o frontend traduz-o para o idioma escolhido.
+ * Errores del procesado en segundo plano: guardamos un código en la base de datos
+ * (documents.error_message) y el frontend lo traduce al idioma elegido.
  */
 export const PROCESSING_ERRORS = {
   scanned: "error:scanned_pdf",

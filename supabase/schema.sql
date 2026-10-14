@@ -1,10 +1,10 @@
--- Estudo IMR — esquema da base de dados.
--- Cola tudo isto no Supabase → SQL Editor → New query → Run.
--- Pode ser executado mais de uma vez sem estragar nada.
+-- Estudio IMR — esquema de la base de datos.
+-- Pega todo esto en Supabase → SQL Editor → New query → Run.
+-- Se puede ejecutar más de una vez sin romper nada.
 
 create extension if not exists pgcrypto;
 
--- Unidades curriculares (disciplinas)
+-- Asignaturas
 create table if not exists subjects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -15,7 +15,7 @@ create table if not exists subjects (
 );
 create index if not exists subjects_user_idx on subjects (user_id);
 
--- Ficheiros carregados
+-- Archivos subidos
 create table if not exists documents (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -30,12 +30,12 @@ create table if not exists documents (
 );
 create index if not exists documents_user_idx on documents (user_id, created_at desc);
 
--- Origem do documento: os apontamentos dela ou a Biblioteca de referência (IAEA / EFRS).
-alter table documents add column if not exists source_type text not null default 'apontamentos'
-  check (source_type in ('apontamentos','referencia'));
+-- Origen del documento: sus apuntes o la biblioteca de referencia (IAEA / EFRS).
+alter table documents add column if not exists source_type text not null default 'apuntes'
+  check (source_type in ('apuntes','referencia'));
 alter table documents add column if not exists reference_org text check (reference_org in ('IAEA','EFRS'));
 
--- Fragmentos de texto com pesquisa de texto completo em português
+-- Fragmentos de texto con búsqueda de texto completo en portugués
 create table if not exists chunks (
   id bigserial primary key,
   document_id uuid not null references documents(id) on delete cascade,
@@ -47,11 +47,11 @@ create table if not exists chunks (
 );
 create index if not exists chunks_fts_idx on chunks using gin (fts);
 create index if not exists chunks_doc_idx on chunks (document_id, position);
-alter table chunks add column if not exists source_type text not null default 'apontamentos'
-  check (source_type in ('apontamentos','referencia'));
+alter table chunks add column if not exists source_type text not null default 'apuntes'
+  check (source_type in ('apuntes','referencia'));
 create index if not exists chunks_user_source_idx on chunks (user_id, source_type);
 
--- Materiais de estudo gerados pela IA (cache para não gastar API)
+-- Material de estudio generado por la IA (caché para no gastar API)
 create table if not exists study_materials (
   document_id uuid primary key references documents(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -64,12 +64,12 @@ create table if not exists study_materials (
   lang text default 'es' check (lang in ('es','pt')),
   generated_at timestamptz default now()
 );
--- Para bases de dados criadas antes de haver idiomas:
+-- Para bases de datos creadas antes de que hubiera idiomas:
 alter table study_materials add column if not exists lang text default 'pt' check (lang in ('es','pt'));
--- Fontes externas usadas no resumo (só nome e endereço, nunca o texto das páginas).
+-- Fuentes externas usadas en el resumen (solo nombre y enlace, nunca el texto de las páginas).
 alter table study_materials add column if not exists sources jsonb;
 
--- Repetição espaçada (SM-2)
+-- Repaso espaciado (SM-2)
 create table if not exists flashcard_reviews (
   id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -85,7 +85,7 @@ create table if not exists flashcard_reviews (
 );
 create index if not exists flashcard_reviews_user_idx on flashcard_reviews (user_id, due_at);
 
--- Resultados dos testes (para o painel de progresso)
+-- Resultados de los tests (para el panel de progreso)
 create table if not exists quiz_attempts (
   id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -95,7 +95,7 @@ create table if not exists quiz_attempts (
   created_at timestamptz default now()
 );
 
--- Conversas do chat
+-- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -107,19 +107,19 @@ create table if not exists chat_messages (
 );
 create index if not exists chat_messages_conv_idx on chat_messages (user_id, conversation_id, created_at);
 
--- Preferências (ex.: se as disciplinas iniciais já foram criadas)
+-- Preferencias (p. ej., si ya se crearon las asignaturas iniciales)
 create table if not exists user_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
   seeded boolean default false
 );
 
--- Pesquisa dos fragmentos mais relevantes.
--- p_terms: palavras-chave separadas por espaços. Procura qualquer delas ("ou") e devolve:
---   rank       = ts_rank: quanto o fragmento fala desses termos
---   coverage   = fração dos termos da pergunta que aparecem no fragmento (0 a 1)
---   proximity  = ts_rank_cd dos termos encontrados: alto se aparecem juntos ("unidades Hounsfield"),
---                quase 0 se estão soltos em frases diferentes. Nulo se só aparece 1 termo.
--- O backend decide se a relevância é suficiente (ver backend/src/search.ts).
+-- Búsqueda de los fragmentos más relevantes.
+-- p_terms: palabras clave separadas por espacios. Busca cualquiera de ellas ("o") y devuelve:
+--   rank       = ts_rank: cuánto habla el fragmento de esos términos
+--   coverage   = fracción de los términos de la pregunta que aparecen en el fragmento (0 a 1)
+--   proximity  = ts_rank_cd de los términos encontrados: alto si aparecen juntos ("unidades Hounsfield"),
+--                casi 0 si están sueltos en frases distintas. Nulo si solo aparece 1 término.
+-- El backend decide si la relevancia es suficiente (ver backend/src/search.ts).
 drop function if exists search_chunks(uuid, text, int);
 drop function if exists search_chunks(uuid, text, int, uuid);
 drop function if exists search_chunks(uuid, text, int, uuid, text);
@@ -128,7 +128,7 @@ create or replace function search_chunks(
   p_terms text,
   p_limit int default 8,
   p_document uuid default null,
-  p_source_type text default 'apontamentos'
+  p_source_type text default 'apuntes'
 )
 returns table (id bigint, document_id uuid, content text, page int, rank real, coverage real, proximity real)
 language sql stable as $$
@@ -158,7 +158,7 @@ language sql stable as $$
   order by rank desc;
 $$;
 
--- Palavras mais frequentes de um documento (para procurar material de referência relacionado).
+-- Palabras más frecuentes de un documento (para buscar material de referencia relacionado).
 create or replace function document_keywords(p_document uuid, p_limit int default 8)
 returns table (word text, nentry int)
 language sql stable as $$
@@ -168,11 +168,11 @@ language sql stable as $$
   limit p_limit;
 $$;
 
--- Só o backend (service_role) pode chamar estas funções.
+-- Solo el backend (service_role) puede llamar a estas funciones.
 revoke execute on function search_chunks(uuid, text, int, uuid, text) from public, anon, authenticated;
 revoke execute on function document_keywords(uuid, int) from public, anon, authenticated;
 
--- Segurança: RLS em todas as tabelas. O backend usa service_role, mas filtra sempre pelo user_id.
+-- Seguridad: RLS en todas las tablas. El backend usa service_role, pero filtra siempre por user_id.
 alter table subjects enable row level security;
 alter table documents enable row level security;
 alter table chunks enable row level security;
@@ -192,7 +192,7 @@ begin
   end loop;
 end $$;
 
--- Bucket privado para os ficheiros originais
+-- Bucket privado para los archivos originales
 insert into storage.buckets (id, name, public)
 values ('temario', 'temario', false)
 on conflict (id) do update set public = false;

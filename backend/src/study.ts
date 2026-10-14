@@ -30,10 +30,10 @@ export const quizQuestionSchema = z.object({
 
 export const quizSchema = z.object({ quiz: z.array(quizQuestionSchema).min(1) });
 
-// Acima disto, o resumo é feito por partes (map-reduce) para conter o custo.
+// Por encima de esto, el resumen se hace por partes (map-reduce) para contener el coste.
 const DIRECT_LIMIT = 60_000;
 const PART_SIZE = 40_000;
-// Abaixo disto consideramos os apontamentos "escassos" e o resumo pode consultar a web (nível 3).
+// Por debajo de esto consideramos que los apuntes son "escasos" y el resumen puede consultar la web (nivel 3).
 const SCARCE_NOTES = 2_500;
 
 export async function documentText(documentId: string, userId: string): Promise<string> {
@@ -45,7 +45,7 @@ export async function documentText(documentId: string, userId: string): Promise<
     .order("position");
   if (error) throw error;
 
-  // Os fragmentos sobrepõem-se ~200 caracteres; para o resumo isso não faz mal.
+  // Los fragmentos se solapan ~200 caracteres; para el resumen no importa.
   return (data ?? []).map((c) => c.content).join("\n\n");
 }
 
@@ -62,8 +62,8 @@ async function condensedText(text: string, lang: Lang): Promise<string> {
 const inFlight = new Map<string, Promise<unknown>>();
 
 /**
- * Gera (ou devolve em cache) os materiais de estudo de um documento.
- * A cache não depende do idioma: se ela mudar de idioma, o frontend oferece gerar de novo.
+ * Genera (o devuelve de la caché) el material de estudio de un documento.
+ * La caché no depende del idioma: si cambia de idioma, el frontend ofrece generarlo de nuevo.
  */
 export async function getOrGenerateStudy(documentId: string, userId: string, lang: Lang, force = false) {
   if (!force) {
@@ -76,20 +76,20 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
     if (data) return data;
   }
 
-  // Evita gerar duas vezes o mesmo documento se ela abrir a página duas vezes.
+  // Evita generar dos veces el mismo documento si abre la página dos veces.
   const jobKey = `${documentId}:${lang}`;
   const running = inFlight.get(jobKey);
   if (running) return running;
 
   const job = (async () => {
     const text = await documentText(documentId, userId);
-    if (!text.trim()) throw new Error("Documento sem texto");
+    if (!text.trim()) throw new Error("Documento sin texto");
     const source = await condensedText(text, lang);
 
-    // Nível 2: Biblioteca de referência relacionada (se houver). Nível 3: web, só para o resumo
-    // e só se os apontamentos forem escassos e a referência não tiver nada.
+    // Nivel 2: biblioteca de referencia relacionada (si la hay). Nivel 3: web, solo para el resumen
+    // y solo si los apuntes son escasos y la referencia no tiene nada.
     const references = await findReferenceForDocument(userId, documentId).catch((err) => {
-      console.error("Falha ao procurar referência:", err);
+      console.error("Error al buscar en la referencia:", err);
       return [];
     });
     const refText = formatSources(references, lang);
@@ -106,7 +106,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       completeJson(withRefs(quizPrompt(lang, source)), quizSchema, { lang }),
     ]);
     const summary = summaryResult.text;
-    // Só nomes e endereços das fontes (nunca o texto das páginas web).
+    // Solo nombres y enlaces de las fuentes (nunca el texto de las páginas web).
     const sources = [
       ...references.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s),
       ...summaryResult.webSources,
@@ -128,7 +128,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
     if (error) throw error;
 
     if (force) {
-      // Os cartões mudaram: o histórico de repetição antigo deixa de fazer sentido.
+      // Las tarjetas han cambiado: el historial de repasos anterior deja de tener sentido.
       await supabase.from("flashcard_reviews").delete().eq("document_id", documentId).eq("user_id", userId);
     }
     return data;

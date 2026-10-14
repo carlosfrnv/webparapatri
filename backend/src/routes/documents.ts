@@ -28,7 +28,7 @@ async function ownedDocument(id: string, userId: string) {
 
 const uploadFieldsSchema = z.object({
   subject_id: z.string().uuid().nullable().catch(null),
-  source_type: z.enum(["apontamentos", "referencia"]).catch("apontamentos"),
+  source_type: z.enum(["apuntes", "referencia"]).catch("apuntes"),
   reference_org: z.enum(["IAEA", "EFRS"]).nullable().catch(null),
 });
 
@@ -40,7 +40,7 @@ documentsRouter.post(
     const file = req.file;
     if (!file) throw new HttpError(400, "noFile");
 
-    // O multer lê o nome em latin1; convertemos para manter acentos.
+    // multer lee el nombre en latin1; lo convertimos para mantener las tildes.
     const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
     const fields = uploadFieldsSchema.parse({
       subject_id: req.body?.subject_id || null,
@@ -75,8 +75,8 @@ documentsRouter.post(
 documentsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    // Por defeito só os apontamentos dela; a Biblioteca de referência pede-se à parte.
-    const sourceType = req.query.source_type === "referencia" ? "referencia" : "apontamentos";
+    // Por defecto solo sus apuntes; la biblioteca de referencia se pide aparte.
+    const sourceType = req.query.source_type === "referencia" ? "referencia" : "apuntes";
     let query = supabase
       .from("documents")
       .select(DOC_FIELDS)
@@ -140,7 +140,7 @@ documentsRouter.delete(
     const userId = userIdOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
     await supabase.storage.from(STORAGE_BUCKET).remove([doc.storage_path]);
-    // Fragmentos, materiais e revisões apagam-se em cascata.
+    // Los fragmentos, materiales y repasos se borran en cascada.
     const { error } = await supabase.from("documents").delete().eq("id", doc.id).eq("user_id", userId);
     if (error) throw error;
     res.status(204).end();
@@ -160,7 +160,7 @@ documentsRouter.get(
 async function studyHandler(req: Parameters<Parameters<typeof asyncHandler>[0]>[0], force: boolean) {
   const userId = userIdOf(req);
   const doc = await ownedDocument(String(req.params.id), userId);
-  // A Biblioteca de referência só serve para pesquisa: não gera resumos nem flashcards.
+  // La biblioteca de referencia solo sirve para buscar: no genera resúmenes ni flashcards.
   if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
   if (doc.status === "processing") throw new HttpError(409, "stillProcessing");
   if (doc.status === "error") throw new HttpError(409, "documentHasError");

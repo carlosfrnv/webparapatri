@@ -9,7 +9,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import type { DocumentItem, ReferenceOrg } from "@/lib/types";
 
-/** Biblioteca de referência (IAEA / EFRS): separada dos apontamentos, usada só na pesquisa. */
+/** Biblioteca de referencia (IAEA / EFRS): separada de los apuntes, solo se usa en la búsqueda. */
 export default function ReferencePage() {
   const t = useT();
   const [docs, setDocs] = useState<DocumentItem[] | null>(null);
@@ -25,7 +25,7 @@ export default function ReferencePage() {
   }, []);
 
   useEffect(() => {
-    // O estado só muda depois do pedido (após o await), não de forma síncrona.
+    // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);

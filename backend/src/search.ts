@@ -5,24 +5,24 @@ import { keywordsPrompt } from "./prompts";
 import { supabase } from "./supabase";
 
 /**
- * LIMIAR DE RELEVÂNCIA (calibrado com apontamentos reais em português)
+ * UMBRAL DE RELEVANCIA (calibrado con apuntes reales en portugués)
  *
- * Um fragmento é "suficientemente relevante" quando cumpre as TRÊS condições:
- *   - ts_rank >= MIN_RANK (0.05): o fragmento fala dos termos da pergunta com alguma insistência.
- *     Um fragmento centrado no tema dá ~0.05–0.08; uma menção de passagem dá ~0.02–0.03.
- *   - cobertura >= MIN_COVERAGE (0.6): contém pelo menos 60% dos termos-chave da pergunta.
- *     Evita falsos positivos de palavras genéricas repetidas ("unidade de cuidados intensivos").
- *   - proximidade >= MIN_PROXIMITY (0.01), quando aparecem 2 ou mais termos: os termos estão
- *     perto uns dos outros (ts_rank_cd). Nos fragmentos que tratam o tema deu 0.038–0.205; num
- *     texto que diz "Godfrey Hounsfield construiu…" e, noutra frase, "A unidade de TC…" deu 0.001–0.003.
+ * Un fragmento es "suficientemente relevante" cuando cumple las TRES condiciones:
+ *   - ts_rank >= MIN_RANK (0.05): el fragmento habla de los términos de la pregunta con cierta insistencia.
+ *     Un fragmento centrado en el tema da ~0.05–0.08; una mención de pasada da ~0.02–0.03.
+ *   - cobertura >= MIN_COVERAGE (0.6): contiene al menos el 60 % de los términos clave de la pregunta.
+ *     Evita falsos positivos por palabras genéricas repetidas ("unidade de cuidados intensivos").
+ *   - proximidad >= MIN_PROXIMITY (0.01), cuando aparecen 2 o más términos: los términos están
+ *     cerca unos de otros (ts_rank_cd). En los fragmentos que tratan el tema dio 0.038–0.205; en un
+ *     texto que dice "Godfrey Hounsfield construiu…" y, en otra frase, "A unidade de TC…" dio 0.001–0.003.
  *
- * Um nível (apontamentos ou referência) "chega" se tiver pelo menos 1 fragmento relevante.
+ * Un nivel (apuntes o referencia) "basta" si tiene al menos 1 fragmento relevante.
  */
 export const MIN_RANK = 0.05;
 export const MIN_COVERAGE = 0.6;
 export const MIN_PROXIMITY = 0.01;
 
-export type SourceKind = "apontamentos" | "referencia";
+export type SourceKind = "apuntes" | "referencia";
 
 export interface Source {
   n: number;
@@ -49,7 +49,7 @@ interface ChunkHit {
   proximity: number | null;
 }
 
-// Palavras de pergunta que não dizem nada sobre o tema e baixariam a cobertura.
+// Palabras de pregunta que no dicen nada del tema y bajarían la cobertura.
 const FILLER_WORDS = new Set(
   (
     "explica explicar explica-me explícame explicame diferença diferenças diferencia diferencias " +
@@ -57,7 +57,7 @@ const FILLER_WORDS = new Set(
     "serve sirve funciona exemplo exemplos ejemplo ejemplos pergunta perguntas pregunta preguntas " +
     "faz faça hazme haz dime diz resume resumo resumen fala habla sobre importante coisa cosa " +
     "porque porquê por qué como cómo quando cuándo onde dónde " +
-    // Palavras vazias do espanhol: o dicionário do Postgres é português e não as elimina.
+    // Palabras vacías del español: el diccionario de Postgres es portugués y no las elimina.
     "qué que es son el la los las lo un una unos unas del al y o u para por con sin se su sus " +
     "mi mis me te le les nos este esta estos estas ese esa eso hay muy más pero también entre"
   ).split(/\s+/),
@@ -96,7 +96,7 @@ export const isRelevant = (h: { rank: number; coverage: number; proximity: numbe
 
 const keywordsSchema = z.object({ keywords: z.array(z.string()).min(1).max(8) });
 
-/** Palavras-chave em português pedidas à IA (os apontamentos e a referência estão em português). */
+/** Palabras clave en portugués pedidas a la IA (los apuntes y la referencia están en portugués). */
 async function aiKeywords(question: string): Promise<string | null> {
   try {
     const { keywords } = await completeJson(keywordsPrompt(question), keywordsSchema, {
@@ -106,14 +106,14 @@ async function aiKeywords(question: string): Promise<string | null> {
     });
     return keywords.map((k) => k.replace(/["()|&!:]/g, " ").trim()).join(" ");
   } catch (err) {
-    console.error("Falha ao extrair palavras-chave:", err);
+    console.error("Error al extraer palabras clave:", err);
     return null;
   }
 }
 
 /**
- * Pesquisa num nível. Primeiro com os termos da própria pergunta; se não houver nada relevante
- * (por ex. pergunta em espanhol ou com outras palavras), tenta com palavras-chave da IA e junta.
+ * Busca en un nivel. Primero con los términos de la propia pregunta; si no hay nada relevante
+ * (p. ej., pregunta en español o con otras palabras), lo intenta con palabras clave de la IA y lo junta.
  */
 async function searchTier(
   userId: string,
@@ -166,21 +166,21 @@ export interface TieredResult {
 }
 
 /**
- * Ordem de prioridade: 1) apontamentos dela; 2) Biblioteca de referência (IAEA/EFRS).
- * A referência só é consultada se os apontamentos não chegarem.
- * O chamador decide se passa ao nível 3 (pesquisa web) quando nenhum dos dois chega.
+ * Orden de prioridad: 1) sus apuntes; 2) biblioteca de referencia (IAEA/EFRS).
+ * La referencia solo se consulta si los apuntes no bastan.
+ * Quien llama decide si pasa al nivel 3 (búsqueda web) cuando ninguno de los dos basta.
  */
 export async function findTieredSources(
   userId: string,
   question: string,
   opts: { lang: Lang; documentId?: string; expand?: boolean },
 ): Promise<TieredResult> {
-  // As palavras-chave da IA só se pedem uma vez, e só se forem precisas.
+  // Las palabras clave de la IA se piden una sola vez, y solo si hacen falta.
   let kwPromise: Promise<string | null> | null = null;
   const keywords = () => (kwPromise ??= aiKeywords(question));
   const expand = opts.expand !== false;
 
-  const noteHits = await searchTier(userId, question, "apontamentos", {
+  const noteHits = await searchTier(userId, question, "apuntes", {
     limit: 8,
     documentId: opts.documentId,
     expand,
@@ -188,16 +188,16 @@ export async function findTieredSources(
   });
   const notesSufficient = noteHits.some(isRelevant);
 
-  // Se ela filtrou por um documento, não misturamos referência; se os apontamentos chegam, também não.
+  // Si ha filtrado por un documento, no mezclamos referencia; si los apuntes bastan, tampoco.
   let refHits: ChunkHit[] = [];
   if (!notesSufficient && !opts.documentId) {
     refHits = (await searchTier(userId, question, "referencia", { limit: 5, expand, keywords })).filter(isRelevant);
   }
 
-  // Apontamentos: se chegam, mandamos os melhores; se não, só os que tocam no tema (cobertura >= 50%),
-  // para a IA não atribuir aos apontamentos algo que lá não está. Referência: só os relevantes.
+  // Apuntes: si bastan, mandamos los mejores; si no, solo los que tocan el tema (cobertura >= 50 %),
+  // para que la IA no atribuya a los apuntes algo que no está en ellos. Referencia: solo los relevantes.
   const notesToSend = notesSufficient ? noteHits : noteHits.filter((h) => h.coverage >= 0.5).slice(0, 4);
-  const notes = await toSources(userId, notesToSend, "apontamentos", 1);
+  const notes = await toSources(userId, notesToSend, "apuntes", 1);
   const references = await toSources(userId, refHits, "referencia", notes.length + 1);
   return {
     notes,
@@ -208,9 +208,9 @@ export async function findTieredSources(
 }
 
 /**
- * Material de referência relacionado com um documento dela (para o material de estudo).
- * Usa as 8 palavras mais frequentes do documento. Como são termos gerais do tema (e não 2–3 termos
- * de uma pergunta), basta cobrir 40% deles; o ts_rank mínimo é o mesmo (0.05).
+ * Material de referencia relacionado con uno de sus documentos (para el material de estudio).
+ * Usa las 8 palabras más frecuentes del documento. Como son términos generales del tema (y no 2–3
+ * términos de una pregunta), basta con cubrir el 40 %; el ts_rank mínimo es el mismo (0.05).
  */
 export async function findReferenceForDocument(userId: string, documentId: string, limit = 4): Promise<Source[]> {
   const { data: words, error } = await supabase.rpc("document_keywords", { p_document: documentId, p_limit: 8 });
@@ -223,7 +223,7 @@ export async function findReferenceForDocument(userId: string, documentId: strin
   return toSources(userId, hits, "referencia", 1);
 }
 
-/** Pesquisa simples (buscador da Biblioteca, explicações do teste): apontamentos e referência, sem IA. */
+/** Búsqueda simple (buscador de la Biblioteca, explicaciones del test): apuntes y referencia, sin IA. */
 export async function findSources(
   userId: string,
   question: string,
@@ -232,8 +232,8 @@ export async function findSources(
   const limit = opts.limit ?? 8;
   const notes = await toSources(
     userId,
-    await runSearch(userId, keyTerms(question), limit, "apontamentos", opts.documentId),
-    "apontamentos",
+    await runSearch(userId, keyTerms(question), limit, "apuntes", opts.documentId),
+    "apuntes",
     1,
   );
   if (!opts.includeReference) return notes;
@@ -246,12 +246,12 @@ export async function findSources(
   return [...notes, ...refs];
 }
 
-/** Texto dos excertos para o prompt, com a origem de cada um. */
+/** Texto de los fragmentos para el prompt, con el origen de cada uno. */
 export function formatSources(sources: Source[], lang: Lang): string {
   return sources
     .map((s) => {
       const origin =
-        s.kind === "apontamentos"
+        s.kind === "apuntes"
           ? lang === "es"
             ? "Tus apuntes"
             : "Os teus apontamentos"

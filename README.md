@@ -67,7 +67,7 @@ Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](ht
 
 ### 1. Supabase (base de datos, ficheros y login)
 
-1. **New project** → ponle un nombre (por ejemplo `estudo-imr`), una contraseña y la región **Europe (West)**.
+1. **New project** → ponle un nombre (por ejemplo `estudio-imr`), una contraseña y la región **Europe (West)**.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa
    **Run**. Esto crea las tablas, la seguridad y el bucket privado `temario` para los ficheros.
 3. **Authentication → Users → Add user → Create new user**: pon el **email de Patri** y marca *Auto Confirm User*.
@@ -97,12 +97,12 @@ Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](ht
 ### 3. Render (backend)
 
 1. **New → Blueprint** → conecta este repositorio. Render leerá [`render.yaml`](render.yaml) y creará el servicio
-   `estudo-imr-api`. (Alternativa manual: **New → Web Service**, *Root Directory* `backend`, *Build*
+   `estudio-imr-api`. (Alternativa manual: **New → Web Service**, *Root Directory* `backend`, *Build*
    `npm install --include=dev && npm run build`, *Start* `npm start`, *Health check* `/health`.)
 2. Rellena las variables de entorno que te pida:
    `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri) y
    `FRONTEND_ORIGIN` (de momento `http://localhost:3000`; luego la URL de Vercel).
-3. Cuando termine, copia la URL del servicio (algo como `https://estudo-imr-api.onrender.com`).
+3. Cuando termine, copia la URL del servicio (algo como `https://estudio-imr-api.onrender.com`).
 
 > ⏰ En el plan gratuito, Render "duerme" el servidor tras 15 minutos sin uso. La primera petición tarda hasta un
 > minuto en despertarlo; la web muestra "A acordar o servidor…" mientras tanto, no es un error.
@@ -143,8 +143,8 @@ la EFRS) y súbelos de una de estas dos formas:
 Para probar el chat desde la terminal con el mismo motor que la web:
 
 ```bash
-npm run probar -- "O que é a unidade Hounsfield?"
-npm run probar -- --lang es "¿Qué es la unidad Hounsfield?"
+npm run probar -- "¿Qué es la unidad Hounsfield?"
+npm run probar -- --lang pt "O que é a unidade Hounsfield?"   # para probar la versión en portugués
 ```
 
 Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las fuentes.

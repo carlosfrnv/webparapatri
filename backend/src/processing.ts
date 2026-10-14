@@ -7,8 +7,8 @@ import { classifyPrompt } from "./prompts";
 import { supabase } from "./supabase";
 
 /**
- * Processa um documento em segundo plano (o plano gratuito do Render não tem filas):
- * extrai o texto, divide em fragmentos e guarda-os. O frontend consulta o estado.
+ * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
+ * extrae el texto, lo divide en fragmentos y los guarda. El frontend consulta el estado.
  */
 export async function processDocument(params: {
   documentId: string;
@@ -16,7 +16,7 @@ export async function processDocument(params: {
   buffer: Buffer;
   kind: string;
   title: string;
-  sourceType: "apontamentos" | "referencia";
+  sourceType: "apuntes" | "referencia";
   suggestSubject: boolean;
 }) {
   const { documentId, userId } = params;
@@ -46,12 +46,12 @@ export async function processDocument(params: {
     if (params.suggestSubject) {
       const firstText = pages.map((p) => p.text).join("\n").split(/\s+/).slice(0, 2000).join(" ");
       await suggestSubject(documentId, userId, params.title, firstText).catch((err) =>
-        console.error("Falha ao sugerir disciplina:", err),
+        console.error("Error al sugerir asignatura:", err),
       );
     }
   } catch (err) {
-    console.error(`Erro a processar o documento ${documentId}:`, err);
-    // Guardamos um código; o frontend mostra a mensagem no idioma escolhido.
+    console.error(`Error al procesar el documento ${documentId}:`, err);
+    // Guardamos un código; el frontend muestra el mensaje en el idioma elegido.
     const message = err instanceof ExtractionError ? err.message : PROCESSING_ERRORS.generic;
     await supabase
       .from("documents")
@@ -73,7 +73,7 @@ async function suggestSubject(documentId: string, userId: string, title: string,
     .eq("user_id", userId);
   if (!subjects?.length) return;
 
-  const list = subjects.map((s) => `${s.id}: ${s.name}, ${s.year ?? "?"}.º ano`).join("\n");
+  const list = subjects.map((s) => `${s.id}: ${s.name}, ${s.year ?? "?"}.º curso`).join("\n");
   const result = await completeJson(classifyPrompt(title, text, list), classifySchema, {
     lang: "pt",
     effort: "low",

@@ -12,11 +12,11 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard, StudyMaterials } from "@/lib/types";
 
-const TABS = ["resumo", "conceitos", "glossario", "flashcards", "teste", "ficheiro"] as const;
+const TABS = ["resumen", "conceptos", "glosario", "flashcards", "test", "archivo"] as const;
 type TabId = (typeof TABS)[number];
 
 function useHashTab(): [TabId, (t: TabId) => void] {
-  const [tab, setTab] = useState<TabId>("resumo");
+  const [tab, setTab] = useState<TabId>("resumen");
   useEffect(() => {
     const read = () => {
       const h = window.location.hash.slice(1) as TabId;
@@ -146,7 +146,7 @@ export default function DocumentPage() {
       .get<DocumentItem>(`/documents/${id}`)
       .then((d) => {
         setDoc(d);
-        // A Biblioteca de referência só serve para pesquisa: não tem material de estudo.
+        // La biblioteca de referencia solo sirve para buscar: no tiene material de estudio.
         if (d.status === "ready" && d.source_type !== "referencia") loadStudy();
       })
       .catch((err) => setError(errorMessage(err)));
@@ -156,10 +156,10 @@ export default function DocumentPage() {
   if (!doc) return <Spinner label={t.common.loading} />;
 
   const isRef = doc.source_type === "referencia";
-  const backHref = isRef ? "/referencia" : doc.subject_id ? `/disciplina/${doc.subject_id}` : "/biblioteca";
-  const visibleTabs = isRef ? (["ficheiro"] as const) : TABS;
-  const activeTab: TabId = isRef ? "ficheiro" : tab;
-  // Material gerado noutro idioma (a cache é por ficheiro): oferecemos gerá-lo de novo.
+  const backHref = isRef ? "/referencia" : doc.subject_id ? `/asignatura/${doc.subject_id}` : "/biblioteca";
+  const visibleTabs = isRef ? (["archivo"] as const) : TABS;
+  const activeTab: TabId = isRef ? "archivo" : tab;
+  // Material generado en otro idioma (la caché es por archivo): ofrecemos generarlo de nuevo.
   const materialsLang = materials?.lang ?? "pt";
   const otherLang = materials && materialsLang !== lang;
 
@@ -202,7 +202,7 @@ export default function DocumentPage() {
 
       {isRef && <p className="bg-warning-soft mb-5 rounded-xl p-4 text-sm">{t.reference.onlySearch}</p>}
 
-      {otherLang && activeTab !== "ficheiro" && (
+      {otherLang && activeTab !== "archivo" && (
         <div className="bg-accent-soft mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 text-sm">
           <span>{t.document.otherLang(t.document.langName[materialsLang])}</span>
           <button
@@ -217,7 +217,7 @@ export default function DocumentPage() {
         </div>
       )}
 
-      {activeTab === "ficheiro" ? (
+      {activeTab === "archivo" ? (
         <OriginalFile doc={doc} />
       ) : doc.status !== "ready" ? (
         <ErrorBox message={docError(doc.error_message) ?? t.document.notReady} />
@@ -231,7 +231,7 @@ export default function DocumentPage() {
         <ErrorBox message={studyError} onRetry={() => loadStudy()} />
       ) : materials ? (
         <div role="tabpanel">
-          {tab === "resumo" && (
+          {tab === "resumen" && (
             <article className="card p-5 sm:p-8">
               <Markdown>{materials.summary}</Markdown>
               {materials.sources && materials.sources.length > 0 && (
@@ -242,7 +242,7 @@ export default function DocumentPage() {
             </article>
           )}
 
-          {tab === "conceitos" && (
+          {tab === "conceptos" && (
             <ul className="space-y-3">
               {materials.key_concepts.map((c, i) => (
                 <li key={i} className="card p-5">
@@ -256,7 +256,7 @@ export default function DocumentPage() {
             </ul>
           )}
 
-          {tab === "glossario" && (
+          {tab === "glosario" && (
             <dl className="card divide-border divide-y">
               {[...materials.glossary]
                 .sort((a, b) => a.term.localeCompare(b.term, lang))
@@ -271,7 +271,7 @@ export default function DocumentPage() {
 
           {tab === "flashcards" && <FlashcardsTab key={materials.generated_at} doc={doc} materials={materials} />}
 
-          {tab === "teste" && <Quiz key={materials.generated_at} documentId={doc.id} questions={materials.quiz} />}
+          {tab === "test" && <Quiz key={materials.generated_at} documentId={doc.id} questions={materials.quiz} />}
 
           <div className="border-border text-muted mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
             <span>{t.document.disclaimer}</span>

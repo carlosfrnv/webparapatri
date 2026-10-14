@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Paleta calma para muitas horas de estudo. Acento: azul clínico. */
+/* Paleta tranquila para muchas horas de estudio. Acento: azul clínico. */
 :root {
   --bg: #f6f8fb;
   --surface: #ffffff;
@@ -95,7 +95,7 @@ body {
   @apply border-border bg-surface text-text placeholder:text-muted min-h-11 w-full rounded-xl border px-3 py-2;
 }
 
-/* Texto em Markdown (resumos e respostas do chat) */
+/* Texto en Markdown (resúmenes y respuestas del chat) */
 .prose-study {
   overflow-wrap: anywhere;
 }
@@ -142,7 +142,7 @@ body {
   @apply border-border border px-3 py-2 align-top;
 }
 
-/* Cartão que vira */
+/* Tarjeta que se da la vuelta */
 .flip {
   perspective: 1200px;
 }

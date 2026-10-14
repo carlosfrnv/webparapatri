@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-// O plano gratuito do Render "adormece" o servidor. Enquanto acorda, mostramos um aviso.
+// El plan gratuito de Render "duerme" el servidor. Mientras se despierta, mostramos un aviso.
 type WakeListener = (waking: boolean) => void;
 const wakeListeners = new Set<WakeListener>();
 export function onServerWaking(listener: WakeListener) {
@@ -30,13 +30,13 @@ function setWaking(delta: number) {
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  // O backend responde (e a IA escreve) no idioma escolhido.
+  // El backend responde (y la IA escribe) en el idioma elegido.
   return { "X-Lang": getLang(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** fetch com sessão e tentativas automáticas enquanto o servidor acorda. */
+/** fetch con sesión y reintentos automáticos mientras el servidor se despierta. */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const maxAttempts = 8;
   let waking = false;
@@ -47,7 +47,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
           ...init,
           headers: { ...(init.headers as Record<string, string>), ...(await authHeader()) },
         });
-        // 502/503/504: o Render ainda está a arrancar.
+        // 502/503/504: Render todavía está arrancando.
         if ([502, 503, 504].includes(res.status) && attempt < maxAttempts) throw new TypeError("waking");
         return res;
       } catch (err) {
@@ -93,11 +93,11 @@ export const api = {
   del: (path: string) => apiFetch(path, { method: "DELETE" }).then((r) => handle<void>(r)),
 };
 
-/** Envio de ficheiro com barra de progresso (o fetch não dá progresso de envio). */
+/** Subida de archivo con barra de progreso (fetch no da el progreso de subida). */
 export interface UploadFields {
   subjectId?: string | null;
-  /** "referencia" = Biblioteca de referência (IAEA / EFRS), separada dos apontamentos. */
-  sourceType?: "apontamentos" | "referencia";
+  /** "referencia" = biblioteca de referencia (IAEA / EFRS), separada de los apuntes. */
+  sourceType?: "apuntes" | "referencia";
   referenceOrg?: "IAEA" | "EFRS";
 }
 
@@ -106,7 +106,7 @@ export async function uploadFile<T>(
   fields: UploadFields,
   onProgress: (fraction: number) => void,
 ): Promise<T> {
-  // Acorda o servidor primeiro, para o envio não falhar a meio.
+  // Primero despierta el servidor, para que la subida no falle a medias.
   await apiFetch("/health").catch(() => undefined);
   const headers = await authHeader();
   const form = new FormData();
@@ -127,7 +127,7 @@ export async function uploadFile<T>(
       try {
         body = JSON.parse(xhr.responseText);
       } catch {
-        /* resposta vazia */
+        /* respuesta vacía */
       }
       if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
       else reject(new ApiError(xhr.status, body.error ?? dict().common.uploadError));

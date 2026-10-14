@@ -7,7 +7,7 @@ import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, Subject } from "@/lib/types";
 import { fileIcon, formatDate, StatusBadge } from "./ui";
 
-/** Consulta o estado enquanto houver ficheiros "A processar…". */
+/** Consulta el estado mientras haya archivos "Procesando…". */
 export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: DocumentItem[]) => DocumentItem[]) => void) {
   const processingIds = docs
     .filter((d) => d.status === "processing")
@@ -21,7 +21,7 @@ export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: Docume
           const updated = await api.get<DocumentItem>(`/documents/${id}`);
           if (updated.status !== "processing") setDocs((list) => list.map((d) => (d.id === id ? updated : d)));
         } catch {
-          /* tenta de novo no próximo ciclo */
+          /* se vuelve a intentar en el siguiente ciclo */
         }
       }
     }, 3000);
@@ -29,7 +29,7 @@ export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: Docume
   }, [processingIds, setDocs]);
 }
 
-/** Traduz os códigos de erro do processamento guardados pelo backend. */
+/** Traduce los códigos de error del procesado que guarda el backend. */
 export function useDocError() {
   const t = useT();
   return (message: string | null) => (message ? (t.docErrors[message] ?? message) : null);
@@ -93,7 +93,7 @@ export function DocumentList({
               <div className="min-w-0 flex-1">
                 {doc.status === "ready" ? (
                   <Link
-                    href={`/documento/${doc.id}${doc.source_type === "referencia" ? "#ficheiro" : ""}`}
+                    href={`/documento/${doc.id}${doc.source_type === "referencia" ? "#archivo" : ""}`}
                     className="hover:text-accent block font-semibold"
                   >
                     {doc.title}

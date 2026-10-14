@@ -17,7 +17,7 @@ interface Card {
   back: string;
 }
 
-/** Cartões por rever: os novos (sem revisão) e os que já chegaram à data. */
+/** Tarjetas por repasar: las nuevas (sin repaso) y las que ya han llegado a su fecha. */
 studyRouter.get(
   "/flashcards/due",
   asyncHandler(async (req, res) => {
@@ -63,7 +63,7 @@ studyRouter.get(
         }
       });
     }
-    // Primeiro as revisões atrasadas, depois as novas.
+    // Primero los repasos atrasados, luego las nuevas.
     due.sort((a, b) => Number(a.is_new) - Number(b.is_new) || (a.due_at ?? "").localeCompare(b.due_at ?? ""));
     res.json({ total_due: due.length, total_cards: totalCards, cards: due.slice(0, limit) });
   }),
@@ -167,7 +167,7 @@ studyRouter.post(
   }),
 );
 
-/** Painel de progresso da página inicial. */
+/** Panel de progreso de la página de inicio. */
 studyRouter.get(
   "/stats",
   asyncHandler(async (req, res) => {
@@ -181,7 +181,7 @@ studyRouter.get(
         .from("documents")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
-        .eq("source_type", "apontamentos"),
+        .eq("source_type", "apuntes"),
       supabase
         .from("flashcard_reviews")
         .select("id", { count: "exact", head: true })
@@ -202,12 +202,12 @@ studyRouter.get(
         .from("documents")
         .select("id, title, status, created_at")
         .eq("user_id", userId)
-        .eq("source_type", "apontamentos")
+        .eq("source_type", "apuntes")
         .order("created_at", { ascending: false })
         .limit(5),
     ]);
 
-    // Dias diferentes com estudo nos últimos 7 dias.
+    // Días distintos con estudio en los últimos 7 días.
     const studyDays = new Set((reviewsWeek.data ?? []).map((r) => (r.reviewed_at as string).slice(0, 10))).size;
 
     res.json({
@@ -225,12 +225,12 @@ studyRouter.get(
   }),
 );
 
-/** Buscador no temario (sem IA). */
+/** Buscador en el temario (sin IA). */
 studyRouter.get(
   "/search",
   asyncHandler(async (req, res) => {
     const q = z.string().trim().min(2).max(200).parse(req.query.q);
-    // Inclui a Biblioteca de referência (aparece identificada como tal nos resultados).
+    // Incluye la biblioteca de referencia (aparece identificada como tal en los resultados).
     const sources = await findSources(userIdOf(req), q, { limit: 20, includeReference: true });
     res.json(sources.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s));
   }),

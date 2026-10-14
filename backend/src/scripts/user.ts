@@ -1,7 +1,7 @@
 import { config } from "../config";
 import { supabase } from "../supabase";
 
-/** Id da utilizadora com acesso (ALLOWED_EMAIL). Os scripts trabalham sempre com os dados dela. */
+/** Id de la usuaria con acceso (ALLOWED_EMAIL). Los scripts trabajan siempre con sus datos. */
 export async function allowedUserId(): Promise<string> {
   for (let page = 1; page <= 20; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
@@ -10,5 +10,5 @@ export async function allowedUserId(): Promise<string> {
     if (user) return user.id;
     if (data.users.length < 100) break;
   }
-  throw new Error(`Não encontrei o utilizador ${config.ALLOWED_EMAIL} no Supabase (Authentication → Users).`);
+  throw new Error(`No he encontrado el usuario ${config.ALLOWED_EMAIL} en Supabase (Authentication → Users).`);
 }

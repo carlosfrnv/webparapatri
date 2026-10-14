@@ -33,8 +33,8 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
         <h2 id="welcome-title" className="mt-3 text-2xl font-bold">
           {dedicatoria.titulo}
         </h2>
-        <p className="text-muted mt-4 whitespace-pre-line">{dedicatoria.mensagem}</p>
-        <p className="mt-4 font-medium">{dedicatoria.assinatura}</p>
+        <p className="text-muted mt-4 whitespace-pre-line">{dedicatoria.mensaje}</p>
+        <p className="mt-4 font-medium">{dedicatoria.firma}</p>
         <button className="btn-primary mt-6 w-full" onClick={onClose} autoFocus>
           {t.home.start}
         </button>
@@ -50,7 +50,7 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [error, setError] = useState("");
-  // Esta página só é desenhada no navegador (depois do login), por isso podemos ler o localStorage.
+  // Esta página solo se pinta en el navegador (después del login), así que podemos leer el localStorage.
   const [showWelcome, setShowWelcome] = useState(() => {
     try {
       return typeof window !== "undefined" && !localStorage.getItem("welcome-seen");
@@ -73,7 +73,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // O estado só muda depois do pedido (após o await), não de forma síncrona.
+    // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
@@ -83,7 +83,7 @@ export default function HomePage() {
     try {
       localStorage.setItem("welcome-seen", "1");
     } catch {
-      /* ignora */
+      /* se ignora */
     }
   }
 
@@ -94,7 +94,7 @@ export default function HomePage() {
       <section className="mb-8">
         <h1 className="text-3xl font-bold">
           {lang === "es" ? "¡" : ""}
-          {greeting(t)}, {dedicatoria.nome}! 👋
+          {greeting(t)}, {dedicatoria.nombre}! 👋
         </h1>
         <p className="text-muted mt-1">{dedicatoria.frase}</p>
       </section>
@@ -119,7 +119,7 @@ export default function HomePage() {
                 <p className="mt-1 text-4xl font-bold">{due.total_due}</p>
               </div>
               {due.total_due > 0 ? (
-                <Link href="/estudar" className="btn mt-4 bg-white/95 text-[#1859c4] hover:bg-white">
+                <Link href="/estudiar" className="btn mt-4 bg-white/95 text-[#1859c4] hover:bg-white">
                   {t.home.reviewNow}
                 </Link>
               ) : (

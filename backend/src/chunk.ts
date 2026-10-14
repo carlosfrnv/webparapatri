@@ -18,7 +18,7 @@ function normalize(text: string): string {
     .trim();
 }
 
-/** Divide um texto em fragmentos de ~1.500 caracteres, respeitando parágrafos, com 200 de sobreposição. */
+/** Divide un texto en fragmentos de ~1.500 caracteres, respetando párrafos, con 200 de solapamiento. */
 function splitText(text: string): string[] {
   const paragraphs = normalize(text)
     .split(/\n\s*\n/)
@@ -29,7 +29,7 @@ function splitText(text: string): string[] {
   const chunks: string[] = [];
   let current = "";
   for (const paragraph of paragraphs) {
-    // Não fechamos fragmentos muito pequenos (ex.: um título solto).
+    // No cerramos fragmentos muy pequeños (p. ej., un título suelto).
     if (current.length >= MIN_SIZE && current.length + paragraph.length + 2 > TARGET) {
       chunks.push(current);
       const tail = current.slice(-OVERLAP);

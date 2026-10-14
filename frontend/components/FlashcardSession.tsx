@@ -6,7 +6,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import type { DueCard } from "@/lib/types";
 
-// Qualidade SM-2 de cada botão (os textos vêm do dicionário, pela mesma ordem).
+// Calidad SM-2 de cada botón (los textos vienen del diccionario, en el mismo orden).
 const GRADES = [
   { quality: 1, cls: "bg-danger-soft text-danger" },
   { quality: 3, cls: "bg-warning-soft" },
@@ -14,7 +14,7 @@ const GRADES = [
   { quality: 5, cls: "bg-success-soft text-success" },
 ];
 
-/** Sessão de revisão: vira o cartão, classifica de 0 a 5 (SM-2). */
+/** Sesión de repaso: da la vuelta a la tarjeta y la puntúa de 0 a 5 (SM-2). */
 export function FlashcardSession({
   cards,
   onFinish,
@@ -40,7 +40,7 @@ export function FlashcardSession({
     try {
       await api.post("/flashcards/review", { document_id: card.document_id, card_index: card.card_index, quality });
       setFlipped(false);
-      // "Não sabia": volta ao fim da fila desta sessão.
+      // "No lo sabía": vuelve al final de la cola de esta sesión.
       setQueue((q) => (quality < 3 ? [...q.slice(1), q[0]] : q.slice(1)));
       if (quality >= 3) setDone((n) => n + 1);
     } catch (err) {
@@ -50,7 +50,7 @@ export function FlashcardSession({
     }
   }
 
-  // Atalhos de teclado: espaço vira, 1-4 classifica.
+  // Atajos de teclado: espacio da la vuelta, 1-4 puntúa.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;

@@ -26,7 +26,7 @@ chatRouter.post(
     const body = chatSchema.parse(req.body);
     const conversationId = body.conversation_id ?? randomUUID();
 
-    // Últimas 6 mensagens, para conter o custo.
+    // Últimos 6 mensajes, para contener el coste.
     const { data: recent } = await supabase
       .from("chat_messages")
       .select("role, content")
@@ -46,7 +46,7 @@ chatRouter.post(
       content: body.question,
     });
 
-    // Server-Sent Events: fontes primeiro, depois o texto aos bocadinhos.
+    // Server-Sent Events: primero las fuentes, luego el texto a trocitos.
     res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
@@ -56,7 +56,7 @@ chatRouter.post(
     const send = (event: string, data: unknown) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-    // As pesquisas web podem demorar: um "ping" mantém a ligação aberta.
+    // Las búsquedas web pueden tardar: un "ping" mantiene la conexión abierta.
     const keepAlive = setInterval(() => res.write(": ping\n\n"), 15000);
 
     try {
@@ -68,10 +68,10 @@ chatRouter.post(
         documentId: body.document_id,
         onMeta: ({ sources, tiers }) => send("meta", { conversation_id: conversationId, sources, tiers }),
         onText: (text) => send("delta", { text }),
-        // O frontend mostra "A consultar…" e apaga qualquer preâmbulo: só conta a resposta final.
+        // El frontend muestra "Buscando…" y borra cualquier preámbulo: solo cuenta la respuesta final.
         onWebTool: (tool) => send("status", { phase: tool }),
       });
-      // Guardamos a resposta gerada e os nomes/endereços das fontes. Nunca o texto das páginas web.
+      // Guardamos la respuesta generada y los nombres/enlaces de las fuentes. Nunca el texto de las páginas web.
       await supabase.from("chat_messages").insert({
         user_id: userId,
         conversation_id: conversationId,
@@ -81,7 +81,7 @@ chatRouter.post(
       });
       send("done", { text: result.text, sources: result.sources, web_searches: result.webSearches });
     } catch (err) {
-      console.error("Erro no chat:", err);
+      console.error("Error en el chat:", err);
       send("error", { error: t(lang, err instanceof AiError ? err.key : "chatFailed") });
     } finally {
       clearInterval(keepAlive);
@@ -101,7 +101,7 @@ chatRouter.get(
       .order("created_at", { ascending: false })
       .limit(300);
     if (error) throw error;
-    // Uma entrada por conversa, com a primeira pergunta como título.
+    // Una entrada por conversación, con la primera pregunta como título.
     const map = new Map<string, { conversation_id: string; title: string; updated_at: string }>();
     for (const m of data ?? []) {
       const existing = map.get(m.conversation_id);

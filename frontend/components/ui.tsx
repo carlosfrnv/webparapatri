@@ -84,7 +84,7 @@ export function StatusBadge({ status }: { status: DocumentItem["status"] }) {
   );
 }
 
-/** Markdown com selos de origem ([Os teus apontamentos], [IAEA]…) e links internos para as citações [n]. */
+/** Markdown con sellos de origen ([Tus apuntes], [IAEA]…) y enlaces internos para las citas [n]. */
 export function Markdown({ children, citeHref }: { children: string; citeHref?: (n: number) => string | undefined }) {
   const withOrigins = markOrigins(children);
   const text = citeHref
@@ -99,7 +99,7 @@ export function Markdown({ children, citeHref }: { children: string; citeHref?: 
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) =>
-            href?.startsWith("#origem-") ? (
+            href?.startsWith("#origen-") ? (
               <OriginBadge href={href}>{children}</OriginBadge>
             ) : href?.startsWith("/") ? (
               <Link href={href} className="text-accent font-medium no-underline">

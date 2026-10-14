@@ -8,7 +8,7 @@ import { Markdown, Spinner } from "./ui";
 
 const LETTERS = ["A", "B", "C", "D"];
 
-/** Teste de escolha múltipla com correção imediata e explicação. */
+/** Test de opción múltiple con corrección inmediata y explicación. */
 export function Quiz({ documentId, questions }: { documentId: string; questions: QuizQuestion[] }) {
   const t = useT();
   const [index, setIndex] = useState(0);

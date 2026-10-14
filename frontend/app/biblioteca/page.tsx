@@ -116,12 +116,12 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => {
-    // O estado só muda depois do pedido (após o await), não de forma síncrona.
+    // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
-  // Quando um ficheiro sem disciplina é atribuído, sai desta lista e a contagem da disciplina sobe.
+  // Cuando se asigna un archivo sin asignatura, sale de esta lista y sube el contador de la asignatura.
   function onAssigned(doc: DocumentItem) {
     setUnassigned((list) => list.filter((d) => d.id !== doc.id));
     setSubjects(
@@ -135,7 +135,7 @@ export default function LibraryPage() {
     try {
       localStorage.setItem("library-year", String(y));
     } catch {
-      /* ignora */
+      /* se ignora */
     }
   }
 
@@ -236,7 +236,7 @@ export default function LibraryPage() {
               {visible.map((s) => (
                 <li key={s.id}>
                   <Link
-                    href={`/disciplina/${s.id}`}
+                    href={`/asignatura/${s.id}`}
                     className="card hover:border-accent flex h-full flex-col justify-between gap-3 p-4"
                   >
                     <p className="font-semibold">{s.name}</p>

@@ -1,6 +1,6 @@
 /**
- * SM-2 simplificado. quality: 0 (não sabia) … 5 (perfeito).
- * Devolve a nova facilidade, o intervalo em dias e a data da próxima revisão.
+ * SM-2 simplificado. quality: 0 (no lo sabía) … 5 (perfecto).
+ * Devuelve la nueva facilidad, el intervalo en días y la fecha del próximo repaso.
  */
 export function sm2(prev: { ease: number; interval_days: number }, quality: number) {
   let ease = prev.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
@@ -8,7 +8,7 @@ export function sm2(prev: { ease: number; interval_days: number }, quality: numb
 
   let interval: number;
   if (quality < 3) {
-    interval = 0; // volta a aparecer ainda hoje
+    interval = 0; // vuelve a aparecer hoy mismo
   } else if (prev.interval_days === 0) {
     interval = 1;
   } else if (prev.interval_days === 1) {

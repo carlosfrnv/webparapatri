@@ -1,7 +1,7 @@
 import type { Lang } from "./i18n";
 
-// Prompts em espanhol e português europeu. Os apontamentos podem estar em português:
-// a IA responde sempre no idioma escolhido pela estudante.
+// Prompts en español y en portugués europeo. Los apuntes pueden estar en portugués:
+// la IA responde siempre en el idioma elegido en la web.
 
 export const BASE_SYSTEM: Record<Lang, string> = {
   es: `Eres un tutor especializado en la Licenciatura en Imagen Médica y Radioterapia
@@ -120,7 +120,7 @@ ${texto}`;
 
 export const chatPrompt = (
   lang: Lang,
-  p: { excertos: string; historico: string; pergunta: string; webAllowed: boolean },
+  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean },
 ) =>
   lang === "es"
     ? `Responde a la duda siguiendo el orden de prioridad de las fuentes.
@@ -136,11 +136,11 @@ ${
 - Usa ejemplos, analogías y, si ayuda, una tabla.
 - Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.
 FRAGMENTOS:
-${p.excertos || "(no se ha encontrado ningún fragmento relevante en sus apuntes ni en la biblioteca de referencia)"}
+${p.fragmentos || "(no se ha encontrado ningún fragmento relevante en sus apuntes ni en la biblioteca de referencia)"}
 HISTORIAL RECIENTE:
-${p.historico || "(inicio de la conversación)"}
+${p.historial || "(inicio de la conversación)"}
 PREGUNTA:
-${p.pergunta}`
+${p.pregunta}`
     : `Responde à dúvida seguindo a ordem de prioridade das fontes.
 Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou biblioteca de referência).
 - Cita os excertos no texto assim: [1], [3], além da etiqueta de origem.
@@ -154,13 +154,13 @@ ${
 - Usa exemplos, analogias e, se ajudar, uma tabela.
 - Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.
 EXCERTOS:
-${p.excertos || "(nenhum excerto relevante encontrado nos apontamentos nem na biblioteca de referência)"}
+${p.fragmentos || "(nenhum excerto relevante encontrado nos apontamentos nem na biblioteca de referência)"}
 HISTÓRICO RECENTE:
-${p.historico || "(início da conversa)"}
+${p.historial || "(início da conversa)"}
 PERGUNTA:
-${p.pergunta}`;
+${p.pregunta}`;
 
-/** Material de referência para enriquecer o material de estudo (nível 2) e permissão de pesquisa web (nível 3). */
+/** Material de referencia para enriquecer el material de estudio (nivel 2) y permiso de búsqueda web (nivel 3). */
 export const studyContext = (lang: Lang, referencia: string, webAllowed: boolean) => {
   if (!referencia && !webAllowed) return "";
   return lang === "es"
@@ -180,50 +180,51 @@ ${webAllowed ? "Os apontamentos são escassos: podes consultar radiopaedia.org, 
 O que vem dos apontamentos não leva etiqueta; o que vier de outra fonte, sim.`;
 };
 
-// Os apontamentos estão em português: as palavras-chave para a pesquisa são sempre em português,
-// mesmo que a pergunta seja feita em espanhol.
-export const keywordsPrompt = (pergunta: string) =>
-  `Extrai entre 2 e 4 palavras-chave EM PORTUGUÊS DE PORTUGAL (só os termos técnicos essenciais, sem artigos) desta pergunta,
-para pesquisar em apontamentos escritos em português. Se a pergunta estiver noutra língua, traduz os termos.
-Devolve APENAS JSON: {"keywords":["",""]}
-PERGUNTA:
-${pergunta}`;
+// Los apuntes están en portugués: las palabras clave para buscar se piden siempre en portugués,
+// aunque la pregunta se haga en español.
+export const keywordsPrompt = (pregunta: string) =>
+  `Extrae entre 2 y 4 palabras clave de esta pregunta para buscar en unos apuntes escritos en
+PORTUGUÉS DE PORTUGAL. Escríbelas en portugués de Portugal (solo los términos técnicos esenciales,
+sin artículos). Si la pregunta está en otro idioma, traduce los términos.
+Devuelve SOLO JSON: {"keywords":["",""]}
+PREGUNTA:
+${pregunta}`;
 
-export const classifyPrompt = (titulo: string, texto: string, disciplinas: string) =>
-  `Uma estudante carregou um ficheiro. Escolhe a unidade curricular mais provável da lista.
-Devolve APENAS JSON: {"subject_id":"<id da lista ou null>","reason":""}
-UNIDADES CURRICULARES (id: nome, ano):
-${disciplinas}
-TÍTULO DO FICHEIRO: ${titulo}
-INÍCIO DO TEXTO:
+export const classifyPrompt = (titulo: string, texto: string, asignaturas: string) =>
+  `Una estudiante ha subido un archivo. Elige la asignatura más probable de la lista.
+Devuelve SOLO JSON: {"subject_id":"<id de la lista o null>","reason":""}
+ASIGNATURAS (id: nombre, curso):
+${asignaturas}
+TÍTULO DEL ARCHIVO: ${titulo}
+INICIO DEL TEXTO:
 ${texto}`;
 
 export const quizExplainPrompt = (
   lang: Lang,
-  pergunta: string,
-  opcoes: string[],
-  certa: number,
-  escolhida: number,
+  pregunta: string,
+  opciones: string[],
+  correcta: number,
+  elegida: number,
   contexto: string,
 ) =>
   lang === "es"
     ? `Una estudiante ha respondido a esta pregunta de test.
-PREGUNTA: ${pergunta}
+PREGUNTA: ${pregunta}
 OPCIONES:
-${opcoes.map((o, i) => `${letter(i)}) ${o}`).join("\n")}
-RESPUESTA CORRECTA: ${letter(certa)}
-SU RESPUESTA: ${letter(escolhida)}
-Explica de forma breve y didáctica por qué la respuesta correcta es la correcta${certa === escolhida ? "" : " y dónde está el error en el razonamiento de su respuesta"}.
+${opciones.map((o, i) => `${letter(i)}) ${o}`).join("\n")}
+RESPUESTA CORRECTA: ${letter(correcta)}
+SU RESPUESTA: ${letter(elegida)}
+Explica de forma breve y didáctica por qué la respuesta correcta es la correcta${correcta === elegida ? "" : " y dónde está el error en el razonamiento de su respuesta"}.
 Usa los apuntes si ayudan.
 APUNTES:
 ${contexto || "(sin fragmentos)"}`
     : `Uma estudante respondeu a esta pergunta de teste.
-PERGUNTA: ${pergunta}
+PERGUNTA: ${pregunta}
 OPÇÕES:
-${opcoes.map((o, i) => `${letter(i)}) ${o}`).join("\n")}
-RESPOSTA CERTA: ${letter(certa)}
-RESPOSTA DELA: ${letter(escolhida)}
-Explica de forma curta e didática porque a resposta certa é a certa${certa === escolhida ? "" : " e onde está o erro no raciocínio da resposta dela"}.
+${opciones.map((o, i) => `${letter(i)}) ${o}`).join("\n")}
+RESPOSTA CERTA: ${letter(correcta)}
+RESPOSTA DELA: ${letter(elegida)}
+Explica de forma curta e didática porque a resposta certa é a certa${correcta === elegida ? "" : " e onde está o erro no raciocínio da resposta dela"}.
 Usa os apontamentos se ajudarem.
 APONTAMENTOS:
-${contexto || "(sem excertos)"}`;
+${contexto || "(sem fragmentos)"}`;

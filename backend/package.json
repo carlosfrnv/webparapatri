@@ -1,8 +1,8 @@
 {
-  "name": "estudo-imr-backend",
+  "name": "estudio-imr-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "API do Estudo IMR: ficheiros, IA e estudo",
+  "description": "API de Estudio IMR: archivos, IA y estudio",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/index.ts",
@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "referencia": "tsx --env-file=.env src/scripts/subir-referencia.ts",
-    "probar": "tsx --env-file=.env src/scripts/probar-pergunta.ts"
+    "probar": "tsx --env-file=.env src/scripts/probar-pregunta.ts"
   },
   "engines": {
     "node": ">=20"

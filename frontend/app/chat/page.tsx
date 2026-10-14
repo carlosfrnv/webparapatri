@@ -15,7 +15,7 @@ interface Conversation {
 
 type WebPhase = "web_search" | "web_fetch";
 
-/** Lê o stream SSE do backend (event: meta | delta | status | done | error). */
+/** Lee el stream SSE del backend (event: meta | delta | status | done | error). */
 async function streamChat(
   body: { question: string; conversation_id?: string; document_id?: string },
   handlers: {
@@ -141,12 +141,12 @@ export default function ChatPage() {
             setWebPhase(null);
             updateLast((msg) => ({ ...msg, content: msg.content + t }));
           },
-          // A IA começou a consultar a web: mostramos o estado e apagamos qualquer preâmbulo.
+          // La IA ha empezado a consultar la web: mostramos el estado y borramos cualquier preámbulo.
           status: (phase) => {
             setWebPhase(phase);
             updateLast((msg) => ({ ...msg, content: "" }));
           },
-          // Resposta final (só o texto depois das pesquisas) e todas as fontes, incluindo as web.
+          // Respuesta final (solo el texto después de las búsquedas) y todas las fuentes, incluidas las web.
           done: ({ text, sources }) => updateLast((msg) => ({ ...msg, content: text || msg.content, sources })),
         },
       );

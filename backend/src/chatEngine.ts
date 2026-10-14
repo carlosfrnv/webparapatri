@@ -7,11 +7,11 @@ import type { WebSource } from "./web";
 export type PublicSource = Omit<Source, "content" | "rank" | "coverage" | "proximity">;
 
 export interface ChatTiers {
-  /** Os apontamentos tiveram relevância suficiente. */
+  /** Sus apuntes han tenido relevancia suficiente. */
   notes: boolean;
-  /** A Biblioteca de referência teve relevância suficiente. */
+  /** La biblioteca de referencia ha tenido relevancia suficiente. */
   reference: boolean;
-  /** Foi permitida a consulta web (nenhum dos níveis locais chegou). */
+  /** Se ha permitido la consulta web (ninguno de los niveles locales bastaba). */
   web: boolean;
 }
 
@@ -21,8 +21,8 @@ export interface ChatAnswer extends GenerateResult {
 }
 
 /**
- * Responde a uma pergunta seguindo a ordem de prioridade:
- *  1) apontamentos  2) Biblioteca de referência  3) web (radiopaedia/iaea/efrs)  4) conhecimento geral.
+ * Responde a una pregunta siguiendo el orden de prioridad:
+ *  1) apuntes  2) biblioteca de referencia  3) web (radiopaedia/iaea/efrs)  4) conocimiento general.
  */
 export async function answerQuestion(p: {
   userId: string;
@@ -36,8 +36,8 @@ export async function answerQuestion(p: {
 }): Promise<ChatAnswer> {
   const found = await findTieredSources(p.userId, p.question, { lang: p.lang, documentId: p.documentId });
   const localSources = [...found.notes, ...found.references];
-  // Nível 3 só se nenhum dos níveis locais tiver relevância suficiente
-  // (e não quando ela pergunta sobre um ficheiro concreto).
+  // Nivel 3 solo si ninguno de los niveles locales tiene relevancia suficiente
+  // (y no cuando pregunta sobre un archivo concreto).
   const tiers: ChatTiers = {
     notes: found.notesSufficient,
     reference: found.referencesSufficient,
@@ -48,9 +48,9 @@ export async function answerQuestion(p: {
 
   const result = await generate(
     chatPrompt(p.lang, {
-      excertos: formatSources(localSources, p.lang),
-      historico: p.history,
-      pergunta: p.question,
+      fragmentos: formatSources(localSources, p.lang),
+      historial: p.history,
+      pregunta: p.question,
       webAllowed: tiers.web,
     }),
     {
@@ -62,7 +62,7 @@ export async function answerQuestion(p: {
       onWebTool: p.onWebTool,
     },
   );
-  // Nos chips só aparecem os excertos que a resposta cita de facto ([n]) e as fontes web usadas.
+  // En los chips solo aparecen los fragmentos que la respuesta cita de verdad ([n]) y las fuentes web usadas.
   const cited = new Set([...result.text.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1])));
   const citedLocal = publicLocal.filter((s) => cited.has(s.n));
   return { ...result, sources: [...citedLocal, ...result.webSources], tiers };

@@ -12,13 +12,13 @@ import { Logo } from "./LoginScreen";
 const NAV: { href: string; key: keyof Dictionary["nav"]; icon: string }[] = [
   { href: "/", key: "home", icon: "🏠" },
   { href: "/biblioteca", key: "library", icon: "📚" },
-  { href: "/estudar", key: "study", icon: "🧠" },
+  { href: "/estudiar", key: "study", icon: "🧠" },
   { href: "/chat", key: "chat", icon: "💬" },
 ];
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
-  if (href === "/biblioteca") return ["/biblioteca", "/disciplina", "/documento"].some((p) => pathname.startsWith(p));
+  if (href === "/biblioteca") return ["/biblioteca", "/asignatura", "/documento"].some((p) => pathname.startsWith(p));
   return pathname.startsWith(href);
 }
 
@@ -34,7 +34,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     try {
       localStorage.setItem("theme", next ? "dark" : "light");
     } catch {
-      /* armazenamento indisponível */
+      /* almacenamiento no disponible */
     }
   }
   return (
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh md:flex">
-      {/* Barra lateral (computador) */}
+      {/* Barra lateral (ordenador) */}
       <aside className="border-border bg-surface sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r p-4 md:flex">
         <Link href="/" className="mb-8 flex items-center gap-2 px-2">
           <Logo size={36} />
@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topo (telemóvel) */}
+        {/* Cabecera (móvil) */}
         <header className="border-border bg-surface/90 sticky top-0 z-20 flex items-center justify-between border-b px-4 py-2 backdrop-blur md:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={30} />
@@ -119,7 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-28 sm:px-6 md:pb-10">{children}</main>
       </div>
 
-      {/* Barra inferior (telemóvel) */}
+      {/* Barra inferior (móvil) */}
       <nav
         className="border-border bg-surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label={t.nav.mainNav}

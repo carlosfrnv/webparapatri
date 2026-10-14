@@ -34,7 +34,7 @@ export default function SubjectPage() {
   }, [id]);
 
   useEffect(() => {
-    // O estado só muda depois do pedido (após o await), não de forma síncrona.
+    // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);

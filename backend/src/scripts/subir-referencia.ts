@@ -1,12 +1,12 @@
 /**
- * Carrega PDFs para a "Biblioteca de referência" (IAEA / EFRS).
+ * Sube PDF a la "Biblioteca de referencia" (IAEA / EFRS).
  *
- * Uso (dentro de backend/, com o .env preenchido):
- *   npm run referencia -- --org IAEA caminho/para/ficheiro1.pdf caminho/para/ficheiro2.pdf
- *   npm run referencia -- --org EFRS pasta-com-pdfs/
+ * Uso (dentro de backend/, con el .env relleno):
+ *   npm run referencia -- --org IAEA ruta/al/archivo1.pdf ruta/al/archivo2.pdf
+ *   npm run referencia -- --org EFRS carpeta-con-pdfs/
  *
- * Usa o mesmo fluxo de extração e divisão em fragmentos que os apontamentos, mas marca os
- * documentos como source_type = 'referencia': não aparecem na Biblioteca dela, só na pesquisa.
+ * Usa el mismo flujo de extracción y troceado que los apuntes, pero marca los documentos
+ * como source_type = 'referencia': no aparecen en su Biblioteca, solo en la búsqueda.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join } from "node:path";
@@ -20,7 +20,7 @@ const MIME: Record<string, string> = {
   ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ".txt": "text/plain",
 };
-// Limite do plano gratuito do Supabase Storage por ficheiro.
+// Límite por archivo del plan gratuito de Supabase Storage.
 const MAX_BYTES = 50 * 1024 * 1024;
 
 async function main() {
@@ -28,7 +28,7 @@ async function main() {
   const orgIndex = args.indexOf("--org");
   const org = (orgIndex >= 0 ? args[orgIndex + 1] : "").toUpperCase();
   if (org !== "IAEA" && org !== "EFRS") {
-    console.error("Indica a organização: --org IAEA ou --org EFRS");
+    console.error("Indica la organización: --org IAEA o --org EFRS");
     process.exit(1);
   }
   const paths = args.filter((_, i) => i !== orgIndex && i !== orgIndex + 1);
@@ -40,7 +40,7 @@ async function main() {
       : [p],
   );
   if (files.length === 0) {
-    console.error("Não indicaste nenhum ficheiro (.pdf, .docx, .pptx ou .txt).");
+    console.error("No has indicado ningún archivo (.pdf, .docx, .pptx o .txt).");
     process.exit(1);
   }
 
@@ -49,11 +49,11 @@ async function main() {
     const name = basename(file);
     const mime = MIME[extname(file).toLowerCase()];
     if (!mime) {
-      console.log(`⏭️  ${name}: tipo não suportado`);
+      console.log(`⏭️  ${name}: tipo no admitido`);
       continue;
     }
     if (statSync(file).size > MAX_BYTES) {
-      console.log(`⏭️  ${name}: maior do que 50 MB (limite do Supabase gratuito). Divide o PDF em partes.`);
+      console.log(`⏭️  ${name}: ocupa más de 50 MB (límite de Supabase gratuito). Divide el PDF en partes.`);
       continue;
     }
     process.stdout.write(`📄 ${name} (${org})… `);

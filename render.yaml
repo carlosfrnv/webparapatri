@@ -1,7 +1,7 @@
-# Configuração do backend no Render (New → Blueprint).
+# Configuración del backend en Render (New → Blueprint).
 services:
   - type: web
-    name: estudo-imr-api
+    name: estudio-imr-api
     runtime: node
     plan: free
     region: frankfurt

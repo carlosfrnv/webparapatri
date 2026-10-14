@@ -15,17 +15,17 @@ interface Pending {
   error?: "badType" | "tooBig" | string;
 }
 
-/** Zona grande de arrastar e largar, com progresso por ficheiro. */
+/** Zona grande de arrastrar y soltar, con progreso por archivo. */
 export function UploadZone({
   subjectId,
   fields,
   title,
   onUploaded,
 }: {
-  /** Texto principal da zona (por defeito, "Arrasta para aqui os teus apontamentos"). */
+  /** Texto principal de la zona (por defecto, "Arrastra aquí tus apuntes"). */
   title?: string;
   subjectId: string | null;
-  /** Campos extra (ex.: documento da Biblioteca de referência). */
+  /** Campos extra (p. ej., documento de la biblioteca de referencia). */
   fields?: Omit<UploadFields, "subjectId">;
   onUploaded: (doc: DocumentItem) => void;
 }) {
