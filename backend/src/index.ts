@@ -7,6 +7,7 @@ import { errorHandler } from "./http";
 import { generalLimiter } from "./limits";
 import { chatRouter } from "./routes/chat";
 import { documentsRouter } from "./routes/documents";
+import { examsRouter } from "./routes/exams";
 import { studyRouter } from "./routes/study";
 import { subjectsRouter } from "./routes/subjects";
 
@@ -32,6 +33,7 @@ app.use(generalLimiter, requireAuth);
 app.use("/subjects", subjectsRouter);
 app.use("/documents", documentsRouter);
 app.use("/chat", chatRouter);
+app.use("/exams", examsRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);

@@ -23,13 +23,26 @@ studyRouter.get(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     const documentId = typeof req.query.document_id === "string" ? req.query.document_id : undefined;
+    const subjectId = typeof req.query.subject_id === "string" ? req.query.subject_id : undefined;
     const limit = Math.min(Number(req.query.limit) || 30, 100);
+
+    // Solo las de una asignatura (p. ej., para preparar un examen).
+    let subjectDocs: string[] | undefined;
+    if (subjectId) {
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("subject_id", subjectId);
+      subjectDocs = (docs ?? []).map((d) => d.id);
+    }
 
     let materialsQuery = supabase
       .from("study_materials")
       .select("document_id, flashcards, documents(title)")
       .eq("user_id", userId);
     if (documentId) materialsQuery = materialsQuery.eq("document_id", documentId);
+    if (subjectDocs) materialsQuery = materialsQuery.in("document_id", subjectDocs);
     const { data: materials, error } = await materialsQuery;
     if (error) throw error;
 
@@ -38,6 +51,7 @@ studyRouter.get(
       .select("document_id, card_index, due_at, interval_days")
       .eq("user_id", userId);
     if (documentId) reviewsQuery = reviewsQuery.eq("document_id", documentId);
+    if (subjectDocs) reviewsQuery = reviewsQuery.in("document_id", subjectDocs);
     const { data: reviews } = await reviewsQuery;
     const reviewMap = new Map((reviews ?? []).map((r) => [`${r.document_id}:${r.card_index}`, r]));
 

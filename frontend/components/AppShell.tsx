@@ -13,6 +13,7 @@ const NAV: { href: string; key: keyof Dictionary["nav"]; icon: string }[] = [
   { href: "/", key: "home", icon: "🏠" },
   { href: "/biblioteca", key: "library", icon: "📚" },
   { href: "/estudiar", key: "study", icon: "🧠" },
+  { href: "/calendario", key: "calendar", icon: "📅" },
   { href: "/chat", key: "chat", icon: "💬" },
 ];
 
@@ -121,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Barra inferior (móvil) */}
       <nav
-        className="border-border bg-surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="border-border bg-surface fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label={t.nav.mainNav}
       >
         {NAV.map((item) => (

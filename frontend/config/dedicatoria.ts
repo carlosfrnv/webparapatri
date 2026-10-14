@@ -16,6 +16,9 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
     firma: "— Carlos",
     // Frase corta que aparece siempre debajo del saludo.
     frase: "Paso a paso. Hoy también cuenta. 💪",
+    // Mensajes del calendario el día del examen y el día antes.
+    examenHoy: "Hoy es el examen, nena. Lo vas a hacer genial: confía en todo lo que has estudiado 🖤 — Carlos",
+    examenManana: "Mañana es el examen. Repasa con calma, duerme bien abrazada a Bob y confía en ti 🖤 — Carlos",
     // Respuestas del chat cuando pregunta algo que no tiene que ver con sus estudios (sale una u otra).
     fueraDeTema: [
       "Tu novio me ha configurado únicamente para que hablemos de tus estudios. Dice que te centres en estudiar y que te ama mucho 🖤. Eso pregúntaselo a ChatGPT 😉",
@@ -35,6 +38,8 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
 Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
     firma: "— Carlos",
     frase: "Um passo de cada vez. Hoje também conta. 💪",
+    examenHoy: "Hoje é o exame, nena. Vais correr muito bem: confia em tudo o que estudaste 🖤 — Carlos",
+    examenManana: "Amanhã é o exame. Revê com calma, dorme bem abraçada ao Bob e confia em ti 🖤 — Carlos",
     fueraDeTema: [
       "O teu namorado configurou-me só para falarmos dos teus estudos. Diz que te concentres a estudar e que te ama muito 🖤. Isso pergunta ao ChatGPT 😉",
       "Ui, isso não sai no exame 😅. O teu namorado programou-me só para te ajudar a estudar. Pede-me para te dizer que te ama muitíssimo 🖤 e que isso perguntes ao ChatGPT.",

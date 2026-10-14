@@ -1,32 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import type { DocumentItem, DueCard } from "@/lib/types";
+import type { DocumentItem, DueCard, Subject } from "@/lib/types";
 
-export default function StudyPage() {
+function StudyPageContent() {
   const t = useT();
+  const router = useRouter();
   const [due, setDue] = useState<{ total_due: number; total_cards: number; cards: DueCard[] } | null>(null);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [session, setSession] = useState(false);
   const [error, setError] = useState("");
+  // Desde el calendario se abre con ?asignatura=<id> para repasar solo esa asignatura.
+  const subjectId = useSearchParams().get("asignatura");
+  const [subjectName, setSubjectName] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const [d, list] = await Promise.all([
-        api.get<{ total_due: number; total_cards: number; cards: DueCard[] }>("/flashcards/due?limit=40"),
+      const [d, list, subjects] = await Promise.all([
+        api.get<{ total_due: number; total_cards: number; cards: DueCard[] }>(
+          `/flashcards/due?limit=40${subjectId ? `&subject_id=${encodeURIComponent(subjectId)}` : ""}`,
+        ),
         api.get<DocumentItem[]>("/documents"),
+        subjectId ? api.get<Subject[]>("/subjects") : Promise.resolve([]),
       ]);
       setDue(d);
-      setDocs(list.filter((x) => x.status === "ready"));
+      setDocs(list.filter((x) => x.status === "ready" && (!subjectId || x.subject_id === subjectId)));
+      setSubjectName(subjects.find((s) => s.id === subjectId)?.name ?? "");
     } catch (err) {
       setError(errorMessage(err));
     }
-  }, []);
+  }, [subjectId]);
 
   useEffect(() => {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
@@ -54,6 +63,20 @@ export default function StudyPage() {
   return (
     <>
       <PageHeader title={t.studyPage.title} subtitle={t.studyPage.subtitle} />
+      {subjectId && subjectName && (
+        <p className="bg-accent-soft mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm">
+          <span>{t.studyPage.onlySubject(subjectName)}</span>
+          <button
+            className="text-accent font-medium"
+            onClick={() => {
+              setDue(null);
+              router.replace("/estudiar");
+            }}
+          >
+            {t.studyPage.showAll}
+          </button>
+        </p>
+      )}
       {error && (
         <ErrorBox
           message={error}
@@ -109,5 +132,14 @@ export default function StudyPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function StudyPage() {
+  // useSearchParams necesita un Suspense alrededor.
+  return (
+    <Suspense>
+      <StudyPageContent />
+    </Suspense>
   );
 }

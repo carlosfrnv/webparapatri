@@ -268,7 +268,9 @@ export default function ChatPage() {
               <div key={i} className="flex justify-start">
                 <div className="card max-w-[95%] rounded-bl-md px-4 py-3 sm:max-w-[85%]">
                   {m.content.trim() === OFF_TOPIC_MARKER ? (
-                    <p className="whitespace-pre-wrap">{pickOffTopic(dedicatoria.fueraDeTema, messages[i - 1]?.content ?? String(i))}</p>
+                    <p className="whitespace-pre-wrap">
+                      {pickOffTopic(dedicatoria.fueraDeTema, messages[i - 1]?.content ?? String(i))}
+                    </p>
                   ) : m.content ? (
                     <Markdown
                       citeHref={(n) => {
@@ -293,7 +295,9 @@ export default function ChatPage() {
                       <span className="bg-muted h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
                     </span>
                   )}
-                  {m.sources && m.content && m.content.trim() !== OFF_TOPIC_MARKER && <SourceChips sources={m.sources} />}
+                  {m.sources && m.content && m.content.trim() !== OFF_TOPIC_MARKER && (
+                    <SourceChips sources={m.sources} />
+                  )}
                 </div>
               </div>
             ),

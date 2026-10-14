@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
 import { useLang, useT, type Dictionary } from "@/lib/i18n";
-import type { Stats } from "@/lib/types";
+import type { ExamsResponse, Stats } from "@/lib/types";
 
 function greeting(t: Dictionary) {
   const h = new Date().getHours();
@@ -49,6 +50,7 @@ export default function HomePage() {
   const dedicatoria = useDedicatoria();
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
+  const [exams, setExams] = useState<ExamsResponse | null>(null);
   const [error, setError] = useState("");
   // Esta página solo se pinta en el navegador (después del login), así que podemos leer el localStorage.
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -61,12 +63,15 @@ export default function HomePage() {
 
   const load = useCallback(async () => {
     try {
-      const [s, d] = await Promise.all([
+      const [s, d, e] = await Promise.all([
         api.get<Stats>("/stats"),
         api.get<{ total_due: number; total_cards: number }>("/flashcards/due?limit=1"),
+        // Si falla el calendario, el resto de la página se muestra igual.
+        api.get<ExamsResponse>(`/exams?today=${localToday()}`).catch(() => null),
       ]);
       setStats(s);
       setDue(d);
+      setExams(e);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -77,6 +82,9 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  // El examen más cercano de los que tienen plan (próximas semanas).
+  const nextExam = exams?.exams.find((e) => exams.plan.some((p) => p.exam_id === e.id));
 
   function closeWelcome() {
     setShowWelcome(false);
@@ -112,6 +120,17 @@ export default function HomePage() {
 
       {stats && due && (
         <div className="space-y-8">
+          {nextExam && (
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">{t.calendar.nextExam}</h2>
+                <Link href="/calendario" className="text-accent text-sm font-medium">
+                  {t.calendar.seeCalendar}
+                </Link>
+              </div>
+              <ExamPlanCard exam={nextExam} plan={exams?.plan.find((p) => p.exam_id === nextExam.id)} maxTasks={3} />
+            </section>
+          )}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="card bg-accent text-accent-contrast flex flex-col justify-between p-5 sm:col-span-2 lg:col-span-1">
               <div>

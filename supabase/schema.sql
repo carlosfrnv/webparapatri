@@ -107,6 +107,18 @@ create table if not exists chat_messages (
 );
 create index if not exists chat_messages_conv_idx on chat_messages (user_id, conversation_id, created_at);
 
+-- Calendario de exámenes
+create table if not exists exams (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject_id uuid references subjects(id) on delete set null,
+  title text not null,
+  exam_date date not null,
+  notes text,
+  created_at timestamptz default now()
+);
+create index if not exists exams_user_date_idx on exams (user_id, exam_date);
+
 -- Preferencias (p. ej., si ya se crearon las asignaturas iniciales)
 create table if not exists user_settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -181,11 +193,12 @@ alter table flashcard_reviews enable row level security;
 alter table quiz_attempts enable row level security;
 alter table chat_messages enable row level security;
 alter table user_settings enable row level security;
+alter table exams enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

@@ -9,6 +9,9 @@ Ella sube los apuntes que le llegan por correo (PDF, Word, PowerPoint o texto) y
 - **Flashcards** con repetición espaciada (algoritmo SM-2)
 - **Test** de 10 preguntas con corrección y explicación
 - **Chat** que responde dudas basándose en sus apuntes y cita de qué archivo y página sale cada dato
+- **Calendario de exámenes**: apunta cada examen con su asignatura y la web le dice qué toca hoy (flashcards
+  pendientes y los temas más flojos, repartidos entre los días que quedan; el día antes, repaso general).
+  Un tema cuenta como dominado cuando su último test sale con un 80 % o más. No usa la IA, así que no gasta cupo.
 
 ### De dónde saca la información la IA (por orden de prioridad)
 

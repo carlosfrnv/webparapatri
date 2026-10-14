@@ -121,3 +121,30 @@ export interface Stats {
 
 /** Marca que devuelve el chat cuando la pregunta no tiene que ver con sus estudios (ver backend/src/prompts.ts). */
 export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
+
+export interface Exam {
+  id: string;
+  subject_id: string | null;
+  subject_name: string | null;
+  title: string;
+  exam_date: string; // AAAA-MM-DD
+  notes: string | null;
+  days_left: number;
+}
+
+export type PlanTask =
+  | { type: "flashcards"; count: number; subject_id: string }
+  | { type: "prepare" | "test"; document_id: string; title: string; last_pct: number | null };
+
+export interface ExamPlan {
+  exam_id: string;
+  tasks: PlanTask[];
+  total_docs: number;
+  mastered_docs: number;
+}
+
+export interface ExamsResponse {
+  today: string;
+  exams: Exam[];
+  plan: ExamPlan[];
+}
