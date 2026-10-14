@@ -15,8 +15,14 @@ export interface ChatTiers {
   web: boolean;
 }
 
+/** HTML de las sugerencias de búsqueda de Google (obligatorio mostrarlo si se ha usado su búsqueda). */
+export interface SearchSuggestions {
+  kind: "search_suggestions";
+  html: string;
+}
+
 export interface ChatAnswer extends GenerateResult {
-  sources: (PublicSource | WebSource)[];
+  sources: (PublicSource | WebSource | SearchSuggestions)[];
   tiers: ChatTiers;
 }
 
@@ -33,6 +39,7 @@ export async function answerQuestion(p: {
   onMeta?: (meta: { sources: PublicSource[]; tiers: ChatTiers }) => void;
   onText?: (delta: string) => void;
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
+  onReset?: () => void;
 }): Promise<ChatAnswer> {
   const found = await findTieredSources(p.userId, p.question, { lang: p.lang, documentId: p.documentId });
   const localSources = [...found.notes, ...found.references];
@@ -47,12 +54,14 @@ export async function answerQuestion(p: {
   p.onMeta?.({ sources: publicLocal, tiers });
 
   const result = await generate(
-    chatPrompt(p.lang, {
-      fragmentos: formatSources(localSources, p.lang),
-      historial: p.history,
-      pregunta: p.question,
-      webAllowed: tiers.web,
-    }),
+    // Si el modelo que responde no puede buscar en internet, el prompt no le ofrece la búsqueda.
+    (webAvailable) =>
+      chatPrompt(p.lang, {
+        fragmentos: formatSources(localSources, p.lang),
+        historial: p.history,
+        pregunta: p.question,
+        webAllowed: tiers.web && webAvailable,
+      }),
     {
       lang: p.lang,
       effort: tiers.web ? "medium" : "low",
@@ -60,10 +69,18 @@ export async function answerQuestion(p: {
       web: tiers.web,
       onText: p.onText,
       onWebTool: p.onWebTool,
+      onReset: p.onReset,
     },
   );
   // En los chips solo aparecen los fragmentos que la respuesta cita de verdad ([n]) y las fuentes web usadas.
   const cited = new Set([...result.text.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1])));
   const citedLocal = publicLocal.filter((s) => cited.has(s.n));
-  return { ...result, sources: [...citedLocal, ...result.webSources], tiers };
+  const suggestions: SearchSuggestions[] = result.searchSuggestionsHtml
+    ? [{ kind: "search_suggestions", html: result.searchSuggestionsHtml }]
+    : [];
+  return {
+    ...result,
+    sources: [...citedLocal, ...result.webSources, ...suggestions],
+    tiers: { ...tiers, web: result.usedWeb },
+  };
 }

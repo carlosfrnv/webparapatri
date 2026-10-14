@@ -5,7 +5,7 @@ import { localSourceHref, SourceChips } from "@/components/Sources";
 import { Markdown } from "@/components/ui";
 import { apiFetch, api, errorMessage } from "@/lib/api";
 import { dict, useT } from "@/lib/i18n";
-import { isWebSource, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
+import { isLocalSource, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
 
 interface Conversation {
   conversation_id: string;
@@ -22,6 +22,7 @@ async function streamChat(
     meta: (d: { conversation_id: string; sources: AnySource[] }) => void;
     delta: (t: string) => void;
     status: (phase: WebPhase) => void;
+    reset: () => void;
     done: (d: { text: string; sources: AnySource[] }) => void;
   },
 ) {
@@ -52,6 +53,7 @@ async function streamChat(
       if (event === "meta") handlers.meta(data);
       else if (event === "delta") handlers.delta(data.text);
       else if (event === "status") handlers.status(data.phase);
+      else if (event === "reset") handlers.reset();
       else if (event === "done") handlers.done(data);
       else if (event === "error") throw new Error(data.error);
     }
@@ -146,6 +148,8 @@ export default function ChatPage() {
             setWebPhase(phase);
             updateLast((msg) => ({ ...msg, content: "" }));
           },
+          // Un modelo ha fallado a mitad de respuesta y contesta otro: borramos el texto parcial.
+          reset: () => updateLast((msg) => ({ ...msg, content: "" })),
           // Respuesta final (solo el texto después de las búsquedas) y todas las fuentes, incluidas las web.
           done: ({ text, sources }) => updateLast((msg) => ({ ...msg, content: text || msg.content, sources })),
         },
@@ -257,8 +261,8 @@ export default function ChatPage() {
                   {m.content ? (
                     <Markdown
                       citeHref={(n) => {
-                        const s = m.sources?.find((x) => !isWebSource(x) && x.n === n);
-                        return s && !isWebSource(s) ? localSourceHref(s) : undefined;
+                        const s = m.sources?.filter(isLocalSource).find((x) => x.n === n);
+                        return s ? localSourceHref(s) : undefined;
                       }}
                     >
                       {m.content}

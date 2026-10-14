@@ -73,48 +73,35 @@ Resume-o em Markdown, com todos os pontos essenciais, definições e valores que
 TEXTO:
 ${texto}`;
 
-export const conceptsPrompt = (lang: Lang, texto: string) =>
+// Conceptos, glosario, flashcards y test en UNA sola petición: con los cupos gratuitos
+// (pocas peticiones al día) cada petición cuenta.
+export const studyPackPrompt = (lang: Lang, texto: string) =>
   lang === "es"
-    ? `Devuelve SOLO JSON válido, sin texto adicional:
+    ? `Devuelve SOLO JSON válido, sin texto adicional, con esta forma:
 {"key_concepts":[{"concept":"","explanation":"","why_it_matters":""}],
- "glossary":[{"term":"","definition":""}]}
-Entre 8 y 20 conceptos. Glosario con todos los términos técnicos relevantes. Todo en español.
+ "glossary":[{"term":"","definition":""}],
+ "flashcards":[{"front":"","back":""}],
+ "quiz":[{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]}
+- key_concepts: entre 8 y 20 conceptos.
+- glossary: todos los términos técnicos relevantes.
+- flashcards: entre 15 y 30 tarjetas, una idea por tarjeta. Preguntas concretas (definiciones, principios
+  físicos, indicaciones, contraindicaciones, posicionamientos, protección radiológica). Respuestas cortas.
+- quiz: 10 preguntas tipo test, dificultad de examen, una sola respuesta correcta (correct_index de 0 a 3),
+  distractores plausibles. La explicación indica por qué la correcta es correcta y las otras no.
+Todo en español.
 TEXTO:
 ${texto}`
-    : `Devolve APENAS JSON válido, sem texto adicional:
+    : `Devolve APENAS JSON válido, sem texto adicional, com esta forma:
 {"key_concepts":[{"concept":"","explanation":"","why_it_matters":""}],
- "glossary":[{"term":"","definition":""}]}
-Entre 8 e 20 conceitos. Glossário com todos os termos técnicos relevantes.
-TEXTO:
-${texto}`;
-
-export const flashcardsPrompt = (lang: Lang, texto: string) =>
-  lang === "es"
-    ? `Devuelve SOLO JSON: {"flashcards":[{"front":"","back":""}]}
-Entre 15 y 30 tarjetas. Una idea por tarjeta. Preguntas concretas
-(definiciones, principios físicos, indicaciones, contraindicaciones,
-posicionamientos, protección radiológica). Respuestas cortas. Todo en español.
-TEXTO:
-${texto}`
-    : `Devolve APENAS JSON: {"flashcards":[{"front":"","back":""}]}
-Entre 15 e 30 cartões. Uma ideia por cartão. Perguntas concretas
-(definições, princípios físicos, indicações, contraindicações,
-posicionamentos, proteção radiológica). Respostas curtas.
-TEXTO:
-${texto}`;
-
-export const quizPrompt = (lang: Lang, texto: string) =>
-  lang === "es"
-    ? `Devuelve SOLO JSON:
-{"quiz":[{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]}
-10 preguntas tipo test, dificultad de examen, una sola respuesta correcta,
-distractores plausibles. La explicación indica por qué la correcta es correcta y las otras no. Todo en español.
-TEXTO:
-${texto}`
-    : `Devolve APENAS JSON:
-{"quiz":[{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]}
-10 perguntas de escolha múltipla, dificuldade de exame, uma só resposta certa,
-distratores plausíveis. A explicação indica porque a certa é certa e as outras não.
+ "glossary":[{"term":"","definition":""}],
+ "flashcards":[{"front":"","back":""}],
+ "quiz":[{"question":"","options":["","","",""],"correct_index":0,"explanation":""}]}
+- key_concepts: entre 8 e 20 conceitos.
+- glossary: todos os termos técnicos relevantes.
+- flashcards: entre 15 e 30 cartões, uma ideia por cartão. Perguntas concretas (definições, princípios
+  físicos, indicações, contraindicações, posicionamentos, proteção radiológica). Respostas curtas.
+- quiz: 10 perguntas de escolha múltipla, dificuldade de exame, uma só resposta certa (correct_index de 0 a 3),
+  distratores plausíveis. A explicação indica porque a certa é certa e as outras não.
 TEXTO:
 ${texto}`;
 
@@ -129,7 +116,8 @@ Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o bi
 ${
   p.webAllowed
     ? `- Los fragmentos locales NO bastan para esta pregunta. Puedes consultar radiopaedia.org, iaea.org y efrs.eu
-  (como mucho 3 búsquedas). Lee solo lo necesario y explícalo con tus palabras. No escribas nada antes de buscar.`
+  (como mucho 3 búsquedas; búscalas así: "site:radiopaedia.org OR site:iaea.org OR site:efrs.eu <términos>" y no uses
+  otras webs). Lee solo lo necesario y explícalo con tus palabras. No escribas nada antes de buscar.`
     : `- No tienes acceso a internet en esta pregunta. Si los fragmentos no bastan, usa conocimiento general
   marcado con "Fuera de tus apuntes:".`
 }
@@ -147,7 +135,8 @@ Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou bib
 ${
   p.webAllowed
     ? `- Os excertos locais NÃO chegam para esta pergunta. Podes consultar radiopaedia.org, iaea.org e efrs.eu
-  (no máximo 3 pesquisas). Lê só o necessário e explica com as tuas palavras. Não escrevas nada antes de pesquisar.`
+  (no máximo 3 pesquisas; pesquisa assim: "site:radiopaedia.org OR site:iaea.org OR site:efrs.eu <termos>" e não uses
+  outros sites). Lê só o necessário e explica com as tuas palavras. Não escrevas nada antes de pesquisar.`
     : `- Não tens acesso à internet nesta pergunta. Se os excertos não chegarem, usa conhecimento geral
   assinalado com "Fora dos teus apontamentos:".`
 }
@@ -169,14 +158,14 @@ export const studyContext = (lang: Lang, referencia: string, webAllowed: boolean
 FUENTES COMPLEMENTARIAS (por debajo de los apuntes en prioridad):
 ${referencia ? `Fragmentos de la biblioteca de referencia (IAEA/EFRS). Úsalos solo para aclarar o completar lo que dicen los apuntes y etiqueta lo que saques de ellos:
 ${referencia}` : ""}
-${webAllowed ? "Los apuntes son escasos: puedes consultar radiopaedia.org, iaea.org y efrs.eu (máximo 3 búsquedas) para completar lo esencial. No escribas nada antes de buscar." : ""}
+${webAllowed ? "Los apuntes son escasos: puedes consultar radiopaedia.org, iaea.org y efrs.eu (máximo 3 búsquedas, con 'site:radiopaedia.org OR site:iaea.org OR site:efrs.eu'; no uses otras webs) para completar lo esencial. No escribas nada antes de buscar." : ""}
 Lo que viene de los apuntes no lleva etiqueta; lo que venga de otra fuente, sí.`
     : `
 
 FONTES COMPLEMENTARES (abaixo dos apontamentos em prioridade):
 ${referencia ? `Excertos da biblioteca de referência (IAEA/EFRS). Usa-os só para esclarecer ou completar o que dizem os apontamentos e etiqueta o que tirares deles:
 ${referencia}` : ""}
-${webAllowed ? "Os apontamentos são escassos: podes consultar radiopaedia.org, iaea.org e efrs.eu (máximo 3 pesquisas) para completar o essencial. Não escrevas nada antes de pesquisar." : ""}
+${webAllowed ? "Os apontamentos são escassos: podes consultar radiopaedia.org, iaea.org e efrs.eu (máximo 3 pesquisas, com 'site:radiopaedia.org OR site:iaea.org OR site:efrs.eu'; não uses outros sites) para completar o essencial. Não escrevas nada antes de pesquisar." : ""}
 O que vem dos apontamentos não leva etiqueta; o que vier de outra fonte, sim.`;
 };
 

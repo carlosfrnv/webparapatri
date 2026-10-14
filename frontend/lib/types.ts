@@ -90,8 +90,19 @@ export interface WebSource {
   url: string;
 }
 
-export type AnySource = Source | WebSource;
+/**
+ * "Sugerencias de búsqueda" de Google: las condiciones de Gemini obligan a mostrarlas
+ * cuando una respuesta ha usado la búsqueda con Google.
+ */
+export interface SearchSuggestions {
+  kind: "search_suggestions";
+  html: string;
+}
+
+export type AnySource = Source | WebSource | SearchSuggestions;
 export const isWebSource = (s: AnySource): s is WebSource => s.kind === "web";
+export const isSuggestions = (s: AnySource): s is SearchSuggestions => s.kind === "search_suggestions";
+export const isLocalSource = (s: AnySource): s is Source => !isWebSource(s) && !isSuggestions(s);
 
 export interface ChatMessage {
   id?: number | string;

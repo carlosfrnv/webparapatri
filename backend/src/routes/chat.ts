@@ -70,6 +70,8 @@ chatRouter.post(
         onText: (text) => send("delta", { text }),
         // El frontend muestra "Buscando…" y borra cualquier preámbulo: solo cuenta la respuesta final.
         onWebTool: (tool) => send("status", { phase: tool }),
+        // Un modelo ha fallado a mitad de respuesta y responde otro: la web borra el texto parcial.
+        onReset: () => send("reset", {}),
       });
       // Guardamos la respuesta generada y los nombres/enlaces de las fuentes. Nunca el texto de las páginas web.
       await supabase.from("chat_messages").insert({

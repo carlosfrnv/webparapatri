@@ -15,9 +15,10 @@ Ella sube los apuntes que le llegan por correo (PDF, Word, PowerPoint o texto) y
 1. **Sus apuntes**: siempre primero, son la fuente principal.
 2. **Biblioteca de referencia** (PDF gratuitos de la IAEA y la EFRS que subes tú): sección aparte, no se mezcla
    con sus apuntes, pero se usa en la búsqueda.
-3. **Consulta en vivo** a radiopaedia.org, iaea.org y efrs.eu: solo si 1 y 2 no tienen relevancia suficiente,
-   con un máximo de 3 búsquedas por pregunta. El texto de esas páginas no se guarda nunca; solo la respuesta
-   y el nombre/enlace de la fuente.
+3. **Consulta en vivo** a radiopaedia.org, iaea.org y efrs.eu (con la búsqueda de Google de Gemini): solo si 1 y 2
+   no tienen relevancia suficiente. El texto de esas páginas no se guarda nunca; solo la respuesta y el
+   nombre/enlace de la fuente. Si el modelo que responde no puede buscar (Groq, o cupo de búsqueda agotado),
+   se pasa directamente al punto 4.
 4. **Conocimiento general**: último recurso, marcado como "Fuera de tus apuntes:".
 
 Cada parte de la respuesta lleva una etiqueta de origen ([Tus apuntes], [Biblioteca de referencia – IAEA],
@@ -36,15 +37,15 @@ otro idioma, la web avisa y ofrece generarlo de nuevo con un clic.
 | `frontend/` | Next.js + TypeScript + Tailwind | Vercel |
 | `backend/` | Node.js + Express + TypeScript | Render |
 | Base de datos, ficheros y login | Supabase (Postgres, Storage, Auth) | Supabase |
-| IA | API de Anthropic (Claude) | solo se llama desde el backend |
+| IA | Google Gemini y Groq (planes gratuitos) | solo se llama desde el backend |
 
 ```
 Navegador ──login──▶ Supabase Auth
 Navegador ──JWT───▶ Backend (Render) ──service_role──▶ Supabase (BD + ficheros)
-                                    └──API key──────▶ Anthropic (Claude)
+                                    └──API keys─────▶ Google Gemini / Groq (IA gratuita)
 ```
 
-**Seguridad:** la clave de Anthropic y la `service_role` de Supabase viven **solo** en Render. El navegador solo
+**Seguridad:** las claves de la IA y la `service_role` de Supabase viven **solo** en Render. El navegador solo
 tiene la clave pública (`anon`) de Supabase, que sirve para el login. El backend rechaza cualquier email que no sea
 `ALLOWED_EMAIL`.
 
@@ -55,8 +56,9 @@ servicio extra.
 
 ## Puesta en marcha paso a paso
 
-Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](https://console.anthropic.com),
-[Render](https://render.com) y [Vercel](https://vercel.com).
+Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Google AI Studio](https://aistudio.google.com),
+[Groq](https://console.groq.com), [Render](https://render.com) y [Vercel](https://vercel.com). Todo es gratis y
+no hace falta tarjeta.
 
 > 🔗 **Render y Vercel tienen que estar conectados a GitHub.** Regístrate en cada una con **"Continue with GitHub"** y,
 > cuando te lo pida, dale acceso al repositorio `webparapatri` (puedes elegir "Only select repositories"). A partir de
@@ -81,38 +83,52 @@ Necesitas cuentas gratuitas en: [Supabase](https://supabase.com), [Anthropic](ht
    - **anon / publishable key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - **service_role / secret key** → `SUPABASE_SERVICE_ROLE_KEY` (⚠️ esta es secreta: solo en Render)
 
-### 2. Anthropic (la IA)
+### 2. La IA (gratis: Google Gemini + Groq)
 
-1. En [console.anthropic.com](https://console.anthropic.com) → **API Keys → Create Key** → copia la clave
-   (`ANTHROPIC_API_KEY`).
-2. En **Billing**, añade un poco de saldo (5 € dan para muchos meses) y pon un **límite de gasto mensual** bajo
-   (por ejemplo 3 €) para evitar sustos. Algunas cuentas nuevas reciben un pequeño crédito de bienvenida.
-3. El modelo se elige con `ANTHROPIC_MODEL`. Por defecto es **`claude-haiku-5-5`**, el más barato. Si algún día
-   quieres más calidad, puedes poner `claude-sonnet-5-5` (unas 20 veces más caro) o `claude-opus-5-5` (unas 40 veces).
-   Los nombres vigentes están en [docs.claude.com](https://docs.claude.com).
+La web usa **IA gratuita**. El servidor prueba los modelos en este orden y, si uno agota su cupo gratuito,
+pasa automáticamente al siguiente (y no lo vuelve a intentar hasta un rato después):
 
-#### Cuánto cuesta la IA (Claude Haiku 5.5)
+1. **Gemini Flash** (Google): el de más calidad. Puede buscar en internet.
+2. **Gemini Flash-Lite** (Google): algo más sencillo, con más peticiones gratis al día. Puede buscar en internet.
+3. **GPT-OSS 120B en Groq**: modelo abierto, muy rápido. **No busca en internet.**
 
-Precio: 0,10 $ por millón de tokens leídos y 0,50 $ por millón de tokens escritos (un token es unos ¾ de palabra; si la petición tiene menos de
-100.000 tokens), más 10 $ por cada 1.000 búsquedas web. Aproximadamente:
+Si todos llegan a su límite, la web muestra "La IA gratuita ha llegado a su límite por ahora. Inténtalo de nuevo
+dentro de un rato". Los cupos diarios se reinician cada día.
 
-| Uso | Coste aproximado |
-|---|---|
-| Generar resumen, conceptos, flashcards y test de un archivo de ~20 páginas (una sola vez) | ~1,3 céntimos |
-| Una pregunta en el chat con sus apuntes | ~0,1 céntimos |
-| «Explícamelo mejor» en un test | ~0,05 céntimos |
-| Una pregunta que consulta Radiopaedia/IAEA/EFRS (normalmente 1–2 búsquedas, máx. 3) | ~1,5–3,5 céntimos |
-| Repasar flashcards, hacer tests, buscar en la Biblioteca | gratis (no usan IA) |
-| **Un mes tranquilo** (15 archivos, 100 preguntas, 15 con búsqueda web) | **~0,70 $** |
-| **Un mes de uso intenso** (40 archivos, 300 preguntas, 60 con búsqueda web) | **~2,30 $** |
-| Mes intenso con `WEB_MAX_SEARCHES=1` / `=0` | ~1,50 $ / ~0,80 $ |
+**Claves (gratis, sin tarjeta):**
 
-Lo que más gasta son las búsquedas web. Para gastar todavía menos, pon `WEB_MAX_SEARCHES=1` en Render
-(una búsqueda por pregunta) o `WEB_MAX_SEARCHES=0` (sin consulta online: entonces la IA usa sus apuntes, la
-biblioteca de referencia y su conocimiento general marcado como "Fuera de tus apuntes").
+1. **Gemini**: entra en [aistudio.google.com](https://aistudio.google.com) con una cuenta de Google →
+   **Get API key → Create API key** → copia la clave (`GEMINI_API_KEY`). No actives la facturación: así es
+   imposible que te cobren nada (si se acaba el cupo, simplemente responde el siguiente de la cadena).
+2. **Groq**: entra en [console.groq.com](https://console.groq.com) → **API Keys → Create API Key** → copia la
+   clave (`GROQ_API_KEY`).
 
-> 💡 El material de estudio de cada fichero se genera **una sola vez** y queda guardado. El coste principal es al
-> abrir cada fichero nuevo por primera vez y al usar el chat. El backend limita a 10 peticiones a la IA por minuto.
+Basta con una de las dos, pero con las dos la web aguanta mucho más uso al día.
+
+**Límites del plan gratuito** (cambian a menudo; los de tu cuenta se ven en AI Studio y en la consola de Groq):
+según varias fuentes, Gemini Flash da pocas peticiones al día (del orden de decenas), Flash-Lite unos cientos y
+Groq bastantes más, pero con un límite de tokens por minuto bajo (un archivo muy largo puede no caber; entonces
+lo hace Gemini). Para gastar poco cupo, cada archivo nuevo usa **solo 2 peticiones** (resumen + el resto) y queda
+guardado; repasar flashcards, hacer tests o buscar en la Biblioteca **no usa la IA**.
+
+> ⚠️ **Privacidad.** En el plan gratuito de Gemini, Google puede usar lo que se le envía (fragmentos de sus apuntes
+> y sus preguntas) para mejorar sus productos, y puede revisarlo personal humano. No subas datos personales de
+> pacientes. Groq indica que no entrena con los datos de la API, pero revisa sus condiciones.
+>
+> 🌐 **Consulta online.** Con Gemini se usa la "búsqueda con Google" y se le pide que busque solo en
+> radiopaedia.org, iaea.org y efrs.eu; la web solo muestra como fuentes páginas de esos tres sitios, pero Google
+> no permite bloquear otros sitios al 100 %. Las condiciones de Google obligan a mostrar sus "sugerencias de
+> búsqueda" debajo de esas respuestas (un recuadro pequeño con enlaces a Google). Según varias fuentes, la búsqueda
+> con Google puede no estar incluida gratis en los modelos más nuevos: en ese caso la IA responde sin buscar y lo
+> marca como "Fuera de tus apuntes". Para desactivarla del todo: `WEB_MAX_SEARCHES=0`.
+>
+> 🗺️ Si Gemini responde que el plan gratuito no está disponible en tu región, cambia la región del servicio de
+> Render a Oregón (EE. UU.).
+
+**Opcional (de pago, muy barato):** si algún día quieres usar Claude de Anthropic, crea una clave en
+[console.anthropic.com](https://console.anthropic.com), ponla en `ANTHROPIC_API_KEY` y añade
+`anthropic:claude-haiku-5-5` a `AI_CHAIN` (por ejemplo, al final, como último recurso). Con Claude la consulta
+online sí queda limitada de verdad a los tres sitios. Coste aproximado: 1–2 € al mes con uso intenso.
 
 ### 3. Render (backend)
 
@@ -120,7 +136,7 @@ biblioteca de referencia y su conocimiento general marcado como "Fuera de tus ap
    `estudio-imr-api`. (Alternativa manual: **New → Web Service**, *Root Directory* `backend`, *Build*
    `npm install --include=dev && npm run build`, *Start* `npm start`, *Health check* `/health`.)
 2. Rellena las variables de entorno que te pida:
-   `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri) y
+   `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri) y
    `FRONTEND_ORIGIN` (de momento `http://localhost:3000`; luego la URL de Vercel).
 3. Cuando termine, copia la URL del servicio (algo como `https://estudio-imr-api.onrender.com`).
 
@@ -169,10 +185,7 @@ npm run probar -- --lang pt "O que é a unidade Hounsfield?"   # para probar la 
 
 Muestra qué niveles se activaron (apuntes, referencia, web), la respuesta y las fuentes.
 
-> 💶 La búsqueda web cuesta 10 $ por cada 1.000 búsquedas más los tokens de lo que se lee. Solo se usa cuando sus
-> apuntes y la referencia no bastan, con un máximo de `WEB_MAX_SEARCHES` búsquedas por pregunta (3 por defecto).
-> Si en la consola de Anthropic tienes la búsqueda web desactivada a nivel de organización, actívala
-> (Settings → Capabilities).
+> 🌐 La consulta online solo se usa cuando sus apuntes y la referencia no bastan. `WEB_MAX_SEARCHES=0` la desactiva.
 
 ### 5. Personaliza la dedicatoria ✏️
 

@@ -12,10 +12,12 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: ANTHROPIC_MODEL
-        value: claude-haiku-5-5
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AI_CHAIN
+        value: gemini:gemini-flash-latest,gemini:gemini-flash-lite-latest,groq:openai/gpt-oss-120b
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

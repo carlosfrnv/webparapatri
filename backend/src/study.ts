@@ -1,14 +1,7 @@
 import { z } from "zod";
 import { complete, completeJson, generate } from "./ai";
 import type { Lang } from "./i18n";
-import {
-  conceptsPrompt,
-  flashcardsPrompt,
-  partialSummaryPrompt,
-  quizPrompt,
-  studyContext,
-  summaryPrompt,
-} from "./prompts";
+import { partialSummaryPrompt, studyContext, studyPackPrompt, summaryPrompt } from "./prompts";
 import { findReferenceForDocument, formatSources } from "./search";
 import { WEB_ENABLED } from "./web";
 import { supabase } from "./supabase";
@@ -31,9 +24,12 @@ export const quizQuestionSchema = z.object({
 
 export const quizSchema = z.object({ quiz: z.array(quizQuestionSchema).min(1) });
 
+/** Conceptos, glosario, flashcards y test en una sola respuesta JSON. */
+export const studyPackSchema = conceptsSchema.and(flashcardsSchema).and(quizSchema);
+
 // Por encima de esto, el resumen se hace por partes (map-reduce) para contener el coste.
-const DIRECT_LIMIT = 60_000;
-const PART_SIZE = 40_000;
+const DIRECT_LIMIT = 200_000;
+const PART_SIZE = 150_000;
 // Por debajo de esto consideramos que los apuntes son "escasos" y el resumen puede consultar la web (nivel 3).
 const SCARCE_NOTES = 2_500;
 
@@ -95,32 +91,37 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
     });
     const refText = formatSources(references, lang);
     const webForSummary = WEB_ENABLED && text.length < SCARCE_NOTES && references.length === 0;
-    const withRefs = (prompt: string) => prompt + studyContext(lang, refText, false);
 
-    const [summaryResult, concepts, flashcards, quiz] = await Promise.all([
-      generate(summaryPrompt(lang, source) + studyContext(lang, refText, webForSummary), {
+    // Dos peticiones en total: el resumen y el "paquete" de conceptos, glosario, flashcards y test.
+    const [summaryResult, pack] = await Promise.all([
+      generate((webAvailable) => summaryPrompt(lang, source) + studyContext(lang, refText, webAvailable), {
         lang,
         web: webForSummary,
       }),
-      completeJson(withRefs(conceptsPrompt(lang, source)), conceptsSchema, { lang }),
-      completeJson(withRefs(flashcardsPrompt(lang, source)), flashcardsSchema, { lang }),
-      completeJson(withRefs(quizPrompt(lang, source)), quizSchema, { lang }),
+      completeJson(studyPackPrompt(lang, source) + studyContext(lang, refText, false), studyPackSchema, {
+        lang,
+        maxTokens: 24000,
+      }),
     ]);
     const summary = summaryResult.text;
-    // Solo nombres y enlaces de las fuentes (nunca el texto de las páginas web).
+    // Solo nombres y enlaces de las fuentes (nunca el texto de las páginas web). Si el resumen
+    // ha usado la búsqueda de Google, guardamos también sus "sugerencias de búsqueda" para mostrarlas.
     const sources = [
       ...references.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s),
       ...summaryResult.webSources,
+      ...(summaryResult.searchSuggestionsHtml
+        ? [{ kind: "search_suggestions" as const, html: summaryResult.searchSuggestionsHtml }]
+        : []),
     ];
 
     const row = {
       document_id: documentId,
       user_id: userId,
       summary,
-      key_concepts: concepts.key_concepts,
-      glossary: concepts.glossary,
-      flashcards: flashcards.flashcards,
-      quiz: quiz.quiz,
+      key_concepts: pack.key_concepts,
+      glossary: pack.glossary,
+      flashcards: pack.flashcards,
+      quiz: pack.quiz,
       sources,
       lang,
       generated_at: new Date().toISOString(),

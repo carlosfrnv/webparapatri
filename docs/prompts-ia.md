@@ -1,7 +1,9 @@
 # Prompts de la IA
 
 La fuente de verdad es el código: `backend/src/prompts.ts`. Este documento resume las reglas.
-Todos los prompts existen en **español** y en **portugués de Portugal**; la IA responde en el idioma
+Los mismos prompts sirven para todos los proveedores de IA (Gemini, Groq y, opcionalmente, Claude): el texto
+común va como instrucción de sistema y cada petición pide SOLO JSON cuando hace falta (con el modo JSON nativo
+de Gemini y Groq). Todos los prompts existen en **español** y en **portugués de Portugal**; la IA responde en el idioma
 elegido en la web (selector 🇪🇸 / 🇵🇹). Para salidas estructuradas se pide SOLO JSON, se quitan los
 bloques ``` antes de parsear y se valida con `zod`; si falla, se reintenta una vez.
 
@@ -9,10 +11,13 @@ bloques ``` antes de parsear y se valida con `zod`; si falla, se reintenta una v
 
 1. **Sus apuntes** (tabla `chunks` con `source_type = 'apuntes'`). Siempre se consultan primero.
 2. **Biblioteca de referência local** (IAEA y EFRS, `source_type = 'referencia'`). Solo si 1 no basta.
-3. **Consulta en vivo** a radiopaedia.org, iaea.org y efrs.eu (herramientas `web_search_20260318` y
-   `web_fetch_20260318` de la API de Anthropic, con `allowed_domains` y `max_uses: 3`). Solo si ni 1 ni 2
-   tienen relevancia suficiente. El texto de las páginas **no se guarda**; solo la respuesta generada y el
-   nombre y la URL de cada fuente (para los chips).
+3. **Consulta en vivo** a radiopaedia.org, iaea.org y efrs.eu. Solo si ni 1 ni 2 tienen relevancia suficiente.
+   - Con **Gemini** (por defecto): herramienta `googleSearch`. Google no permite limitar dominios, así que el prompt
+     pide buscar con `site:radiopaedia.org OR site:iaea.org OR site:efrs.eu` y la web solo muestra como fuentes
+     las páginas de esos tres sitios. Se muestran también las "sugerencias de búsqueda" de Google, obligatorias.
+   - Con **Claude** (opcional, de pago): `web_search_20260318` y `web_fetch_20260318` con `allowed_domains`.
+   - Con **Groq** no hay búsqueda: el prompt no la ofrece y se pasa al punto 4.
+   El texto de las páginas **no se guarda**; solo la respuesta generada y el nombre y la URL de cada fuente.
 4. **Conocimiento general**, solo como último recurso, marcado con "Fuera de tus apuntes:".
 
 ### Umbral de relevancia (`backend/src/search.ts`)
@@ -96,7 +101,8 @@ Se envían como máximo 8 fragmentos de los apuntes y 5 de la referencia, y las 
 
 ## Material de estudio
 
-Los prompts de resumen, conceptos y glosario, flashcards y test no cambian. A todos se les añade, si hay
+Para ahorrar cupo gratuito, cada archivo usa **2 peticiones**: el resumen y un único JSON con conceptos,
+glosario, flashcards y test (`studyPackPrompt`). A todos se les añade, si hay
 material de referencia relacionado, un bloque de **fuentes complementarias**:
 
 ```

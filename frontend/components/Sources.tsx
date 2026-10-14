@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { isWebSource, type AnySource, type Source, type WebSource } from "@/lib/types";
+import { isLocalSource, isSuggestions, isWebSource, type AnySource, type Source, type WebSource } from "@/lib/types";
 
 /** Dirección interna de un fragmento local: abre el documento dentro de la propia web. */
 export function localSourceHref(s: Source) {
@@ -57,16 +57,41 @@ function LocalChip({ s }: { s: Source }) {
   );
 }
 
+/**
+ * Sugerencias de búsqueda de Google (obligatorias con la búsqueda de Gemini). Se muestran aisladas
+ * en un iframe sin permisos para ejecutar código; sus enlaces abren Google en una pestaña nueva.
+ */
+function SearchSuggestionsBox({ html }: { html: string }) {
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"></head><body style="margin:0">${html}</body></html>`;
+  return (
+    <iframe
+      srcDoc={doc}
+      title="Google"
+      sandbox="allow-popups allow-popups-to-escape-sandbox"
+      className="mt-2 h-16 w-full rounded-xl border-0"
+    />
+  );
+}
+
 export function SourceChips({ sources, title }: { sources: AnySource[]; title?: string }) {
-  if (!sources.length) return null;
+  const chips = sources.filter((s) => !isSuggestions(s));
+  const suggestions = sources.find(isSuggestions);
+  if (!chips.length && !suggestions) return null;
   return (
     <div className="mt-3">
-      {title && <p className="text-muted mb-1.5 text-xs font-semibold tracking-wide uppercase">{title}</p>}
+      {title && chips.length > 0 && (
+        <p className="text-muted mb-1.5 text-xs font-semibold tracking-wide uppercase">{title}</p>
+      )}
       <div className="flex flex-wrap gap-2">
-        {sources.map((s) =>
-          isWebSource(s) ? <WebChip key={s.url} s={s} /> : <LocalChip key={`${s.kind}-${s.n}`} s={s} />,
+        {chips.map((s) =>
+          isWebSource(s) ? (
+            <WebChip key={s.url} s={s} />
+          ) : isLocalSource(s) ? (
+            <LocalChip key={`${s.kind}-${s.n}`} s={s} />
+          ) : null,
         )}
       </div>
+      {suggestions && <SearchSuggestionsBox html={suggestions.html} />}
     </div>
   );
 }

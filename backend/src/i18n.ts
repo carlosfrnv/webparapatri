@@ -44,6 +44,10 @@ const messages = {
     es: "La IA ha devuelto una respuesta con un formato inesperado. Prueba a generarlo de nuevo.",
     pt: "A IA devolveu uma resposta num formato inesperado. Tenta gerar de novo.",
   },
+  aiUnavailable: {
+    es: "La IA gratuita ha llegado a su límite por ahora. Inténtalo de nuevo dentro de un rato.",
+    pt: "A IA gratuita chegou ao limite por agora. Tenta novamente daqui a pouco.",
+  },
   chatFailed: {
     es: "No se ha podido responder ahora. Inténtalo de nuevo.",
     pt: "Não foi possível responder agora. Tenta novamente.",

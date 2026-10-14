@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { CHAIN } from "./ai";
 import { requireAuth } from "./auth";
 import { config } from "./config";
 import { errorHandler } from "./http";
@@ -36,5 +37,7 @@ app.use("/", studyRouter);
 app.use(errorHandler);
 
 app.listen(config.PORT, () => {
-  console.log(`API de Estudio IMR funcionando en el puerto ${config.PORT} (modelo: ${config.ANTHROPIC_MODEL})`);
+  console.log(`API de Estudio IMR funcionando en el puerto ${config.PORT}`);
+  if (CHAIN.length === 0) console.error("⚠️  Ningún modelo de AI_CHAIN tiene su clave configurada: la IA no funcionará.");
+  else console.log(`IA (en este orden): ${CHAIN.map((s) => s.key).join(" → ")}`);
 });

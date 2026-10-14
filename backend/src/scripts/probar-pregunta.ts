@@ -39,10 +39,12 @@ async function main() {
   });
   console.log("\n──────── Fuentes ────────");
   for (const s of result.sources) {
+    if (s.kind === "search_suggestions") continue;
     if ("site" in s) console.log(`  🌐 ${s.site} – ${s.title}  (${s.url})`);
     else console.log(`  📄 [${s.n}] ${s.kind === "referencia" ? `Referencia ${s.org}` : "Apuntes"} – ${s.document_title}`);
   }
-  console.log(`\nBúsquedas web realizadas: ${result.webSearches}`);
+  console.log(`\nModelo que ha respondido: ${result.model}`);
+  console.log(`Búsquedas web realizadas: ${result.webSearches}`);
 }
 
 main().catch((err) => {
