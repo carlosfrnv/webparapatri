@@ -25,7 +25,7 @@ import { SpecialDay } from "@/components/SpecialDay";
 import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Timetable";
 import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
-import { useDedicatoria } from "@/config/dedicatoria";
+import { useDedicatoria, useFraseDelDia } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT, type Dictionary } from "@/lib/i18n";
 import type { ExamsResponse, ScheduleBlock, Stats } from "@/lib/types";
@@ -69,6 +69,7 @@ export default function HomePage() {
   const t = useT();
   const lang = useLang();
   const dedicatoria = useDedicatoria();
+  const frase = useFraseDelDia();
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [exams, setExams] = useState<ExamsResponse | null>(null);
@@ -167,7 +168,7 @@ export default function HomePage() {
               {lang === "es" ? "¡" : ""}
               {greeting(t)}, {dedicatoria.nombre}!
             </h1>
-            <p className="mt-3 max-w-xl text-base text-white/80 sm:text-lg">{dedicatoria.frase}</p>
+            <p className="mt-3 max-w-xl text-base text-white/80 sm:text-lg">{frase}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/estudiar"
@@ -401,7 +402,7 @@ export default function HomePage() {
               <GradientIcon icon={Heart} tone="slate" />
               <div>
                 <p className="text-muted text-xs font-semibold tracking-wider uppercase">{t.home.fromCarlos}</p>
-                <p className="font-display mt-1 text-lg font-bold">{dedicatoria.frase}</p>
+                <p className="font-display mt-1 text-lg font-bold">{frase}</p>
                 <p className="text-muted mt-1 text-sm">{dedicatoria.firma}</p>
               </div>
             </div>

@@ -25,8 +25,64 @@ export const dedicatoria = {
 
 Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
     firma: "— Carlos",
-    // Frase corta que aparece siempre debajo del saludo.
-    frase: "Paso a paso. Hoy también cuenta. 💪",
+    // Frase del día (debajo del saludo y en la nota de abajo). Cada día sale una distinta:
+    // los lunes una de "lunes", de martes a jueves una de "semana", los viernes una de "viernes"
+    // y el fin de semana una de "finde". Van rotando en orden, así no se repiten hasta pasar por todas.
+    // Puedes añadir o quitar las que quieras.
+    frases: {
+      lunes: [
+        "Lunes nuevo, semana nueva. Tú puedes con todo, nena 💪🖤",
+        "Empieza la semana con calma: un tema cada vez y lo demás saldrá solo 📚",
+        "Otro lunes más cerca de ser una técnica increíble. Vamos allá ✨",
+        "Café, apuntes y a por la semana. Estoy orgulloso de ti 🖤",
+        "Los lunes cuestan, pero tú cuestas más de vencer 😎 ¡A por ello!",
+        "Semana nueva y Bob ya está listo para animarte 🧽💪",
+        "Hoy solo hace falta empezar. Lo demás va saliendo paso a paso 🖤",
+        "Que esta semana te salga todo bonito, nena. Te quiero 🖤",
+      ],
+      semana: [
+        "Paso a paso. Hoy también cuenta. 💪",
+        "Un poquito cada día vale más que un montón el último día 📚",
+        "Eres más lista de lo que tú te crees, nena 🖤",
+        "Respira, organízate y a por ello. Puedes con esto y con más ✨",
+        "Cada tema que repasas es un tema menos para el examen 💪",
+        "Aunque esté a 5 horas, estoy contigo en cada página 🖤",
+        "Si te atascas, para, bebe agua y vuelve. Lo estás haciendo genial 💧",
+        "Hoy estudia un poco por ti y otro poquito por Bob 🧽📚",
+        "No hace falta hacerlo perfecto, solo seguir avanzando 🖤",
+        "Las flashcards de hoy son los aprobados de mañana 🃏✨",
+        "Estoy muy orgulloso de todo lo que estás consiguiendo 🖤",
+        "Tu esfuerzo de hoy lo vas a notar en el examen. Ánimo, nena 💪",
+        "Mente tranquila, apuntes delante y a darlo todo 📖",
+        "Eres mi futura técnica de radiología favorita 🩻🖤",
+        "Un descansito a tiempo también es estudiar bien ☕",
+        "Lo difícil hoy será fácil dentro de unas semanas. Confía en ti ✨",
+        "Hasta las radiografías tienen sus sombras, y tú brillas igual 🩻😉",
+        "Sigue así, carechimba, que vas como una campeona 😜🖤",
+        "Cuando dudes de ti, acuérdate de todo lo que ya has aprendido 💪",
+        "Hoy toca dar lo mejor, sin agobios. Te quiero mucho 🖤",
+      ],
+      viernes: [
+        "¡Viernes! Un último empujón y a descansar, que te lo mereces 🖤",
+        "Repaso suave y fin de semana a la vista 😌✨",
+        "Has trabajado mucho esta semana. Estoy muy orgulloso de ti 🖤",
+        "Último día de la semana: termina lo que puedas y no te agobies 💪",
+        "Viernes de cerrar temas y abrazar a Bob 🧽🖤",
+        "Lo que no salga hoy, saldrá. Eres una crack, nena ✨",
+      ],
+      finde: [
+        "Fin de semana: estudia un poquito si quieres, pero descansa también 😌",
+        "Hoy toca cargar pilas. Un buen descanso también suma 🖤",
+        "Un repaso cortito y el resto del día para ti ✨",
+        "Abraza a Bob de mi parte y disfruta del día 🧽🖤",
+        "Descansar también es parte de aprobar. Hazlo sin culpa 😌",
+        "Si te apetece estudiar, las flashcards te esperan. Si no, mañana será otro día 🃏",
+        "Te mereces un día bonito, nena. Te echo de menos 🖤",
+        "Pocas cosas me hacen tan feliz como verte crecer así 🖤",
+        "Domingo de calma, lunes de energía. Te quiero 💪🖤",
+        "Ojalá estar ahí para darte un abrazo. Mientras tanto, Bob te lo da por mí 🧽",
+      ],
+    },
     // Mensajes del calendario el día del examen y el día antes.
     examenHoy: "Hoy es el examen, nena. Lo vas a hacer genial: confía en todo lo que has estudiado 🖤 — Carlos",
     examenManana: "Mañana es el examen. Repasa con calma, duerme bien abrazada a Bob y confía en ti 🖤 — Carlos",
@@ -74,7 +130,60 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
 
 Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
     firma: "— Carlos",
-    frase: "Um passo de cada vez. Hoje também conta. 💪",
+    frases: {
+      lunes: [
+        "Segunda nova, semana nova. Tu consegues tudo, nena 💪🖤",
+        "Começa a semana com calma: um tema de cada vez e o resto vem sozinho 📚",
+        "Mais uma segunda mais perto de seres uma técnica incrível. Vamos a isso ✨",
+        "Café, apontamentos e bora para a semana. Tenho orgulho em ti 🖤",
+        "As segundas custam, mas tu custas mais a vencer 😎 Força!",
+        "Semana nova e o Bob já está pronto para te animar 🧽💪",
+        "Hoje só é preciso começar. O resto vai saindo passo a passo 🖤",
+        "Que esta semana te corra tudo bem, nena. Amo-te 🖤",
+      ],
+      semana: [
+        "Um passo de cada vez. Hoje também conta. 💪",
+        "Um bocadinho por dia vale mais do que muito no último dia 📚",
+        "És mais inteligente do que pensas, nena 🖤",
+        "Respira, organiza-te e vai em frente. Consegues isto e muito mais ✨",
+        "Cada tema que revês é menos um para o exame 💪",
+        "Mesmo a 5 horas, estou contigo em cada página 🖤",
+        "Se encravares, para, bebe água e volta. Estás a ir muito bem 💧",
+        "Hoje estuda um pouco por ti e outro bocadinho pelo Bob 🧽📚",
+        "Não tem de ser perfeito, só tens de continuar a avançar 🖤",
+        "As flashcards de hoje são as aprovações de amanhã 🃏✨",
+        "Tenho muito orgulho em tudo o que estás a conseguir 🖤",
+        "O esforço de hoje vai notar-se no exame. Força, nena 💪",
+        "Cabeça tranquila, apontamentos à frente e dar tudo 📖",
+        "És a minha futura técnica de radiologia preferida 🩻🖤",
+        "Uma pausa na hora certa também é estudar bem ☕",
+        "O que hoje é difícil vai ser fácil daqui a umas semanas. Confia em ti ✨",
+        "Até as radiografias têm sombras, e tu brilhas na mesma 🩻😉",
+        "Continua assim, carechimba, que estás a ir como uma campeã 😜🖤",
+        "Quando duvidares de ti, lembra-te de tudo o que já aprendeste 💪",
+        "Hoje é dar o melhor, sem stress. Amo-te muito 🖤",
+      ],
+      viernes: [
+        "Sexta! Um último esforço e a descansar, que bem mereces 🖤",
+        "Revisão leve e fim de semana à vista 😌✨",
+        "Trabalhaste muito esta semana. Tenho muito orgulho em ti 🖤",
+        "Último dia da semana: acaba o que puderes e não te stresses 💪",
+        "Sexta de fechar temas e abraçar o Bob 🧽🖤",
+        "O que não sair hoje, sai. És uma crack, nena ✨",
+      ],
+      finde: [
+        "Fim de semana: estuda um bocadinho se quiseres, mas descansa também 😌",
+        "Hoje é dia de carregar baterias. Um bom descanso também conta 🖤",
+        "Uma revisão curtinha e o resto do dia para ti ✨",
+        "Abraça o Bob por mim e aproveita o dia 🧽🖤",
+        "Descansar também faz parte de passar. Fá-lo sem culpa 😌",
+        "Se te apetecer estudar, as flashcards esperam por ti. Se não, amanhã é outro dia 🃏",
+        "Mereces um dia bonito, nena. Tenho saudades tuas 🖤",
+        "Poucas coisas me fazem tão feliz como ver-te crescer assim 🖤",
+        "Domingo de calma, segunda de energia. Amo-te 💪🖤",
+        "Quem me dera estar aí para te dar um abraço. Entretanto, o Bob dá-to por mim 🧽",
+      ],
+    },
     examenHoy: "Hoje é o exame, nena. Vais correr muito bem: confia em tudo o que estudaste 🖤 — Carlos",
     examenManana: "Amanhã é o exame. Revê com calma, dorme bem abraçada ao Bob e confia em ti 🖤 — Carlos",
     especial: {
@@ -115,4 +224,22 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
 
 export function useDedicatoria() {
   return dedicatoria[useLang()];
+}
+
+/**
+ * Frase del día: cambia cada día (a medianoche) y depende del día de la semana.
+ * Se cuentan los días desde un lunes fijo para ir recorriendo cada lista en orden.
+ */
+export function useFraseDelDia(date = new Date()) {
+  const { frases } = useDedicatoria();
+  const days = Math.round(
+    (Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(2024, 0, 1)) / 86_400_000,
+  );
+  const week = Math.floor(days / 7);
+  const dow = ((days % 7) + 7) % 7; // 0 = lunes … 6 = domingo
+  const pick = (list: string[], n: number) => list[((n % list.length) + list.length) % list.length];
+  if (dow === 0) return pick(frases.lunes, week);
+  if (dow === 4) return pick(frases.viernes, week);
+  if (dow >= 5) return pick(frases.finde, week * 2 + (dow - 5));
+  return pick(frases.semana, week * 3 + (dow - 1));
 }
