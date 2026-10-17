@@ -48,4 +48,3 @@ const AREA_STYLE: Record<Area, { bar: string; tone: Tone; icon: Icon }> = {
   radioterapia: { bar: "bg-[#ec4899]", tone: "pink", icon: Heartbeat },
   transversal: { bar: "bg-[#3b82f6]", tone: "blue", icon: UsersThree },
 };
-

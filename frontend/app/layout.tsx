@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#2a1a6e",
+  themeColor: "#c2357c",
 };
 
 // Aplica el tema y el idioma antes de pintar, para que no haya un "destello" claro en modo oscuro.

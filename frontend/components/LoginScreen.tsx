@@ -94,9 +94,9 @@ export function Logo({ size = 44 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="shrink-0">
       <defs>
         <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8b6bff" />
-          <stop offset="0.6" stopColor="#5b35f0" />
-          <stop offset="1" stopColor="#12b3a5" />
+          <stop offset="0" stopColor="#f9a8d4" />
+          <stop offset="0.6" stopColor="#d4508f" />
+          <stop offset="1" stopColor="#b0306a" />
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill="url(#logo-g)" />

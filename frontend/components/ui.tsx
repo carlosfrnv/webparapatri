@@ -58,7 +58,7 @@ export function PageHeader({
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 items-center gap-4">
-        {Icon && <GradientIcon icon={Icon} tone="violet" size={52} />}
+        {Icon && <GradientIcon icon={Icon} tone="pink" size={52} />}
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold sm:text-3xl">{title}</h1>
           {subtitle && <p className="text-muted mt-0.5">{subtitle}</p>}

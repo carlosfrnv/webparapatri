@@ -45,10 +45,10 @@ export function WeekChart({ week }: { week: { date: string; count: number }[] })
                 style={{
                   height: `${h}%`,
                   background: isToday
-                    ? "linear-gradient(180deg, #a18bff 0%, #6d4aff 100%)"
+                    ? "linear-gradient(180deg, color-mix(in oklab, var(--accent) 70%, white) 0%, var(--accent) 100%)"
                     : d.count === 0
                       ? "var(--surface-2)"
-                      : "linear-gradient(180deg, color-mix(in oklab, #6d4aff 45%, transparent) 0%, color-mix(in oklab, #6d4aff 25%, transparent) 100%)",
+                      : "linear-gradient(180deg, color-mix(in oklab, var(--accent) 40%, transparent) 0%, color-mix(in oklab, var(--accent) 22%, transparent) 100%)",
                   opacity: hover === null || hover === i ? 1 : 0.6,
                 }}
               />

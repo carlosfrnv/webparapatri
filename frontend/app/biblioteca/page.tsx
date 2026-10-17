@@ -14,7 +14,6 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, Source, Subject } from "@/lib/types";
 
-
 const YEARS = [1, 2, 3, 4] as const;
 
 function SearchBox() {

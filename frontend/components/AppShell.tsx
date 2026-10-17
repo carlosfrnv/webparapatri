@@ -53,7 +53,7 @@ export function ThemeToggle({ className = "", onDark = false }: { className?: st
   const ModeIcon = dark ? Sun : Moon;
   return (
     <button
-      className={`btn ${onDark ? "text-white/75 hover:bg-white/10 hover:text-white" : "btn-ghost"} ${className}`}
+      className={`btn ${onDark ? "side-link" : "btn-ghost"} ${className}`}
       onClick={toggle}
       aria-label={dark ? t.nav.toLight : t.nav.toDark}
     >
@@ -73,15 +73,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (ordenador) */}
-      <aside
-        className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col p-4 text-white md:flex"
-        style={{ background: "var(--sidebar)" }}
-      >
+      <aside className="sidebar sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-r-[color:var(--sidebar-border)] p-4 md:flex">
         <Link href="/" className="mb-8 flex items-center gap-3 px-2 pt-1">
           <Logo size={40} />
           <div className="leading-tight">
             <span className="font-display block text-lg font-extrabold">{t.appName}</span>
-            <span className="text-xs text-white/60">{t.nav.tagline}</span>
+            <span className="side-muted text-xs">{t.nav.tagline}</span>
           </div>
         </Link>
         <nav className="flex flex-col gap-1" aria-label={t.nav.mainNav}>
@@ -94,9 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-11 items-center gap-3 rounded-xl px-3 font-medium transition-all ${
-                  active
-                    ? "bg-white text-[#2a1a6e] shadow-lg shadow-black/20"
-                    : "text-white/75 hover:bg-white/10 hover:text-white"
+                  active ? "side-active" : "side-link"
                 }`}
               >
                 <NavIcon size={22} weight={active ? "fill" : "duotone"} aria-hidden="true" />
@@ -107,14 +102,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-auto flex flex-col gap-2">
-          <div className="rounded-2xl bg-white/10 p-3">
+          <div className="side-card rounded-2xl p-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#ef5da8] to-[#6d4aff] text-lg font-bold">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#f9a8d4] to-[#c2357c] text-lg font-bold text-white">
                 {dedicatoria.nombre.charAt(0)}
               </span>
               <div className="min-w-0 leading-tight">
                 <p className="truncate font-semibold">{dedicatoria.nombre} 🖤</p>
-                <p className="truncate text-xs text-white/60">{t.nav.student}</p>
+                <p className="side-muted truncate text-xs">{t.nav.student}</p>
               </div>
             </div>
           </div>
@@ -122,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex gap-1">
             <ThemeToggle onDark className="flex-1 justify-start" />
             <button
-              className="btn px-3 text-white/75 hover:bg-white/10 hover:text-white"
+              className="btn side-link px-3"
               onClick={() => supabase.auth.signOut()}
               aria-label={t.nav.logout}
               title={t.nav.logout}
@@ -135,10 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Cabecera (móvil) */}
-        <header
-          className="sticky top-0 z-20 flex items-center justify-between px-4 py-2 text-white md:hidden"
-          style={{ background: "var(--sidebar)" }}
-        >
+        <header className="sidebar sticky top-0 z-20 flex items-center justify-between border-b border-[color:var(--sidebar-border)] px-4 py-2 md:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={32} />
             <span className="font-display font-extrabold">{t.appName}</span>
@@ -146,11 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1">
             <LanguageSwitcher compact onDark />
             <ThemeToggle onDark className="px-2" />
-            <button
-              className="btn px-2 text-white/75 hover:bg-white/10 hover:text-white"
-              onClick={() => supabase.auth.signOut()}
-              aria-label={t.nav.logout}
-            >
+            <button className="btn side-link px-2" onClick={() => supabase.auth.signOut()} aria-label={t.nav.logout}>
               <SignOut size={20} weight="duotone" aria-hidden="true" />
             </button>
           </div>

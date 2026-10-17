@@ -2,46 +2,52 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Paleta: violeta profundo con acentos turquesa. Cálida pero profesional para muchas horas de estudio. */
+/* Paleta: rosa suave, cálida y tranquila para muchas horas de estudio. */
 :root {
-  --bg: #f5f4fb;
+  --bg: #fdf7fa;
   --surface: #ffffff;
-  --surface-2: #f0eef9;
-  --border: #e4e1f2;
-  --text: #1b1733;
-  --muted: #6b6788;
-  --accent: #6d4aff;
-  --accent-strong: #5634e8;
-  --accent-soft: #eee9ff;
+  --surface-2: #fbeef4;
+  --border: #f2dde8;
+  --text: #2e1a26;
+  --muted: #7b6371;
+  --accent: #c2357c;
+  --accent-strong: #a52a69;
+  --accent-soft: #fde4ef;
   --accent-contrast: #ffffff;
-  --teal: #0fb5a6;
-  --teal-soft: #dcf7f3;
-  --pink: #ef5da8;
+  --teal: #0f9f92;
+  --teal-soft: #dcf5f1;
+  --pink: #db3f8c;
   --pink-soft: #fde7f2;
-  --amber: #f59e0b;
+  --amber: #d97706;
   --amber-soft: #fef3c7;
   --success: #12805c;
   --success-soft: #d9f6e9;
   --danger: #c2410c;
   --danger-soft: #ffedd5;
   --warning-soft: #fef3c7;
-  --shadow: 0 1px 2px rgb(27 23 51 / 0.04), 0 8px 24px -12px rgb(76 54 180 / 0.18);
-  --shadow-lg: 0 2px 4px rgb(27 23 51 / 0.05), 0 24px 48px -20px rgb(76 54 180 / 0.35);
-  --hero: linear-gradient(135deg, #2a1a6e 0%, #5b35f0 55%, #12b3a5 130%);
-  --sidebar: linear-gradient(180deg, #1c1347 0%, #2a1a6e 100%);
+  --shadow: 0 1px 2px rgb(46 26 38 / 0.04), 0 8px 24px -12px rgb(194 53 124 / 0.16);
+  --shadow-lg: 0 2px 4px rgb(46 26 38 / 0.05), 0 24px 48px -20px rgb(194 53 124 / 0.3);
+  --hero: linear-gradient(135deg, #b0306a 0%, #d4508f 50%, #eea0c4 115%);
+  --sidebar: linear-gradient(180deg, #fff5f9 0%, #fde6f0 100%);
+  --sidebar-text: #4a2238;
+  --sidebar-muted: #8a5f75;
+  --sidebar-hover: rgb(194 53 124 / 0.08);
+  --sidebar-active-bg: #ffffff;
+  --sidebar-active-text: #b02e70;
+  --sidebar-border: #f2d5e3;
 }
 
 .dark {
-  --bg: #0e0c1a;
-  --surface: #17142a;
-  --surface-2: #211d3a;
-  --border: #2e2950;
-  --text: #ece9fb;
-  --muted: #a49fc4;
-  --accent: #9c85ff;
-  --accent-strong: #b3a1ff;
-  --accent-soft: #2a2259;
-  --accent-contrast: #120d2b;
+  --bg: #160d13;
+  --surface: #211520;
+  --surface-2: #2c1c29;
+  --border: #3d2737;
+  --text: #f6e9f0;
+  --muted: #c4a3b5;
+  --accent: #f49ac1;
+  --accent-strong: #f7b2d0;
+  --accent-soft: #4a1f36;
+  --accent-contrast: #2a0f1e;
   --teal: #34d6c6;
   --teal-soft: #113a37;
   --pink: #f48cc0;
@@ -55,8 +61,14 @@
   --warning-soft: #3a3214;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-lg: 0 2px 4px rgb(0 0 0 / 0.3), 0 24px 48px -20px rgb(0 0 0 / 0.7);
-  --hero: linear-gradient(135deg, #1e1452 0%, #4326c4 60%, #0e8d82 130%);
-  --sidebar: linear-gradient(180deg, #120d2b 0%, #1c1347 100%);
+  --hero: linear-gradient(135deg, #5a1a3c 0%, #8c2a5e 60%, #b8507f 120%);
+  --sidebar: linear-gradient(180deg, #1d1019 0%, #2a1624 100%);
+  --sidebar-text: #f6e9f0;
+  --sidebar-muted: #c4a3b5;
+  --sidebar-hover: rgb(255 255 255 / 0.06);
+  --sidebar-active-bg: #3d2034;
+  --sidebar-active-text: #f7b2d0;
+  --sidebar-border: #3d2737;
 }
 
 @theme inline {
@@ -91,8 +103,8 @@ html {
 
 body {
   background:
-    radial-gradient(1200px 600px at 100% -10%, rgb(109 74 255 / 0.08), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgb(15 181 166 / 0.07), transparent 60%), var(--bg);
+    radial-gradient(1200px 600px at 100% -10%, rgb(236 72 153 / 0.08), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(192 132 252 / 0.07), transparent 60%), var(--bg);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-sans);
@@ -119,7 +131,7 @@ h3 {
 @utility btn-primary {
   @apply btn text-accent-contrast hover:brightness-110;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-  box-shadow: 0 6px 16px -6px rgb(109 74 255 / 0.55);
+  box-shadow: 0 6px 16px -6px rgb(194 53 124 / 0.5);
 }
 @utility btn-secondary {
   @apply btn border-border bg-surface text-text hover:border-accent hover:text-accent border;
@@ -241,14 +253,14 @@ h3 {
   height: 260px;
   right: -60px;
   top: -80px;
-  background: #ef5da8;
+  background: #f9c6dc;
 }
 .hero-glow::after {
   width: 220px;
   height: 220px;
   left: 30%;
   bottom: -120px;
-  background: #34d6c6;
+  background: #d8b4fe;
 }
 
 @keyframes fade-up {
@@ -268,4 +280,28 @@ h3 {
   .fade-up {
     animation: none;
   }
+}
+
+/* Barra lateral y cabecera del móvil */
+.sidebar {
+  background: var(--sidebar);
+  color: var(--sidebar-text);
+}
+.side-link {
+  color: var(--sidebar-muted);
+}
+.side-link:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text);
+}
+.side-active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  box-shadow: var(--shadow);
+}
+.side-card {
+  background: var(--sidebar-hover);
+}
+.side-muted {
+  color: var(--sidebar-muted);
 }

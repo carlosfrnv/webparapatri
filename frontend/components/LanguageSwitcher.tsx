@@ -8,7 +8,7 @@ export function LanguageSwitcher({ compact = false, onDark = false }: { compact?
   const t = useT();
   return (
     <div
-      className={`flex gap-1 rounded-xl p-1 ${onDark ? "bg-white/10" : "bg-surface-2"}`}
+      className={`flex gap-1 rounded-xl p-1 ${onDark ? "side-card" : "bg-surface-2"}`}
       role="group"
       aria-label={t.nav.language}
     >
@@ -22,10 +22,10 @@ export function LanguageSwitcher({ compact = false, onDark = false }: { compact?
           className={`min-h-9 flex-1 rounded-lg px-2 text-sm font-medium whitespace-nowrap ${
             lang === l.id
               ? onDark
-                ? "bg-white text-[#2a1a6e] shadow-sm"
+                ? "side-active"
                 : "bg-surface text-text shadow-sm"
               : onDark
-                ? "text-white/70 hover:text-white"
+                ? "side-link"
                 : "text-muted hover:text-text"
           }`}
         >

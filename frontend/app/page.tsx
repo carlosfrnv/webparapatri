@@ -162,7 +162,7 @@ export default function HomePage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/estudiar"
-                className="btn bg-white px-5 font-semibold text-[#2a1a6e] shadow-lg shadow-black/20 hover:bg-white/90"
+                className="btn bg-white px-5 font-semibold text-[#a52a69] shadow-lg shadow-black/10 hover:bg-white/90"
               >
                 <Cards size={20} weight="duotone" aria-hidden="true" /> {t.home.reviewNow}
               </Link>
