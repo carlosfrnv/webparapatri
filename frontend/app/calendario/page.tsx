@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
+import { CalendarBlank, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CountdownBadge, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
@@ -228,10 +228,10 @@ function ExamRow({ exam, onEdit, onDelete }: { exam: Exam; onEdit: () => void; o
         </div>
       </div>
       <button className="btn-ghost px-2" aria-label={`${t.common.edit} ${exam.title}`} onClick={onEdit}>
-        ✏️
+        <PencilSimple size={18} weight="duotone" aria-hidden="true" />
       </button>
       <button className="btn-ghost px-2" aria-label={`${t.common.delete} ${exam.title}`} onClick={onDelete}>
-        🗑️
+        <Trash size={18} weight="duotone" aria-hidden="true" />
       </button>
     </li>
   );
@@ -303,7 +303,7 @@ export default function CalendarPage() {
   return (
     <>
       <PageHeader
-        icon={CalendarDays}
+        icon={CalendarBlank}
         title={t.calendar.title}
         subtitle={t.calendar.subtitle}
         actions={

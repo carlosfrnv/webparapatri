@@ -1,6 +1,6 @@
 "use client";
 
-import { Library } from "lucide-react";
+import { Books } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DocumentList } from "@/components/DocumentList";
@@ -41,7 +41,7 @@ export default function ReferencePage() {
       <Link href="/biblioteca" className="text-accent mb-3 inline-block text-sm font-medium">
         ← {t.nav.library}
       </Link>
-      <PageHeader icon={Library} title={`📚 ${t.reference.title}`} subtitle={t.reference.subtitle} />
+      <PageHeader icon={Books} title={`📚 ${t.reference.title}`} subtitle={t.reference.subtitle} />
 
       <section className="mb-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

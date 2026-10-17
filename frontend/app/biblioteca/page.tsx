@@ -1,6 +1,23 @@
 "use client";
 
-import { Atom, BookOpen, HeartPulse, Radiation, ScanLine, Users, type LucideIcon } from "lucide-react";
+import {
+  Atom,
+  Books,
+  Heartbeat,
+  Radioactive,
+  Scan,
+  UsersThree,
+  type Icon,
+  Broom,
+  Trash,
+  GraduationCap,
+  MagnifyingGlass,
+  Brain,
+  ChartLineUp,
+  Flask,
+  HandHeart,
+} from "@phosphor-icons/react";
+import { GradientIcon, type Tone } from "@/components/GradientIcon";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DocumentList } from "@/components/DocumentList";
@@ -12,13 +29,40 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import type { Area, DocumentItem, Source, Subject } from "@/lib/types";
 
+// Icono propio para las asignaturas conocidas (por palabras del nombre, en español o portugués).
+const SUBJECT_ICONS: { match: RegExp; icon: Icon; tone: Tone }[] = [
+  { match: /anatom/i, icon: Heartbeat, tone: "pink" },
+  { match: /f[ií]sica/i, icon: Atom, tone: "violet" },
+  { match: /bioqu[ií]m/i, icon: Flask, tone: "teal" },
+  { match: /matem|estad[ií]st|estat[ií]st/i, icon: ChartLineUp, tone: "amber" },
+  { match: /imag/i, icon: Scan, tone: "blue" },
+  { match: /psico/i, icon: Brain, tone: "violet" },
+  { match: /volunt|identid/i, icon: HandHeart, tone: "pink" },
+  { match: /radioter/i, icon: Radioactive, tone: "amber" },
+];
+
+function subjectLook(s: Subject): { icon: Icon; tone: Tone; bar: string } {
+  const area = AREA_STYLE[s.area ?? "transversal"];
+  const own = SUBJECT_ICONS.find((x) => x.match.test(s.name));
+  return own ? { icon: own.icon, tone: own.tone, bar: TONE_BAR[own.tone] } : { ...area, bar: area.bar };
+}
+
+const TONE_BAR: Record<Tone, string> = {
+  violet: "bg-[#6d4aff]",
+  teal: "bg-[#14b8a6]",
+  pink: "bg-[#ec4899]",
+  amber: "bg-[#f59e0b]",
+  blue: "bg-[#3b82f6]",
+  slate: "bg-[#8b84b0]",
+};
+
 // Color e icono de cada área (barra superior y cuadradito de la tarjeta de la asignatura).
-const AREA_STYLE: Record<Area, { bar: string; tile: string; icon: LucideIcon }> = {
-  base: { bar: "bg-[#6d4aff]", tile: "bg-accent-soft text-accent", icon: Atom },
-  radiologia: { bar: "bg-[#0fb5a6]", tile: "bg-teal-soft text-teal", icon: ScanLine },
-  medicina_nuclear: { bar: "bg-[#f59e0b]", tile: "bg-amber-soft text-amber", icon: Radiation },
-  radioterapia: { bar: "bg-[#ef5da8]", tile: "bg-pink-soft text-pink", icon: HeartPulse },
-  transversal: { bar: "bg-[#8b84b0]", tile: "bg-surface-2 text-muted", icon: Users },
+const AREA_STYLE: Record<Area, { bar: string; tone: Tone; icon: Icon }> = {
+  base: { bar: "bg-[#6d4aff]", tone: "violet", icon: Atom },
+  radiologia: { bar: "bg-[#14b8a6]", tone: "teal", icon: Scan },
+  medicina_nuclear: { bar: "bg-[#f59e0b]", tone: "amber", icon: Radioactive },
+  radioterapia: { bar: "bg-[#ec4899]", tone: "pink", icon: Heartbeat },
+  transversal: { bar: "bg-[#3b82f6]", tone: "blue", icon: UsersThree },
 };
 
 const YEARS = [1, 2, 3, 4] as const;
@@ -59,7 +103,13 @@ function SearchBox() {
           }}
         />
         <button className="btn-secondary shrink-0" disabled={loading}>
-          {loading ? "…" : t.library.search}
+          {loading ? (
+            "…"
+          ) : (
+            <>
+              <MagnifyingGlass size={18} weight="bold" aria-hidden="true" /> {t.library.search}
+            </>
+          )}
         </button>
       </form>
       {error && <p className="text-danger mt-2 text-sm">{error}</p>}
@@ -185,7 +235,7 @@ export default function LibraryPage() {
 
   return (
     <>
-      <PageHeader icon={BookOpen} title={t.library.title} subtitle={t.library.subtitle} />
+      <PageHeader icon={Books} title={t.library.title} subtitle={t.library.subtitle} />
 
       <SearchBox />
 
@@ -246,7 +296,7 @@ export default function LibraryPage() {
             <div className="flex flex-wrap gap-2">
               {emptySubjects.length > 0 && (
                 <button className="btn-ghost text-sm" onClick={clearEmpty}>
-                  🧹 {t.library.clearEmpty}
+                  <Broom size={18} weight="duotone" aria-hidden="true" /> {t.library.clearEmpty}
                 </button>
               )}
               <button className="btn-secondary" onClick={() => setAdding(true)}>
@@ -285,14 +335,9 @@ export default function LibraryPage() {
                     href={`/asignatura/${s.id}`}
                     className="card card-hover flex h-full flex-col gap-4 overflow-hidden p-0"
                   >
-                    <span className={`h-1.5 w-full ${AREA_STYLE[s.area ?? "transversal"].bar}`} aria-hidden="true" />
+                    <span className={`h-1.5 w-full ${subjectLook(s).bar}`} aria-hidden="true" />
                     <div className="flex items-start gap-3 px-4 pr-12">
-                      <span className={`icon-tile ${AREA_STYLE[s.area ?? "transversal"].tile}`}>
-                        {(() => {
-                          const Icon = AREA_STYLE[s.area ?? "transversal"].icon;
-                          return <Icon size={20} aria-hidden="true" />;
-                        })()}
-                      </span>
+                      <GradientIcon icon={subjectLook(s).icon} tone={subjectLook(s).tone} />
                       <p className="font-display pt-2 leading-snug font-bold">{s.name}</p>
                     </div>
                     <div className="text-muted mt-auto flex items-center justify-between px-4 pb-4 text-sm">
@@ -307,7 +352,7 @@ export default function LibraryPage() {
                     aria-label={t.library.deleteSubject(s.name)}
                     onClick={() => deleteSubject(s)}
                   >
-                    🗑️
+                    <Trash size={18} weight="duotone" aria-hidden="true" />
                   </button>
                 </li>
               ))}
@@ -318,9 +363,7 @@ export default function LibraryPage() {
 
       <section className="mt-10">
         <Link href="/referencia" className="card card-hover flex items-center gap-4 p-5">
-          <span className="text-3xl" aria-hidden="true">
-            📚
-          </span>
+          <GradientIcon icon={GraduationCap} tone="teal" />
           <div>
             <p className="font-semibold">{t.reference.title}</p>
             <p className="text-muted text-sm">{t.reference.cardText}</p>

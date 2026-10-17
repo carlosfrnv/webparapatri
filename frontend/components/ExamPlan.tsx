@@ -1,6 +1,8 @@
 "use client";
 
+import { BookOpenText, Cards, Exam as ExamIcon, type Icon } from "@phosphor-icons/react";
 import Link from "next/link";
+import { GradientIcon, type Tone } from "./GradientIcon";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { Exam, ExamPlan, PlanTask } from "@/lib/types";
@@ -36,10 +38,11 @@ export function CountdownBadge({ days }: { days: number }) {
   );
 }
 
-function taskLink(task: PlanTask): { href: string; icon: string } {
-  if (task.type === "flashcards") return { href: `/estudiar?asignatura=${task.subject_id}`, icon: "🧠" };
-  if (task.type === "prepare") return { href: `/documento/${task.document_id}`, icon: "📖" };
-  return { href: `/documento/${task.document_id}#test`, icon: "📝" };
+function taskLink(task: PlanTask): { href: string; icon: Icon; tone: Tone } {
+  if (task.type === "flashcards")
+    return { href: `/estudiar?asignatura=${task.subject_id}`, icon: Cards, tone: "violet" };
+  if (task.type === "prepare") return { href: `/documento/${task.document_id}`, icon: BookOpenText, tone: "teal" };
+  return { href: `/documento/${task.document_id}#test`, icon: ExamIcon, tone: "pink" };
 }
 
 /** Lo que toca hoy para un examen: cuenta atrás, progreso y tareas. */
@@ -89,7 +92,7 @@ export function ExamPlanCard({ exam, plan, maxTasks }: { exam: Exam; plan?: Exam
       {tasks.length > 0 && (
         <ul className="mt-4 space-y-2">
           {tasks.map((task, i) => {
-            const { href, icon } = taskLink(task);
+            const { href, icon, tone } = taskLink(task);
             const label =
               task.type === "flashcards"
                 ? t.calendar.taskFlashcards(task.count)
@@ -100,9 +103,9 @@ export function ExamPlanCard({ exam, plan, maxTasks }: { exam: Exam; plan?: Exam
               <li key={i}>
                 <Link
                   href={href}
-                  className="border-border hover:border-accent flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2"
+                  className="border-border hover:border-accent hover:bg-surface-2 flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 transition-colors"
                 >
-                  <span aria-hidden="true">{icon}</span>
+                  <GradientIcon icon={icon} tone={tone} size={34} />
                   <span className="min-w-0 flex-1 text-sm">{label}</span>
                   <span className="text-accent" aria-hidden="true">
                     →

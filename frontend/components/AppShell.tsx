@@ -1,6 +1,16 @@
 "use client";
 
-import { BookOpen, Brain, CalendarDays, House, LogOut, MessageCircle, Moon, Sun, type LucideIcon } from "lucide-react";
+import {
+  BookBookmark,
+  Brain,
+  CalendarBlank,
+  ChatCircleDots,
+  House,
+  Moon,
+  SignOut,
+  Sun,
+  type Icon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,12 +21,12 @@ import { supabase } from "@/lib/supabase";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./LoginScreen";
 
-const NAV: { href: string; key: keyof Dictionary["nav"]; icon: LucideIcon }[] = [
+const NAV: { href: string; key: keyof Dictionary["nav"]; icon: Icon }[] = [
   { href: "/", key: "home", icon: House },
-  { href: "/biblioteca", key: "library", icon: BookOpen },
+  { href: "/biblioteca", key: "library", icon: BookBookmark },
   { href: "/estudiar", key: "study", icon: Brain },
-  { href: "/calendario", key: "calendar", icon: CalendarDays },
-  { href: "/chat", key: "chat", icon: MessageCircle },
+  { href: "/calendario", key: "calendar", icon: CalendarBlank },
+  { href: "/chat", key: "chat", icon: ChatCircleDots },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -40,14 +50,14 @@ export function ThemeToggle({ className = "", onDark = false }: { className?: st
       /* almacenamiento no disponible */
     }
   }
-  const Icon = dark ? Sun : Moon;
+  const ModeIcon = dark ? Sun : Moon;
   return (
     <button
       className={`btn ${onDark ? "text-white/75 hover:bg-white/10 hover:text-white" : "btn-ghost"} ${className}`}
       onClick={toggle}
       aria-label={dark ? t.nav.toLight : t.nav.toDark}
     >
-      <Icon size={18} aria-hidden="true" />
+      <ModeIcon size={20} weight="duotone" aria-hidden="true" />
       <span className="hidden lg:inline">{dark ? t.nav.lightMode : t.nav.darkMode}</span>
     </button>
   );
@@ -77,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-col gap-1" aria-label={t.nav.mainNav}>
           {NAV.map((item) => {
             const active = isActive(pathname, item.href);
-            const Icon = item.icon;
+            const NavIcon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -89,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     : "text-white/75 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <Icon size={19} strokeWidth={active ? 2.4 : 2} aria-hidden="true" />
+                <NavIcon size={22} weight={active ? "fill" : "duotone"} aria-hidden="true" />
                 {t.nav[item.key]}
               </Link>
             );
@@ -117,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label={t.nav.logout}
               title={t.nav.logout}
             >
-              <LogOut size={18} aria-hidden="true" />
+              <SignOut size={20} weight="duotone" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -141,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => supabase.auth.signOut()}
               aria-label={t.nav.logout}
             >
-              <LogOut size={18} aria-hidden="true" />
+              <SignOut size={20} weight="duotone" aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -171,7 +181,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         {NAV.map((item) => {
           const active = isActive(pathname, item.href);
-          const Icon = item.icon;
+          const NavIcon = item.icon;
           return (
             <Link
               key={item.href}
@@ -186,7 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   active ? "bg-accent-soft" : ""
                 }`}
               >
-                <Icon size={20} strokeWidth={active ? 2.4 : 2} aria-hidden="true" />
+                <NavIcon size={22} weight={active ? "fill" : "duotone"} aria-hidden="true" />
               </span>
               {t.nav[item.key]}
             </Link>

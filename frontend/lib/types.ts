@@ -115,6 +115,9 @@ export interface Stats {
   documents: number;
   reviewed_today: number;
   study_days_week: number;
+  week?: { date: string; count: number }[];
+  streak?: number;
+  quiz_avg?: number | null;
   recent_quizzes: { score: number; total: number; created_at: string; title: string }[];
   recent_documents: { id: string; title: string; status: DocumentItem["status"]; created_at: string }[];
 }

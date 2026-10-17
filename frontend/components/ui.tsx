@@ -1,6 +1,7 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { Icon as PhIcon } from "@phosphor-icons/react";
+import { GradientIcon } from "./GradientIcon";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -52,19 +53,12 @@ export function PageHeader({
   title: string;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: PhIcon;
 }) {
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 items-center gap-4">
-        {Icon && (
-          <span
-            className="icon-tile h-12 w-12 text-white shadow-lg shadow-[#6d4aff]/30"
-            style={{ background: "var(--hero)" }}
-          >
-            <Icon size={24} aria-hidden="true" />
-          </span>
-        )}
+        {Icon && <GradientIcon icon={Icon} tone="violet" size={52} />}
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold sm:text-3xl">{title}</h1>
           {subtitle && <p className="text-muted mt-0.5">{subtitle}</p>}

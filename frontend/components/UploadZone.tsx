@@ -1,5 +1,7 @@
 "use client";
 
+import { CloudArrowUp } from "@phosphor-icons/react";
+import { GradientIcon } from "./GradientIcon";
 import { useRef, useState } from "react";
 import { errorMessage, uploadFile, type UploadFields } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -88,9 +90,7 @@ export function UploadZone({
           dragging ? "border-accent bg-accent-soft" : "border-border bg-surface hover:border-accent"
         }`}
       >
-        <span className="text-4xl" aria-hidden="true">
-          📥
-        </span>
+        <GradientIcon icon={CloudArrowUp} tone="blue" size={56} />
         <p className="font-semibold">{title ?? t.upload.title}</p>
         <p className="text-muted text-sm">{t.upload.hint}</p>
         <input

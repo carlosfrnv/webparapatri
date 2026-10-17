@@ -1,10 +1,27 @@
 "use client";
 
-import { BookOpen, Brain, CircleCheck, Flame, Layers, MessageCircle } from "lucide-react";
+import {
+  CalendarBlank,
+  CalendarCheck,
+  CalendarPlus,
+  Cards,
+  CaretRight,
+  ChatCircleDots,
+  CheckCircle,
+  Exam,
+  FileText,
+  Fire,
+  Heart,
+  Target,
+  UploadSimple,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ExamPlanCard, localToday } from "@/components/ExamPlan";
+import { GradientIcon } from "@/components/GradientIcon";
+import { HeroArt } from "@/components/HeroArt";
 import { SpecialDay } from "@/components/SpecialDay";
+import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
@@ -100,43 +117,61 @@ export default function HomePage() {
     }
   }
 
+  const week = stats?.week ?? [];
+  const kpis = stats &&
+    due && [
+      { label: t.home.dueCards, value: String(due.total_due), icon: Cards, tone: "violet" as const, href: "/estudiar" },
+      { label: t.home.reviewedToday, value: String(stats.reviewed_today), icon: CheckCircle, tone: "teal" as const },
+      { label: t.home.streak, value: t.home.streakDays(stats.streak ?? 0), icon: Fire, tone: "amber" as const },
+      {
+        label: t.home.quizAvg,
+        value: stats.quiz_avg == null ? "—" : `${stats.quiz_avg} %`,
+        icon: Target,
+        tone: "pink" as const,
+      },
+    ];
+  const actions = [
+    {
+      label: t.home.actUpload,
+      text: t.home.actUploadText,
+      href: "/biblioteca",
+      icon: UploadSimple,
+      tone: "blue" as const,
+    },
+    { label: t.home.actReview, text: t.home.actReviewText, href: "/estudiar", icon: Cards, tone: "violet" as const },
+    { label: t.home.actTest, text: t.home.actTestText, href: "/estudiar", icon: Exam, tone: "pink" as const },
+    { label: t.home.actAsk, text: t.home.actAskText, href: "/chat", icon: ChatCircleDots, tone: "teal" as const },
+  ];
+
   return (
     <>
       {showWelcome && <WelcomeModal onClose={closeWelcome} />}
 
-      <section className="hero hero-glow mb-8 p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      {/* Cabecera con degradado */}
+      <section className="hero hero-glow mb-6 px-6 py-7 sm:px-10 sm:py-9">
+        <div className="relative z-10 grid items-center gap-6 lg:grid-cols-[1fr_auto]">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white/70">{todayLabel}</p>
-            <h1 className="mt-1 text-3xl font-extrabold sm:text-4xl">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide text-white/90 ring-1 ring-white/20">
+              <CalendarBlank size={14} weight="bold" aria-hidden="true" /> {todayLabel}
+            </span>
+            <h1 className="mt-4 text-3xl leading-tight font-extrabold sm:text-5xl">
               {lang === "es" ? "¡" : ""}
-              {greeting(t)}, {dedicatoria.nombre}! 👋
+              {greeting(t)}, {dedicatoria.nombre}!
             </h1>
-            <p className="mt-2 max-w-xl text-white/80">{dedicatoria.frase}</p>
-            {due && due.total_due > 0 && (
+            <p className="mt-3 max-w-xl text-base text-white/80 sm:text-lg">{dedicatoria.frase}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/estudiar"
-                className="btn mt-5 bg-white font-semibold text-[#2a1a6e] shadow-lg shadow-black/20 hover:bg-white/90"
+                className="btn bg-white px-5 font-semibold text-[#2a1a6e] shadow-lg shadow-black/20 hover:bg-white/90"
               >
-                <Brain size={18} aria-hidden="true" /> {t.home.reviewNow}
+                <Cards size={20} weight="duotone" aria-hidden="true" /> {t.home.reviewNow}
               </Link>
-            )}
+              <Link href="/chat" className="btn px-5 font-semibold text-white ring-1 ring-white/40 hover:bg-white/10">
+                <ChatCircleDots size={20} weight="duotone" aria-hidden="true" /> {t.home.actAsk}
+              </Link>
+            </div>
           </div>
-          {stats && due && (
-            <dl className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[26rem]">
-              {[
-                { label: t.home.dueCards, value: due.total_due, Icon: Layers },
-                { label: t.home.reviewedToday, value: stats.reviewed_today, Icon: CircleCheck },
-                { label: t.home.studyDays, value: `${stats.study_days_week}/7`, Icon: Flame },
-              ].map(({ label, value, Icon }) => (
-                <div key={label} className="rounded-2xl bg-white/12 p-3 ring-1 ring-white/15 backdrop-blur-sm">
-                  <Icon size={18} className="text-white/80" aria-hidden="true" />
-                  <dd className="font-display mt-2 text-2xl font-extrabold sm:text-3xl">{value}</dd>
-                  <dt className="text-[11px] leading-tight text-white/75 sm:text-xs">{label}</dt>
-                </div>
-              ))}
-            </dl>
-          )}
+          <HeroArt className="hidden h-52 w-52 drop-shadow-2xl sm:block lg:h-60 lg:w-60" />
         </div>
       </section>
 
@@ -154,25 +189,100 @@ export default function HomePage() {
       )}
       {!stats && !error && <Spinner label={t.home.loadingProgress} />}
 
-      {stats && due && (
-        <div className="space-y-8">
-          {nextExam && (
-            <section>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">{t.calendar.nextExam}</h2>
-                <Link href="/calendario" className="text-accent text-sm font-medium">
-                  {t.calendar.seeCalendar}
+      {stats && due && kpis && (
+        <div className="space-y-6">
+          {/* Indicadores */}
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {kpis.map((k) => {
+              const inner = (
+                <>
+                  <GradientIcon icon={k.icon} tone={k.tone} />
+                  <div className="min-w-0">
+                    <p className="font-display truncate text-2xl leading-tight font-extrabold sm:text-3xl">{k.value}</p>
+                    <p className="text-muted text-xs leading-snug sm:text-sm">{k.label}</p>
+                  </div>
+                </>
+              );
+              return k.href ? (
+                <Link key={k.label} href={k.href} className="card card-hover flex items-center gap-3 p-4 sm:p-5">
+                  {inner}
                 </Link>
+              ) : (
+                <div key={k.label} className="card flex items-center gap-3 p-4 sm:p-5">
+                  {inner}
+                </div>
+              );
+            })}
+          </section>
+
+          {/* Actividad + accesos rápidos */}
+          <section className="grid gap-6 lg:grid-cols-3">
+            <div className="card p-5 sm:p-6 lg:col-span-2">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold">{t.home.weekTitle}</h2>
+                  <p className="text-muted text-sm">{t.home.weekSubtitle}</p>
+                </div>
+                <span className="bg-accent-soft text-accent rounded-full px-3 py-1 text-xs font-bold">
+                  {stats.study_days_week}/7
+                </span>
               </div>
+              {week.length > 0 && <WeekChart week={week} />}
+            </div>
+            <div className="card p-5 sm:p-6">
+              <h2 className="mb-4 text-lg font-bold">{t.home.quickTitle}</h2>
+              <ul className="space-y-2">
+                {actions.map((a) => (
+                  <li key={a.label}>
+                    <Link
+                      href={a.href}
+                      className="hover:bg-surface-2 group flex items-center gap-3 rounded-xl p-2 transition-colors"
+                    >
+                      <GradientIcon icon={a.icon} tone={a.tone} size={40} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{a.label}</span>
+                        <span className="text-muted block text-xs">{a.text}</span>
+                      </span>
+                      <CaretRight
+                        size={16}
+                        className="text-muted transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* Próximo examen */}
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-bold">
+                <CalendarCheck size={22} weight="duotone" className="text-accent" aria-hidden="true" />
+                {t.calendar.nextExam.replace(/^\S+\s/, "")}
+              </h2>
+              <Link href="/calendario" className="text-accent text-sm font-semibold">
+                {t.calendar.seeCalendar}
+              </Link>
+            </div>
+            {nextExam ? (
               <ExamPlanCard exam={nextExam} plan={exams?.plan.find((p) => p.exam_id === nextExam.id)} maxTasks={3} />
-            </section>
-          )}
+            ) : (
+              <Link href="/calendario" className="card card-hover flex items-center gap-4 p-5">
+                <GradientIcon icon={CalendarPlus} tone="slate" />
+                <div>
+                  <p className="font-semibold">{t.home.noExamTitle}</p>
+                  <p className="text-muted text-sm">{t.home.noExamText}</p>
+                </div>
+              </Link>
+            )}
+          </section>
+
           {stats.documents === 0 ? (
             <section className="card flex flex-col items-center gap-3 p-8 text-center">
-              <span className="text-4xl" aria-hidden="true">
-                📥
-              </span>
-              <p className="text-lg font-semibold">{t.home.noFilesTitle}</p>
+              <GradientIcon icon={UploadSimple} tone="blue" size={56} />
+              <p className="text-lg font-bold">{t.home.noFilesTitle}</p>
               <p className="text-muted max-w-md">{t.home.noFilesText}</p>
               <Link href="/biblioteca" className="btn-primary">
                 {t.home.goLibrary}
@@ -180,43 +290,49 @@ export default function HomePage() {
             </section>
           ) : (
             <section className="grid gap-6 lg:grid-cols-2">
-              <div className="min-w-0">
+              <div className="card min-w-0 p-5 sm:p-6">
                 <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">{t.home.recentFiles}</h2>
-                  <Link href="/biblioteca" className="text-accent text-sm font-medium">
+                  <h2 className="text-lg font-bold">{t.home.recentFiles}</h2>
+                  <Link href="/biblioteca" className="text-accent text-sm font-semibold">
                     {t.home.seeAll}
                   </Link>
                 </div>
-                <ul className="card divide-border divide-y">
+                <ul className="divide-border divide-y">
                   {stats.recent_documents.map((d) => (
                     <li key={d.id}>
                       <Link
                         href={d.status === "ready" ? `/documento/${d.id}` : "/biblioteca"}
-                        className="hover:bg-surface-2 flex min-h-14 items-center justify-between gap-3 px-4 py-2"
+                        className="hover:bg-surface-2 -mx-2 flex min-h-14 items-center gap-3 rounded-xl px-2 py-2"
                       >
-                        <span className="truncate font-medium">{d.title}</span>
+                        <span className="icon-tile bg-accent-soft text-accent h-10 w-10">
+                          <FileText size={22} weight="duotone" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{d.title}</span>
                         <StatusBadge status={d.status} />
                       </Link>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="min-w-0">
-                <h2 className="mb-3 text-lg font-semibold">{t.home.recentQuizzes}</h2>
+              <div className="card min-w-0 p-5 sm:p-6">
+                <h2 className="mb-3 text-lg font-bold">{t.home.recentQuizzes}</h2>
                 {stats.recent_quizzes.length === 0 ? (
-                  <p className="card text-muted p-4">{t.home.noQuizzes}</p>
+                  <p className="text-muted">{t.home.noQuizzes}</p>
                 ) : (
-                  <ul className="card divide-border divide-y">
+                  <ul className="divide-border divide-y">
                     {stats.recent_quizzes.map((q, i) => {
                       const pct = Math.round((q.score / q.total) * 100);
                       return (
-                        <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
-                          <div className="min-w-0">
+                        <li key={i} className="flex items-center gap-3 py-3">
+                          <span className="icon-tile bg-pink-soft text-pink h-10 w-10">
+                            <Exam size={22} weight="duotone" aria-hidden="true" />
+                          </span>
+                          <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{q.title}</p>
                             <p className="text-muted text-sm">{formatDate(q.created_at, lang)}</p>
                           </div>
                           <span
-                            className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${
+                            className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${
                               pct >= 50 ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
                             }`}
                           >
@@ -231,25 +347,21 @@ export default function HomePage() {
             </section>
           )}
 
-          <section className="grid gap-3 sm:grid-cols-2">
-            <Link href="/chat" className="card card-hover flex items-center gap-4 p-5">
-              <span className="icon-tile bg-accent-soft text-accent">
-                <MessageCircle size={22} aria-hidden="true" />
-              </span>
+          {/* Nota personal */}
+          <section className="card relative overflow-hidden p-6 sm:p-7">
+            <span
+              className="absolute -top-10 -right-10 h-36 w-36 rounded-full opacity-20 blur-2xl"
+              style={{ background: "var(--hero)" }}
+              aria-hidden="true"
+            />
+            <div className="relative flex items-start gap-4">
+              <GradientIcon icon={Heart} tone="slate" />
               <div>
-                <p className="font-semibold">{t.home.askTitle}</p>
-                <p className="text-muted text-sm">{t.home.askText}</p>
+                <p className="text-muted text-xs font-semibold tracking-wider uppercase">{t.home.fromCarlos}</p>
+                <p className="font-display mt-1 text-lg font-bold">{dedicatoria.frase}</p>
+                <p className="text-muted mt-1 text-sm">{dedicatoria.firma}</p>
               </div>
-            </Link>
-            <Link href="/biblioteca" className="card card-hover flex items-center gap-4 p-5">
-              <span className="icon-tile bg-teal-soft text-teal">
-                <BookOpen size={22} aria-hidden="true" />
-              </span>
-              <div>
-                <p className="font-semibold">{t.nav.library}</p>
-                <p className="text-muted text-sm">{t.home.libraryText}</p>
-              </div>
-            </Link>
+            </div>
           </section>
         </div>
       )}

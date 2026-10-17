@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilSimple, Trash } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -111,10 +112,10 @@ export default function SubjectPage() {
           actions={
             <>
               <button className="btn-secondary" onClick={() => setEditing(true)}>
-                ✏️ {t.common.edit}
+                <PencilSimple size={18} weight="duotone" aria-hidden="true" /> {t.common.edit}
               </button>
               <button className="btn-ghost" onClick={removeSubject}>
-                🗑️ {t.common.delete}
+                <Trash size={18} weight="duotone" aria-hidden="true" /> {t.common.delete}
               </button>
             </>
           }

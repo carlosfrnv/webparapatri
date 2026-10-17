@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { api, errorMessage } from "@/lib/api";
@@ -151,7 +152,7 @@ export function DocumentList({
                 onClick={() => remove(doc)}
                 aria-label={t.docList.deleteLabel(doc.title)}
               >
-                🗑️
+                <Trash size={18} weight="duotone" aria-hidden="true" />
               </button>
             </div>
           </li>
