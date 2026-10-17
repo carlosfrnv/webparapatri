@@ -4,15 +4,15 @@
 
 /* Paleta: rosa suave, cálida y tranquila para muchas horas de estudio. */
 :root {
-  --bg: #fbe8f1;
+  --bg: #f7d4e5;
   --surface: #ffffff;
-  --surface-2: #f8dbe9;
-  --border: #efc7da;
+  --surface-2: #f5c4dc;
+  --border: #e9a7c7;
   --text: #2e1a26;
-  --muted: #7b6371;
-  --accent: #c2357c;
-  --accent-strong: #a52a69;
-  --accent-soft: #f9cfe2;
+  --muted: #6f4f61;
+  --accent: #b02e70;
+  --accent-strong: #94245d;
+  --accent-soft: #f7c0da;
   --accent-contrast: #ffffff;
   --teal: #0f9f92;
   --teal-soft: #dcf5f1;
@@ -27,14 +27,14 @@
   --warning-soft: #fef3c7;
   --shadow: 0 1px 2px rgb(46 26 38 / 0.04), 0 8px 24px -12px rgb(194 53 124 / 0.16);
   --shadow-lg: 0 2px 4px rgb(46 26 38 / 0.05), 0 24px 48px -20px rgb(194 53 124 / 0.3);
-  --hero: linear-gradient(135deg, #c2357c 0%, #e070a8 55%, #f6a9cc 115%);
-  --sidebar: linear-gradient(180deg, #f9d3e5 0%, #f2b3d0 100%);
-  --sidebar-text: #4a1835;
-  --sidebar-muted: #7a3a5c;
-  --sidebar-hover: rgb(255 255 255 / 0.45);
+  --hero: linear-gradient(135deg, #a52a69 0%, #d4508f 50%, #e985b6 110%);
+  --sidebar: linear-gradient(180deg, #c43c80 0%, #a52a69 100%);
+  --sidebar-text: #ffffff;
+  --sidebar-muted: rgb(255 255 255 / 0.85);
+  --sidebar-hover: rgb(255 255 255 / 0.16);
   --sidebar-active-bg: #ffffff;
   --sidebar-active-text: #b02e70;
-  --sidebar-border: #eab1cc;
+  --sidebar-border: #a52a69;
 }
 
 .dark {
@@ -103,8 +103,8 @@ html {
 
 body {
   background:
-    radial-gradient(1200px 600px at 100% -10%, rgb(224 112 168 / 0.22), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgb(224 112 168 / 0.14), transparent 60%), var(--bg);
+    radial-gradient(1200px 600px at 100% -10%, rgb(212 80 143 / 0.28), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(212 80 143 / 0.2), transparent 60%), var(--bg);
   background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-sans);
