@@ -22,7 +22,7 @@ import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
 import { SpecialDay } from "@/components/SpecialDay";
-import { BLOCK_STYLE, todayDay } from "@/components/Timetable";
+import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Timetable";
 import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria } from "@/config/dedicatoria";
@@ -90,7 +90,10 @@ export default function HomePage() {
         api.get<{ total_due: number; total_cards: number }>("/flashcards/due?limit=1"),
         // Si falla el calendario, el resto de la página se muestra igual.
         api.get<ExamsResponse>(`/exams?today=${localToday()}`).catch(() => null),
-        api.get<ScheduleBlock[]>("/schedule").catch(() => null),
+        // Lo de esta semana (para saber si usa el horario) y de ahí se saca lo de hoy.
+        api
+          .get<ScheduleBlock[]>(`/schedule?from=${addDays(localToday(), -6)}&to=${addDays(localToday(), 6)}`)
+          .catch(() => null),
       ]);
       setSchedule(sch);
       setStats(s);
@@ -123,7 +126,7 @@ export default function HomePage() {
   }
 
   const week = stats?.week ?? [];
-  const todayBlocks = (schedule ?? []).filter((b) => b.day === todayDay());
+  const todayBlocks = (schedule ?? []).filter((b) => blockOnDate(b, localToday()));
   const kpis = stats &&
     due && [
       { label: t.home.dueCards, value: String(due.total_due), icon: Cards, tone: "violet" as const, href: "/estudiar" },
@@ -246,6 +249,7 @@ export default function HomePage() {
                         {b.start_time}–{b.end_time}
                       </p>
                       <p className="truncate font-bold">{b.title}</p>
+                      {blockDetails(b) && <p className="truncate text-xs font-medium opacity-90">{blockDetails(b)}</p>}
                       {b.location && <p className="truncate text-xs opacity-80">{b.location}</p>}
                     </li>
                   ))}

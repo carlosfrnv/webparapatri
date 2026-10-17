@@ -153,6 +153,11 @@ create table if not exists schedule_blocks (
   created_at timestamptz default now()
 );
 create index if not exists schedule_blocks_user_idx on schedule_blocks (user_id, day, start_time);
+-- El horario cambia cada semana: un bloque puede ser de un día concreto (date) o repetirse (date vacío).
+alter table schedule_blocks add column if not exists date date;
+alter table schedule_blocks add column if not exists class_type text;
+alter table schedule_blocks add column if not exists teacher text;
+create index if not exists schedule_blocks_date_idx on schedule_blocks (user_id, date);
 
 -- Preferencias (p. ej., si ya se crearon las asignaturas iniciales)
 create table if not exists user_settings (

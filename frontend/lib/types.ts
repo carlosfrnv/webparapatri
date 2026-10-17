@@ -168,11 +168,17 @@ export type BlockColor = "pink" | "violet" | "teal" | "amber" | "blue" | "slate"
 /** Un bloque del horario semanal (día 1 = lunes … 7 = domingo; horas "HH:MM"). */
 export interface ScheduleBlock {
   id: string;
+  /** 1 = lunes … 7 = domingo. */
   day: number;
+  /** Día concreto (AAAA-MM-DD); vacío si se repite todas las semanas. */
+  date: string | null;
   start_time: string;
   end_time: string;
   title: string;
   subject_id: string | null;
   location: string | null;
+  /** Tipo de clase: T, TP, PL, OT… */
+  class_type: string | null;
+  teacher: string | null;
   color: BlockColor;
 }
