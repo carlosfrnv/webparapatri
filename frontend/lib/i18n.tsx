@@ -88,6 +88,8 @@ const es = {
     toLight: "Cambiar a modo claro",
     language: "Idioma",
     mainNav: "Navegación principal",
+    tagline: "Imagen Médica y Radioterapia",
+    student: "Estudiante de IMR · ESSCVP",
     waking: "Despertando el servidor… (puede tardar hasta un minuto)",
   },
   auth: {
@@ -404,6 +406,8 @@ const pt: Dictionary = {
     toLight: "Mudar para modo claro",
     language: "Idioma",
     mainNav: "Navegação principal",
+    tagline: "Imagem Médica e Radioterapia",
+    student: "Estudante de IMR · ESSCVP",
     waking: "A acordar o servidor… (pode demorar até um minuto)",
   },
   auth: {

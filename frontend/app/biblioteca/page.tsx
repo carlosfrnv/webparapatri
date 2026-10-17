@@ -1,5 +1,6 @@
 "use client";
 
+import { Atom, BookOpen, HeartPulse, Radiation, ScanLine, Users, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DocumentList } from "@/components/DocumentList";
@@ -9,7 +10,16 @@ import { localSourceHref } from "@/components/Sources";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
-import type { DocumentItem, Source, Subject } from "@/lib/types";
+import type { Area, DocumentItem, Source, Subject } from "@/lib/types";
+
+// Color e icono de cada área (barra superior y cuadradito de la tarjeta de la asignatura).
+const AREA_STYLE: Record<Area, { bar: string; tile: string; icon: LucideIcon }> = {
+  base: { bar: "bg-[#6d4aff]", tile: "bg-accent-soft text-accent", icon: Atom },
+  radiologia: { bar: "bg-[#0fb5a6]", tile: "bg-teal-soft text-teal", icon: ScanLine },
+  medicina_nuclear: { bar: "bg-[#f59e0b]", tile: "bg-amber-soft text-amber", icon: Radiation },
+  radioterapia: { bar: "bg-[#ef5da8]", tile: "bg-pink-soft text-pink", icon: HeartPulse },
+  transversal: { bar: "bg-[#8b84b0]", tile: "bg-surface-2 text-muted", icon: Users },
+};
 
 const YEARS = [1, 2, 3, 4] as const;
 
@@ -63,7 +73,7 @@ function SearchBox() {
                 <li key={r.chunk_id}>
                   <Link
                     href={localSourceHref(r)}
-                    className={`card hover:border-accent block p-3 ${r.kind === "referencia" ? "bg-warning-soft" : ""}`}
+                    className={`card card-hover block p-3 ${r.kind === "referencia" ? "bg-warning-soft" : ""}`}
                   >
                     <p className="text-sm font-semibold">
                       {r.kind === "referencia" && <span>📚 {t.reference.badge(r.org ?? "IAEA / EFRS")} · </span>}
@@ -175,7 +185,7 @@ export default function LibraryPage() {
 
   return (
     <>
-      <PageHeader title={t.library.title} subtitle={t.library.subtitle} />
+      <PageHeader icon={BookOpen} title={t.library.title} subtitle={t.library.subtitle} />
 
       <SearchBox />
 
@@ -273,16 +283,27 @@ export default function LibraryPage() {
                 <li key={s.id} className="relative">
                   <Link
                     href={`/asignatura/${s.id}`}
-                    className="card hover:border-accent flex h-full flex-col justify-between gap-3 p-4 pr-12"
+                    className="card card-hover flex h-full flex-col gap-4 overflow-hidden p-0"
                   >
-                    <p className="font-semibold">{s.name}</p>
-                    <div className="text-muted flex items-center justify-between text-sm">
+                    <span className={`h-1.5 w-full ${AREA_STYLE[s.area ?? "transversal"].bar}`} aria-hidden="true" />
+                    <div className="flex items-start gap-3 px-4 pr-12">
+                      <span className={`icon-tile ${AREA_STYLE[s.area ?? "transversal"].tile}`}>
+                        {(() => {
+                          const Icon = AREA_STYLE[s.area ?? "transversal"].icon;
+                          return <Icon size={20} aria-hidden="true" />;
+                        })()}
+                      </span>
+                      <p className="font-display pt-2 leading-snug font-bold">{s.name}</p>
+                    </div>
+                    <div className="text-muted mt-auto flex items-center justify-between px-4 pb-4 text-sm">
                       <span>{s.area ? t.areas[s.area] : ""}</span>
-                      <span>{t.library.files(s.document_count ?? 0)}</span>
+                      <span className="bg-surface-2 rounded-full px-2.5 py-0.5 text-xs font-medium">
+                        {t.library.files(s.document_count ?? 0)}
+                      </span>
                     </div>
                   </Link>
                   <button
-                    className="btn-ghost absolute top-2 right-2 px-2"
+                    className="btn-ghost absolute top-4 right-2 px-2"
                     aria-label={t.library.deleteSubject(s.name)}
                     onClick={() => deleteSubject(s)}
                   >
@@ -296,7 +317,7 @@ export default function LibraryPage() {
       )}
 
       <section className="mt-10">
-        <Link href="/referencia" className="card hover:border-accent flex items-center gap-4 p-5">
+        <Link href="/referencia" className="card card-hover flex items-center gap-4 p-5">
           <span className="text-3xl" aria-hidden="true">
             📚
           </span>

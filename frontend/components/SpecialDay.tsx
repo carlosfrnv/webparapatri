@@ -63,7 +63,7 @@ export function SpecialDay({ suppressModal = false }: { suppressModal?: boolean 
   return (
     <>
       <button
-        className="card hover:border-accent mb-8 flex w-full items-center gap-4 p-5 text-left"
+        className="card card-hover mb-8 flex w-full items-center gap-4 p-5 text-left"
         onClick={() => setOpen(true)}
       >
         <span className="text-4xl" aria-hidden="true">

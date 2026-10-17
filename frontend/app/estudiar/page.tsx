@@ -1,5 +1,6 @@
 "use client";
 
+import { Brain } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -64,7 +65,7 @@ function StudyPageContent() {
 
   return (
     <>
-      <PageHeader title={t.studyPage.title} subtitle={t.studyPage.subtitle} />
+      <PageHeader icon={Brain} title={t.studyPage.title} subtitle={t.studyPage.subtitle} />
       {subjectId && subjectName && (
         <p className="bg-accent-soft mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm">
           <span>{t.studyPage.onlySubject(subjectName)}</span>
@@ -119,7 +120,7 @@ function StudyPageContent() {
                   <li key={d.id}>
                     <Link
                       href={`/documento/${d.id}#test`}
-                      className="card hover:border-accent flex min-h-14 items-center justify-between gap-3 p-4"
+                      className="card card-hover flex min-h-14 items-center justify-between gap-3 p-4"
                     >
                       <span className="truncate font-medium">{d.title}</span>
                       <span className="text-accent" aria-hidden="true">

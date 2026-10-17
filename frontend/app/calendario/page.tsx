@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarDays } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CountdownBadge, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
@@ -302,6 +303,7 @@ export default function CalendarPage() {
   return (
     <>
       <PageHeader
+        icon={CalendarDays}
         title={t.calendar.title}
         subtitle={t.calendar.subtitle}
         actions={
