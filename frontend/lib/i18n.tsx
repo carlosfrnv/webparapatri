@@ -389,6 +389,11 @@ const es = {
     send: "Enviar",
     pageShort: "p.",
     failed: "No se ha podido responder ahora. Inténtalo de nuevo.",
+    attach: "Añadir foto",
+    removeImage: "Quitar foto",
+    maxImages: (n: number) => `Puedes adjuntar hasta ${n} fotos por pregunta.`,
+    imageError: "No se ha podido leer esa imagen. Prueba con otra foto.",
+    photo: "Foto adjunta",
   },
 };
 
@@ -725,6 +730,11 @@ const pt: Dictionary = {
     send: "Enviar",
     pageShort: "p.",
     failed: "Não foi possível responder agora. Tenta novamente.",
+    attach: "Adicionar foto",
+    removeImage: "Remover foto",
+    maxImages: (n: number) => `Podes anexar até ${n} fotos por pergunta.`,
+    imageError: "Não foi possível ler essa imagem. Experimenta outra foto.",
+    photo: "Foto anexada",
   },
 };
 

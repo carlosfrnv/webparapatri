@@ -1,12 +1,21 @@
 "use client";
 
+import { Camera, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localSourceHref, SourceChips } from "@/components/Sources";
 import { Markdown } from "@/components/ui";
 import { apiFetch, api, errorMessage } from "@/lib/api";
+import { prepareImage, type ImageAttachment } from "@/lib/images";
 import { dict, useT } from "@/lib/i18n";
 import { useDedicatoria } from "@/config/dedicatoria";
-import { isLocalSource, OFF_TOPIC_MARKER, type AnySource, type ChatMessage, type DocumentItem } from "@/lib/types";
+import {
+  isImageSource,
+  isLocalSource,
+  OFF_TOPIC_MARKER,
+  type AnySource,
+  type ChatMessage,
+  type DocumentItem,
+} from "@/lib/types";
 
 interface Conversation {
   conversation_id: string;
@@ -21,13 +30,26 @@ function pickOffTopic(options: string[], question: string): string {
   return options[h % options.length];
 }
 
+const MAX_IMAGES = 3;
+
+/** Fotos de un mensaje de la estudiante: las recién enviadas (vista previa) o las guardadas (enlace temporal). */
+function userImages(m: ChatMessage): string[] {
+  if (m.images?.length) return m.images;
+  return (m.sources ?? []).filter(isImageSource).flatMap((s) => (s.url ? [s.url] : []));
+}
+
 type WebPhase = "web_search" | "web_fetch";
 
 const STREAM_SILENCE_MS = 60_000;
 
 /** Lee el stream SSE del backend (event: meta | delta | status | done | error). */
 async function streamChat(
-  body: { question: string; conversation_id?: string; document_id?: string },
+  body: {
+    question: string;
+    conversation_id?: string;
+    document_id?: string;
+    images?: { media_type: string; data: string }[];
+  },
   handlers: {
     meta: (d: { conversation_id: string; sources: AnySource[] }) => void;
     delta: (t: string) => void;
@@ -84,6 +106,8 @@ export default function ChatPage() {
   const t = useT();
   const dedicatoria = useDedicatoria();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [input, setInput] = useState("");
@@ -141,20 +165,43 @@ export default function ChatPage() {
     loadConversations();
   }
 
+  async function addImages(files: FileList | null) {
+    if (!files?.length) return;
+    const room = MAX_IMAGES - attachments.length;
+    if (files.length > room) setError(t.chat.maxImages(MAX_IMAGES));
+    try {
+      const ready = await Promise.all([...files].slice(0, Math.max(0, room)).map(prepareImage));
+      setAttachments((a) => [...a, ...ready].slice(0, MAX_IMAGES));
+    } catch {
+      setError(t.chat.imageError);
+    }
+  }
+
   async function send(text: string) {
     const question = text.trim();
-    if (!question || busy) return;
+    const images = attachments;
+    if ((!question && images.length === 0) || busy) return;
     setInput("");
+    setAttachments([]);
     setError("");
     setBusy(true);
-    setMessages((m) => [...m, { role: "user", content: question }, { role: "assistant", content: "", sources: [] }]);
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: question, images: images.map((i) => i.preview) },
+      { role: "assistant", content: "", sources: [] },
+    ]);
 
     const updateLast = (fn: (msg: ChatMessage) => ChatMessage) =>
       setMessages((m) => [...m.slice(0, -1), fn(m[m.length - 1])]);
 
     try {
       await streamChat(
-        { question, conversation_id: conversationId, document_id: docFilter?.id },
+        {
+          question,
+          conversation_id: conversationId,
+          document_id: docFilter?.id,
+          images: images.map(({ media_type, data }) => ({ media_type, data })),
+        },
         {
           meta: ({ conversation_id, sources }) => {
             setConversationId(conversation_id);
@@ -272,8 +319,26 @@ export default function ChatPage() {
           {messages.map((m, i) =>
             m.role === "user" ? (
               <div key={i} className="flex justify-end">
-                <div className="bg-accent text-accent-contrast max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 whitespace-pre-wrap">
-                  {m.content}
+                <div className="flex max-w-[85%] flex-col items-end gap-2">
+                  {userImages(m).length > 0 && (
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {userImages(m).map((src, j) => (
+                        <a key={j} href={src} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- fotos privadas con enlace temporal */}
+                          <img
+                            src={src}
+                            alt={t.chat.photo}
+                            className="border-border h-32 w-32 rounded-2xl border object-cover shadow-sm sm:h-40 sm:w-40"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {m.content && (
+                    <div className="bg-accent text-accent-contrast rounded-2xl rounded-br-md px-4 py-2.5 whitespace-pre-wrap">
+                      {m.content}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -318,6 +383,28 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </div>
 
+        {attachments.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {attachments.map((a, j) => (
+              <div key={j} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local */}
+                <img
+                  src={a.preview}
+                  alt={t.chat.photo}
+                  className="border-border h-20 w-20 rounded-xl border object-cover"
+                />
+                <button
+                  type="button"
+                  className="bg-text text-surface absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full shadow"
+                  onClick={() => setAttachments((list) => list.filter((_, k) => k !== j))}
+                  aria-label={t.chat.removeImage}
+                >
+                  <X size={14} weight="bold" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <form
           className="border-border bg-surface sticky bottom-20 mt-4 flex items-end gap-2 rounded-2xl border p-2 shadow-sm md:bottom-4"
           onSubmit={(e) => {
@@ -325,6 +412,27 @@ export default function ChatPage() {
             send(input);
           }}
         >
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              addImages(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className="btn-ghost px-2.5"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy || attachments.length >= MAX_IMAGES}
+            aria-label={t.chat.attach}
+            title={t.chat.attach}
+          >
+            <Camera size={22} weight="duotone" aria-hidden="true" />
+          </button>
           <textarea
             className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 outline-none"
             rows={1}
@@ -339,7 +447,11 @@ export default function ChatPage() {
               }
             }}
           />
-          <button className="btn-primary" disabled={busy || !input.trim()} aria-label={t.chat.send}>
+          <button
+            className="btn-primary"
+            disabled={busy || (!input.trim() && attachments.length === 0)}
+            aria-label={t.chat.send}
+          >
             {busy ? "…" : t.chat.send}
           </button>
         </form>

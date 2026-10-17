@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
-import { isLocalSource, isSuggestions, isWebSource, type AnySource, type Source, type WebSource } from "@/lib/types";
+import {
+  isImageSource,
+  isLocalSource,
+  isSuggestions,
+  isWebSource,
+  type AnySource,
+  type Source,
+  type WebSource,
+} from "@/lib/types";
 
 /** Dirección interna de un fragmento local: abre el documento dentro de la propia web. */
 export function localSourceHref(s: Source) {
@@ -74,7 +82,7 @@ function SearchSuggestionsBox({ html }: { html: string }) {
 }
 
 export function SourceChips({ sources, title }: { sources: AnySource[]; title?: string }) {
-  const chips = sources.filter((s) => !isSuggestions(s));
+  const chips = sources.filter((s) => !isSuggestions(s) && !isImageSource(s));
   const suggestions = sources.find(isSuggestions);
   if (!chips.length && !suggestions) return null;
   return (

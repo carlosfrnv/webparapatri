@@ -20,6 +20,7 @@ function reasoningOptions(model: string, effort: LlmRequest["effort"]) {
 export const groqProvider: Provider = {
   id: "groq",
   supportsWeb: false,
+  supportsImages: false,
   async generate(model: string, req: LlmRequest): Promise<LlmResult> {
     const messages = [
       { role: "system" as const, content: req.system },

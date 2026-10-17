@@ -4,7 +4,7 @@ import type { Lang, MessageKey } from "./i18n";
 import { anthropicProvider } from "./llm/anthropic";
 import { gemini } from "./llm/gemini";
 import { groqProvider } from "./llm/groq";
-import { ProviderError, type Effort, type Provider } from "./llm/types";
+import { ProviderError, type Effort, type LlmImage, type Provider } from "./llm/types";
 import { BASE_SYSTEM } from "./prompts";
 import type { WebSource } from "./web";
 
@@ -64,6 +64,8 @@ interface GenerateOptions extends AiOptions {
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
   /** Un modelo ha fallado a mitad de respuesta y otro va a empezar: hay que borrar el texto parcial. */
   onReset?: () => void;
+  /** Fotos adjuntas: solo se usan los modelos que pueden verlas. */
+  images?: LlmImage[];
 }
 
 export interface GenerateResult {
@@ -98,6 +100,7 @@ export async function generate(
 
   for (const step of CHAIN) {
     if (cooling(cooldownUntil, step.key)) continue;
+    if (opts.images?.length && !step.provider.supportsImages) continue;
     let useWeb = !!opts.web && step.provider.supportsWeb && !cooling(webCooldownUntil, step.key);
 
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -113,6 +116,7 @@ export async function generate(
           maxTokens: opts.maxTokens ?? 16000,
           json: !!opts.json,
           web: useWeb,
+          images: opts.images,
           onText,
           onWebTool: opts.onWebTool,
         });

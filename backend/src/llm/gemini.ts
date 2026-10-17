@@ -45,6 +45,7 @@ function webSourcesFrom(meta: GroundingMetadata | undefined): WebSource[] {
 export const gemini: Provider = {
   id: "gemini",
   supportsWeb: true,
+  supportsImages: true,
   async generate(model: string, req: LlmRequest): Promise<LlmResult> {
     if (req.web) req.onWebTool?.("web_search");
     let text = "";
@@ -53,7 +54,17 @@ export const gemini: Provider = {
     try {
       const stream = await ai().models.generateContentStream({
         model,
-        contents: req.prompt,
+        contents: req.images?.length
+          ? [
+              {
+                role: "user",
+                parts: [
+                  ...req.images.map((img) => ({ inlineData: { mimeType: img.mediaType, data: img.data } })),
+                  { text: req.prompt },
+                ],
+              },
+            ]
+          : req.prompt,
         config: {
           systemInstruction: req.system,
           maxOutputTokens: req.maxTokens,

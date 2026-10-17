@@ -23,6 +23,8 @@ app.use(
     },
   }),
 );
+// El chat admite fotos (hasta 3, ya reducidas en el navegador): necesita un límite mayor.
+app.use("/chat", express.json({ limit: "12mb" }));
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => {

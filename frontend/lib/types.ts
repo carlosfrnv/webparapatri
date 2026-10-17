@@ -99,16 +99,25 @@ export interface SearchSuggestions {
   html: string;
 }
 
-export type AnySource = Source | WebSource | SearchSuggestions;
+/** Foto adjunta a una pregunta del chat (enlace temporal). */
+export interface ImageSource {
+  kind: "image";
+  url: string | null;
+}
+
+export type AnySource = Source | WebSource | SearchSuggestions | ImageSource;
 export const isWebSource = (s: AnySource): s is WebSource => s.kind === "web";
 export const isSuggestions = (s: AnySource): s is SearchSuggestions => s.kind === "search_suggestions";
-export const isLocalSource = (s: AnySource): s is Source => !isWebSource(s) && !isSuggestions(s);
+export const isImageSource = (s: AnySource): s is ImageSource => s.kind === "image";
+export const isLocalSource = (s: AnySource): s is Source => !isWebSource(s) && !isSuggestions(s) && !isImageSource(s);
 
 export interface ChatMessage {
   id?: number | string;
   role: "user" | "assistant";
   content: string;
   sources?: AnySource[] | null;
+  /** Vistas previas de las fotos que acaba de enviar (antes de guardarse). */
+  images?: string[];
 }
 
 export interface Stats {

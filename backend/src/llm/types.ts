@@ -12,8 +12,15 @@ export interface LlmRequest {
   json: boolean;
   /** Activa la búsqueda web en Radiopaedia, IAEA y EFRS si el proveedor la tiene. */
   web: boolean;
+  /** Fotos adjuntas por la estudiante (base64), para los proveedores que pueden verlas. */
+  images?: LlmImage[];
   onText?: (delta: string) => void;
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
+}
+
+export interface LlmImage {
+  mediaType: "image/jpeg" | "image/png" | "image/webp";
+  data: string;
 }
 
 export interface LlmResult {
@@ -31,6 +38,8 @@ export interface Provider {
   id: "gemini" | "groq" | "anthropic";
   /** Si el proveedor puede buscar en internet. */
   supportsWeb: boolean;
+  /** Si el proveedor puede ver imágenes. */
+  supportsImages: boolean;
   generate(model: string, req: LlmRequest): Promise<LlmResult>;
 }
 

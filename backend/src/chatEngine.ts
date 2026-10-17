@@ -1,5 +1,6 @@
 import { generate, type GenerateResult } from "./ai";
 import type { Lang } from "./i18n";
+import type { LlmImage } from "./llm/types";
 import { chatPrompt, OFF_TOPIC_MARKER } from "./prompts";
 import { findTieredSources, formatSources, type Source } from "./search";
 import { WEB_ENABLED, type WebSource } from "./web";
@@ -36,6 +37,7 @@ export async function answerQuestion(p: {
   question: string;
   history: string;
   documentId?: string;
+  images?: LlmImage[];
   onMeta?: (meta: { sources: PublicSource[]; tiers: ChatTiers }) => void;
   onText?: (delta: string) => void;
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
@@ -82,12 +84,14 @@ export async function answerQuestion(p: {
         historial: p.history,
         pregunta: p.question,
         webAllowed: tiers.web && webAvailable,
+        imagenes: p.images?.length ?? 0,
       }),
     {
       lang: p.lang,
       effort: tiers.web ? "medium" : "low",
       maxTokens: 16000,
       web: tiers.web,
+      images: p.images,
       onText,
       onWebTool: p.onWebTool,
       onReset,

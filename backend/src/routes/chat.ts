@@ -5,15 +5,33 @@ import { AiError } from "../ai";
 import { userIdOf } from "../auth";
 import { answerQuestion } from "../chatEngine";
 import { OFF_TOPIC_MARKER } from "../prompts";
-import { asyncHandler } from "../http";
+import { STORAGE_BUCKET } from "../config";
+import { asyncHandler, HttpError } from "../http";
 import { langOf, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { supabase } from "../supabase";
 
 export const chatRouter = Router();
 
+export const MAX_IMAGES = 3;
+const IMAGE_PREFIX = "chat";
+
+/** Rutas de las fotos guardadas en los mensajes (van en "sources" como {kind: "image", path}). */
+function imagePaths(sources: unknown): string[] {
+  return Array.isArray(sources)
+    ? sources.filter((s) => s?.kind === "image" && typeof s.path === "string").map((s) => s.path as string)
+    : [];
+}
+
+// Fotos adjuntas (ejercicios, esquemas…): ya reducidas en el navegador, en base64.
+const imageSchema = z.object({
+  media_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  data: z.string().max(4_000_000),
+});
+
 const chatSchema = z.object({
-  question: z.string().trim().min(1).max(4000),
+  question: z.string().trim().max(4000).default(""),
+  images: z.array(imageSchema).max(MAX_IMAGES).default([]),
   conversation_id: z.string().uuid().optional(),
   document_id: z.string().uuid().optional(),
 });
@@ -25,7 +43,21 @@ chatRouter.post(
     const userId = userIdOf(req);
     const lang = langOf(req);
     const body = chatSchema.parse(req.body);
+    if (!body.question && body.images.length === 0) throw new HttpError(400, "invalidData");
+    const question = body.question || (lang === "es" ? "¿Me ayudas con esta foto?" : "Ajudas-me com esta foto?");
     const conversationId = body.conversation_id ?? randomUUID();
+
+    // Las fotos se guardan en el almacenamiento privado para poder verlas en el historial.
+    const imageSources: { kind: "image"; path: string }[] = [];
+    for (const img of body.images) {
+      const ext = img.media_type.split("/")[1].replace("jpeg", "jpg");
+      const path = `${userId}/${IMAGE_PREFIX}/${conversationId}/${randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(path, Buffer.from(img.data, "base64"), { contentType: img.media_type });
+      if (error) throw new HttpError(500, "saveFailed");
+      imageSources.push({ kind: "image", path });
+    }
 
     // Últimos 6 mensajes, para contener el coste.
     const { data: recent } = await supabase
@@ -47,7 +79,8 @@ chatRouter.post(
       user_id: userId,
       conversation_id: conversationId,
       role: "user",
-      content: body.question,
+      content: question,
+      sources: imageSources.length ? imageSources : null,
     });
 
     // Server-Sent Events: primero las fuentes, luego el texto a trocitos.
@@ -67,7 +100,8 @@ chatRouter.post(
       const result = await answerQuestion({
         userId,
         lang,
-        question: body.question,
+        question,
+        images: body.images.map((i) => ({ mediaType: i.media_type, data: i.data })),
         history,
         documentId: body.document_id,
         onMeta: ({ sources, tiers }) => send("meta", { conversation_id: conversationId, sources, tiers }),
@@ -128,13 +162,37 @@ chatRouter.get(
       .eq("conversation_id", String(req.params.id))
       .order("created_at");
     if (error) throw error;
-    res.json(data ?? []);
+    // Enlaces temporales (1 h) para ver las fotos de los mensajes.
+    const paths = (data ?? []).flatMap((m) => imagePaths(m.sources));
+    const urls = new Map<string, string>();
+    if (paths.length) {
+      const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 3600);
+      for (const s of signed ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+    }
+    res.json(
+      (data ?? []).map((m) => ({
+        ...m,
+        sources: Array.isArray(m.sources)
+          ? m.sources.map((s: { kind?: string; path?: string }) =>
+              s?.kind === "image" ? { kind: "image", url: urls.get(s.path ?? "") ?? null } : s,
+            )
+          : m.sources,
+      })),
+    );
   }),
 );
 
 chatRouter.delete(
   "/conversations/:id",
   asyncHandler(async (req, res) => {
+    const { data: withImages } = await supabase
+      .from("chat_messages")
+      .select("sources")
+      .eq("user_id", userIdOf(req))
+      .eq("conversation_id", String(req.params.id))
+      .eq("role", "user");
+    const paths = (withImages ?? []).flatMap((m) => imagePaths(m.sources));
+    if (paths.length) await supabase.storage.from(STORAGE_BUCKET).remove(paths);
     const { error } = await supabase
       .from("chat_messages")
       .delete()

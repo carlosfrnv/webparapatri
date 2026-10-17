@@ -25,8 +25,22 @@ const MAX_CONTINUATIONS = 3;
 export const anthropicProvider: Provider = {
   id: "anthropic",
   supportsWeb: true,
+  supportsImages: true,
   async generate(model: string, req: LlmRequest): Promise<LlmResult> {
-    const messages: BetaMessageParam[] = [{ role: "user", content: req.prompt }];
+    const messages: BetaMessageParam[] = [
+      {
+        role: "user",
+        content: req.images?.length
+          ? [
+              ...req.images.map((img) => ({
+                type: "image" as const,
+                source: { type: "base64" as const, media_type: img.mediaType, data: img.data },
+              })),
+              { type: "text" as const, text: req.prompt },
+            ]
+          : req.prompt,
+      },
+    ];
     const content: BetaContentBlock[] = [];
     let webSearches = 0;
     try {

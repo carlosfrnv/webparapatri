@@ -133,7 +133,7 @@ export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
 
 export const chatPrompt = (
   lang: Lang,
-  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean },
+  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean; imagenes?: number },
 ) =>
   lang === "es"
     ? `ANTES DE NADA, decide si la pregunta tiene que ver con sus estudios. Cuentan como estudio: cualquier materia de la carrera
@@ -159,7 +159,14 @@ ${
   marcado con "Fuera de tus apuntes:".`
 }
 - Usa ejemplos, analogías y, si ayuda, una tabla.
-- Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.
+- Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.${
+      p.imagenes
+        ? `
+- Ha adjuntado ${p.imagenes === 1 ? "una foto" : `${p.imagenes} fotos`} (un ejercicio, un esquema, una imagen médica…). Léela con atención
+  y descríbela brevemente si hace falta. Si es un ejercicio, resuélvelo paso a paso explicando el porqué de cada paso.
+  Si algo no se lee bien, dilo en vez de suponerlo. Si es una imagen clínica, explícala con fines de estudio, sin diagnosticar.`
+        : ""
+    }
 FRAGMENTOS:
 ${p.fragmentos || "(no se ha encontrado ningún fragmento relevante en sus apuntes ni en la biblioteca de referencia)"}
 HISTORIAL RECIENTE:
@@ -189,7 +196,14 @@ ${
   assinalado com "Fora dos teus apontamentos:".`
 }
 - Usa exemplos, analogias e, se ajudar, uma tabela.
-- Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.
+- Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.${
+      p.imagenes
+        ? `
+- Anexou ${p.imagenes === 1 ? "uma foto" : `${p.imagenes} fotos`} (um exercício, um esquema, uma imagem médica…). Lê-a com atenção
+  e descreve-a brevemente se for preciso. Se for um exercício, resolve-o passo a passo explicando o porquê de cada passo.
+  Se algo não se ler bem, di-lo em vez de supor. Se for uma imagem clínica, explica-a para fins de estudo, sem diagnosticar.`
+        : ""
+    }
 EXCERTOS:
 ${p.fragmentos || "(nenhum excerto relevante encontrado nos apontamentos nem na biblioteca de referência)"}
 HISTÓRICO RECENTE:
