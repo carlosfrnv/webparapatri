@@ -11,7 +11,13 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   SUPABASE_URL: z.string({ error: "Falta esta variable" }).url("No es una URL válida"),
   SUPABASE_SERVICE_ROLE_KEY: z.string({ error: "Falta esta variable" }).min(1, "Falta esta variable"),
-  ALLOWED_EMAIL: z.string({ error: "Falta esta variable" }).email("No es un email válido"),
+  // Uno o varios emails separados por comas. El primero es el de Patri (los scripts usan sus datos).
+  ALLOWED_EMAIL: z
+    .string({ error: "Falta esta variable" })
+    .refine(
+      (v) => v.split(",").every((e) => z.email().safeParse(e.trim()).success),
+      "No es un email válido (si son varios, sepáralos con comas)",
+    ),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
   PORT: z.coerce.number().default(10000),
   // Búsquedas web como máximo por pregunta (Radiopaedia, IAEA, EFRS). 0 = sin consulta online.
@@ -35,7 +41,8 @@ if (!parsed.success) {
 
 export const config = {
   ...parsed.data,
-  ALLOWED_EMAIL: parsed.data.ALLOWED_EMAIL.trim().toLowerCase(),
+  ALLOWED_EMAILS: parsed.data.ALLOWED_EMAIL.split(",").map((e) => e.trim().toLowerCase()),
+  ALLOWED_EMAIL: parsed.data.ALLOWED_EMAIL.split(",")[0].trim().toLowerCase(),
   FRONTEND_ORIGINS: parsed.data.FRONTEND_ORIGIN.split(",")
     .map((o) => o.trim().replace(/\/$/, ""))
     .filter(Boolean),

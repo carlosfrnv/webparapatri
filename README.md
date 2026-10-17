@@ -139,7 +139,7 @@ online sí queda limitada de verdad a los tres sitios. Coste aproximado: 1–2 �
    `estudio-imr-api`. (Alternativa manual: **New → Web Service**, *Root Directory* `backend`, *Build*
    `npm install --include=dev && npm run build`, *Start* `npm start`, *Health check* `/health`.)
 2. Rellena las variables de entorno que te pida:
-   `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri) y
+   `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri; si quieres entrar tú también para probar, añade el tuyo detrás separado por una coma: `patri@...,carlos@...`. Cada uno tiene sus propios datos) y
    `FRONTEND_ORIGIN` (de momento `http://localhost:3000`; luego la URL de Vercel).
 3. Cuando termine, copia la URL del servicio (algo como `https://estudio-imr-api.onrender.com`).
 

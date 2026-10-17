@@ -1,7 +1,7 @@
 import { config } from "../config";
 import { supabase } from "../supabase";
 
-/** Id de la usuaria con acceso (ALLOWED_EMAIL). Los scripts trabajan siempre con sus datos. */
+/** Id de la usuaria con acceso (el primer email de ALLOWED_EMAIL). Los scripts trabajan siempre con sus datos. */
 export async function allowedUserId(): Promise<string> {
   for (let page = 1; page <= 20; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });

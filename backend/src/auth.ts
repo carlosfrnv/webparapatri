@@ -32,7 +32,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  if ((data.user.email ?? "").toLowerCase() !== config.ALLOWED_EMAIL) {
+  if (!config.ALLOWED_EMAILS.includes((data.user.email ?? "").toLowerCase())) {
     res.status(403).json({ error: t(langOf(req), "forbiddenEmail") });
     return;
   }
