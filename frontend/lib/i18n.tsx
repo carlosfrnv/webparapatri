@@ -169,6 +169,10 @@ const es = {
     newSubject: "+ Nueva asignatura",
     noSubjectsYear: "Todavía no hay asignaturas en este curso.",
     files: (n: number) => `${n} ${n === 1 ? "archivo" : "archivos"}`,
+    deleteSubject: (name: string) => `Eliminar la asignatura ${name}`,
+    clearEmpty: "Borrar las asignaturas vacías",
+    confirmClearEmpty: (n: number) =>
+      `¿Borrar las ${n} asignaturas que no tienen ningún archivo? Después podrás crear las tuyas con «+ Nueva asignatura».`,
   },
   subjectForm: {
     name: "Nombre de la asignatura",
@@ -480,6 +484,10 @@ const pt: Dictionary = {
     newSubject: "+ Nova disciplina",
     noSubjectsYear: "Ainda não há disciplinas neste ano.",
     files: (n: number) => `${n} ${n === 1 ? "ficheiro" : "ficheiros"}`,
+    deleteSubject: (name: string) => `Eliminar a disciplina ${name}`,
+    clearEmpty: "Apagar as disciplinas vazias",
+    confirmClearEmpty: (n: number) =>
+      `Apagar as ${n} disciplinas que não têm nenhum ficheiro? Depois podes criar as tuas com «+ Nova disciplina».`,
   },
   subjectForm: {
     name: "Nome da disciplina",

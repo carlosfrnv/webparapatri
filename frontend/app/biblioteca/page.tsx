@@ -139,6 +139,33 @@ export default function LibraryPage() {
     }
   }
 
+  // Asignaturas sin ningún archivo (p. ej., las de ejemplo que se crean al principio).
+  const emptySubjects = (subjects ?? []).filter((s) => !s.document_count);
+
+  async function deleteSubject(subject: Subject) {
+    if (!confirm(t.subject.confirmDelete(subject.name))) return;
+    try {
+      await api.del(`/subjects/${subject.id}`);
+      setSubjects((list) => list?.filter((x) => x.id !== subject.id) ?? list);
+      // Si tenía archivos, pasan a "sin asignatura".
+      if (subject.document_count) load();
+    } catch (err) {
+      alert(errorMessage(err));
+    }
+  }
+
+  async function clearEmpty() {
+    if (!confirm(t.library.confirmClearEmpty(emptySubjects.length))) return;
+    try {
+      await Promise.all(emptySubjects.map((s) => api.del(`/subjects/${s.id}`)));
+      const removed = new Set(emptySubjects.map((s) => s.id));
+      setSubjects((list) => list?.filter((x) => !removed.has(x.id)) ?? list);
+    } catch (err) {
+      alert(errorMessage(err));
+      load();
+    }
+  }
+
   const visible = (subjects ?? []).filter((s) => (year === "none" ? !s.year : s.year === year));
   const hasNoYear = (subjects ?? []).some((s) => !s.year);
   const tabClass = (active: boolean) =>
@@ -204,9 +231,16 @@ export default function LibraryPage() {
                 </button>
               )}
             </div>
-            <button className="btn-secondary" onClick={() => setAdding(true)}>
-              {t.library.newSubject}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {emptySubjects.length > 0 && (
+                <button className="btn-ghost text-sm" onClick={clearEmpty}>
+                  🧹 {t.library.clearEmpty}
+                </button>
+              )}
+              <button className="btn-secondary" onClick={() => setAdding(true)}>
+                {t.library.newSubject}
+              </button>
+            </div>
           </div>
 
           {adding && (
@@ -234,10 +268,10 @@ export default function LibraryPage() {
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visible.map((s) => (
-                <li key={s.id}>
+                <li key={s.id} className="relative">
                   <Link
                     href={`/asignatura/${s.id}`}
-                    className="card hover:border-accent flex h-full flex-col justify-between gap-3 p-4"
+                    className="card hover:border-accent flex h-full flex-col justify-between gap-3 p-4 pr-12"
                   >
                     <p className="font-semibold">{s.name}</p>
                     <div className="text-muted flex items-center justify-between text-sm">
@@ -245,6 +279,13 @@ export default function LibraryPage() {
                       <span>{t.library.files(s.document_count ?? 0)}</span>
                     </div>
                   </Link>
+                  <button
+                    className="btn-ghost absolute top-2 right-2 px-2"
+                    aria-label={t.library.deleteSubject(s.name)}
+                    onClick={() => deleteSubject(s)}
+                  >
+                    🗑️
+                  </button>
                 </li>
               ))}
             </ul>
