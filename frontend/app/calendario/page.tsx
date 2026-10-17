@@ -2,7 +2,7 @@
 
 import { CalendarBlank, ClipboardText, Clock, Exam as ExamIcon, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CountdownBadge, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
+import { CountdownBadge, examLabels, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
 import { Timetable } from "@/components/Timetable";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -247,7 +247,7 @@ function MonthGrid({
                       dayExams[0].kind === "exam" ? "text-accent" : "text-teal"
                     }`}
                   >
-                    {dayExams[0].title}
+                    {dayExams[0].subject_name ?? dayExams[0].title}
                     {dayExams.length > 1 ? ` +${dayExams.length - 1}` : ""}
                   </span>
                 </>
@@ -272,10 +272,8 @@ function ExamRow({ exam, onEdit, onDelete }: { exam: Exam; onEdit: () => void; o
         <KindIcon kind={exam.kind} size={22} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-medium break-words">{exam.title}</p>
-        <p className="text-muted text-sm">
-          {[exam.subject_name, formatExamDate(exam.exam_date, lang)].filter(Boolean).join(" · ")}
-        </p>
+        <p className="font-medium break-words">{examLabels(exam, lang).main}</p>
+        <p className="text-muted text-sm">{examLabels(exam, lang).sub}</p>
         {exam.notes && <p className="text-muted mt-1 text-sm whitespace-pre-line">{exam.notes}</p>}
         <div className="mt-2">
           <CountdownBadge days={exam.days_left} kind={exam.kind} />

@@ -27,13 +27,30 @@ export function formatExamDate(iso: string, lang: "es" | "pt", withWeekday = tru
   });
 }
 
+/**
+ * Lo que se muestra de una fecha: primero la asignatura y debajo el nombre del examen o trabajo
+ * (si es distinto del de la asignatura) y la fecha.
+ */
+export function examLabels(exam: Exam, lang: "es" | "pt") {
+  const main = exam.subject_name ?? exam.title;
+  const sameName = exam.subject_name && exam.title.trim() === exam.subject_name.trim();
+  const sub = [exam.subject_name && !sameName ? exam.title : null, formatExamDate(exam.exam_date, lang)]
+    .filter(Boolean)
+    .join(" · ");
+  return { main, sub };
+}
+
 export function CountdownBadge({ days, kind = "exam" }: { days: number; kind?: Exam["kind"] }) {
   const t = useT();
   const tone =
     days <= 1 ? "bg-danger-soft text-danger" : days <= 7 ? "bg-warning-soft text-text" : "bg-accent-soft text-accent";
   return (
     <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${tone}`}>
-      {days < 0 ? t.calendar.daysAgo(-days) : kind === "assignment" ? t.calendar.deliverIn(days) : t.calendar.daysLeft(days)}
+      {days < 0
+        ? t.calendar.daysAgo(-days)
+        : kind === "assignment"
+          ? t.calendar.deliverIn(days)
+          : t.calendar.daysLeft(days)}
     </span>
   );
 }
@@ -62,10 +79,8 @@ export function ExamPlanCard({ exam, plan, maxTasks }: { exam: Exam; plan?: Exam
     <div className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-lg font-semibold">{exam.title}</p>
-          <p className="text-muted text-sm">
-            {[exam.subject_name, formatExamDate(exam.exam_date, lang)].filter(Boolean).join(" · ")}
-          </p>
+          <p className="truncate text-lg font-semibold">{examLabels(exam, lang).main}</p>
+          <p className="text-muted text-sm">{examLabels(exam, lang).sub}</p>
         </div>
         <CountdownBadge days={exam.days_left} />
       </div>
