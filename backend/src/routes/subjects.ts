@@ -23,7 +23,8 @@ subjectsRouter.get(
     await seedSubjectsIfEmpty(userId, langOf(req));
     const { data, error } = await supabase
       .from("subjects")
-      .select("id, name, year, area, created_at, documents(count)")
+      // documents tiene dos claves hacia subjects (subject_id y suggested_subject_id): hay que decir cuál.
+      .select("id, name, year, area, created_at, documents!documents_subject_id_fkey(count)")
       .eq("user_id", userId)
       .order("year", { ascending: true, nullsFirst: false })
       .order("name");
