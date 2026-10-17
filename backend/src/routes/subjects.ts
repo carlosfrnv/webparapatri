@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { userIdOf } from "../auth";
-import { seedSubjectsIfEmpty } from "../seed";
+import { localName, seedSubjectsIfEmpty } from "../seed";
 import { supabase } from "../supabase";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
@@ -24,14 +24,15 @@ subjectsRouter.get(
     const { data, error } = await supabase
       .from("subjects")
       // documents tiene dos claves hacia subjects (subject_id y suggested_subject_id): hay que decir cuál.
-      .select("id, name, year, area, created_at, documents!documents_subject_id_fkey(count)")
+      .select("id, name, translations, year, area, created_at, documents!documents_subject_id_fkey(count)")
       .eq("user_id", userId)
       .order("year", { ascending: true, nullsFirst: false })
       .order("name");
     if (error) throw error;
     res.json(
-      (data ?? []).map(({ documents, ...s }) => ({
+      (data ?? []).map(({ documents, translations, ...s }) => ({
         ...s,
+        name: localName({ name: s.name, translations }, langOf(req)),
         document_count: (documents as unknown as { count: number }[])[0]?.count ?? 0,
       })),
     );
@@ -58,14 +59,16 @@ subjectsRouter.patch(
     const body = updateSchema.parse(req.body);
     const { data, error } = await supabase
       .from("subjects")
-      .update(body)
+      // Si le cambia el nombre, deja de usarse la traducción automática.
+      .update(body.name ? { ...body, translations: null } : body)
       .eq("id", String(req.params.id))
       .eq("user_id", userIdOf(req))
       .select("*")
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new HttpError(404, "subjectNotFound");
-    res.json(data);
+    const { translations, ...subject } = data;
+    res.json({ ...subject, name: localName({ name: subject.name, translations }, langOf(req)) });
   }),
 );
 

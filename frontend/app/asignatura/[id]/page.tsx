@@ -8,7 +8,7 @@ import { SubjectForm } from "@/components/SubjectForm";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, Subject } from "@/lib/types";
 
 export default function SubjectPage() {
@@ -20,6 +20,8 @@ export default function SubjectPage() {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
 
+  // Al cambiar de idioma se vuelven a pedir los datos (p. ej., los nombres de las asignaturas).
+  const lang = useLang();
   const load = useCallback(async () => {
     try {
       const [s, d] = await Promise.all([
@@ -37,7 +39,7 @@ export default function SubjectPage() {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [load, lang]);
 
   const subject = subjects.find((s) => s.id === id);
   const setDocsStable = useCallback(

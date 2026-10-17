@@ -245,6 +245,8 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(() => new Date());
   const [showPast, setShowPast] = useState(false);
 
+  // Al cambiar de idioma se vuelven a pedir los datos (p. ej., los nombres de las asignaturas).
+  const lang = useLang();
   const load = useCallback(async () => {
     try {
       const [d, s] = await Promise.all([
@@ -262,7 +264,7 @@ export default function CalendarPage() {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [load, lang]);
 
   const upcoming = useMemo(() => data?.exams.filter((e) => e.days_left >= 0) ?? [], [data]);
   const past = useMemo(() => (data?.exams.filter((e) => e.days_left < 0) ?? []).reverse(), [data]);

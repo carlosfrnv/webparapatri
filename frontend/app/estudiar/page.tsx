@@ -6,7 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard, Subject } from "@/lib/types";
 
 function StudyPageContent() {
@@ -20,6 +20,8 @@ function StudyPageContent() {
   const subjectId = useSearchParams().get("asignatura");
   const [subjectName, setSubjectName] = useState("");
 
+  // Al cambiar de idioma se vuelven a pedir los datos (p. ej., los nombres de las asignaturas).
+  const lang = useLang();
   const load = useCallback(async () => {
     try {
       const [d, list, subjects] = await Promise.all([
@@ -41,7 +43,7 @@ function StudyPageContent() {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [load, lang]);
 
   if (session && due) {
     return (

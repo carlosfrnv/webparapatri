@@ -45,8 +45,22 @@ async function seed(userId: string, lang: Lang) {
   if ((count ?? 0) === 0) {
     const { error: insertError } = await supabase
       .from("subjects")
-      .insert(INITIAL_SUBJECTS.map((s) => ({ name: s[lang], year: s.year, area: s.area, user_id: userId })));
+      .insert(
+        INITIAL_SUBJECTS.map((s) => ({
+          name: s[lang],
+          translations: { es: s.es, pt: s.pt },
+          year: s.year,
+          area: s.area,
+          user_id: userId,
+        })),
+      );
     if (insertError) throw insertError;
   }
   await supabase.from("user_settings").upsert({ user_id: userId, seeded: true });
+}
+
+/** Nombre de la asignatura en el idioma de la web (las iniciales tienen traducción; las suyas, no). */
+export function localName(subject: { name: string; translations?: unknown }, lang: Lang): string {
+  const t = subject.translations as Partial<Record<Lang, string>> | null | undefined;
+  return t?.[lang] ?? subject.name;
 }

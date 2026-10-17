@@ -8,7 +8,7 @@ import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { localSourceHref } from "@/components/Sources";
 import { UploadZone } from "@/components/UploadZone";
 import { api, errorMessage } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, Source, Subject } from "@/lib/types";
 
 const YEARS = [1, 2, 3, 4] as const;
@@ -102,6 +102,8 @@ export default function LibraryPage() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
 
+  // Al cambiar de idioma se vuelven a pedir los datos (p. ej., los nombres de las asignaturas).
+  const lang = useLang();
   const load = useCallback(async () => {
     try {
       const [s, d] = await Promise.all([
@@ -119,7 +121,7 @@ export default function LibraryPage() {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [load, lang]);
 
   // Cuando se asigna un archivo sin asignatura, sale de esta lista y sube el contador de la asignatura.
   function onAssigned(doc: DocumentItem) {

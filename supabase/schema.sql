@@ -14,6 +14,20 @@ create table if not exists subjects (
   created_at timestamptz default now()
 );
 create index if not exists subjects_user_idx on subjects (user_id);
+-- Nombre en español y en portugués de las asignaturas iniciales ({"es": "...", "pt": "..."}).
+alter table subjects add column if not exists translations jsonb;
+-- Para las asignaturas iniciales creadas antes de que existiera esta columna.
+update subjects s set translations = jsonb_build_object('es', t.es, 'pt', t.pt)
+from (values
+  ('Anatomofisiología', 'Anatomofisiologia'),
+  ('Física General', 'Física Geral'),
+  ('Bioquímica', 'Bioquímica'),
+  ('Biomatemática y Bioestadística', 'Biomatemática e Bioestatística'),
+  ('Integración a la Imagen', 'Integração à Imagem'),
+  ('Psicología', 'Psicologia'),
+  ('Identidad y Voluntariado', 'Identidade e Voluntariado')
+) as t(es, pt)
+where s.translations is null and s.name in (t.es, t.pt);
 
 -- Archivos subidos
 create table if not exists documents (

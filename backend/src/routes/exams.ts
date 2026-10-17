@@ -3,7 +3,7 @@ import { z } from "zod";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
-import { seedSubjectsIfEmpty } from "../seed";
+import { localName, seedSubjectsIfEmpty } from "../seed";
 import { supabase } from "../supabase";
 
 export const examsRouter = Router();
@@ -28,7 +28,7 @@ interface ExamRow {
   title: string;
   exam_date: string;
   notes: string | null;
-  subjects: { name: string } | null;
+  subjects: { name: string; translations: unknown } | null;
 }
 
 export type PlanTask =
@@ -136,14 +136,14 @@ examsRouter.get(
 
     const { data, error } = await supabase
       .from("exams")
-      .select("id, subject_id, title, exam_date, notes, subjects(name)")
+      .select("id, subject_id, title, exam_date, notes, subjects(name, translations)")
       .eq("user_id", userId)
       .order("exam_date");
     if (error) throw error;
 
     const exams = ((data ?? []) as unknown as ExamRow[]).map(({ subjects, ...e }) => ({
       ...e,
-      subject_name: subjects?.name ?? null,
+      subject_name: subjects ? localName(subjects, langOf(req)) : null,
       days_left: daysBetween(today, e.exam_date),
     }));
 
