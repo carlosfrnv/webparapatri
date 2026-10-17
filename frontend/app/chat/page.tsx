@@ -23,6 +23,8 @@ function pickOffTopic(options: string[], question: string): string {
 
 type WebPhase = "web_search" | "web_fetch";
 
+const STREAM_SILENCE_MS = 60_000;
+
 /** Lee el stream SSE del backend (event: meta | delta | status | done | error). */
 async function streamChat(
   body: { question: string; conversation_id?: string; document_id?: string },
@@ -47,7 +49,17 @@ async function streamChat(
   const decoder = new TextDecoder();
   let buffer = "";
   for (;;) {
-    const { value, done } = await reader.read();
+    // El servidor manda un "ping" cada 15 s: si en 60 s no llega nada, la conexión se ha perdido.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const silence = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(dict().chat.failed)), STREAM_SILENCE_MS);
+    });
+    const { value, done } = await Promise.race([reader.read(), silence])
+      .catch((err) => {
+        reader.cancel().catch(() => {});
+        throw err;
+      })
+      .finally(() => clearTimeout(timer));
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     let sep;
