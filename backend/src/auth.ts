@@ -32,7 +32,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  if (!config.ALLOWED_EMAILS.includes((data.user.email ?? "").toLowerCase())) {
+  // Si hay lista de emails, solo esos. Si no, cualquier usuario de Supabase (el registro está desactivado).
+  if (config.ALLOWED_EMAILS.length > 0 && !config.ALLOWED_EMAILS.includes((data.user.email ?? "").toLowerCase())) {
     res.status(403).json({ error: t(langOf(req), "forbiddenEmail") });
     return;
   }

@@ -49,8 +49,8 @@ Navegador ──JWT───▶ Backend (Render) ──service_role──▶ Sup
 ```
 
 **Seguridad:** las claves de la IA y la `service_role` de Supabase viven **solo** en Render. El navegador solo
-tiene la clave pública (`anon`) de Supabase, que sirve para el login. El backend rechaza cualquier email que no sea
-`ALLOWED_EMAIL`.
+tiene la clave pública (`anon`) de Supabase, que sirve para el login. Solo pueden entrar los usuarios que crees tú en
+Supabase (el registro está desactivado) y, si pones `ALLOWED_EMAIL`, solo esos emails.
 
 La búsqueda en los apuntes usa la búsqueda de texto completo de Postgres en portugués: es gratis y no necesita ningún
 servicio extra.
@@ -76,11 +76,12 @@ no hace falta tarjeta.
 2. Ve a **SQL Editor → New query**, pega todo el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa
    **Run**. Esto crea las tablas, la seguridad y el bucket privado `temario` para los ficheros.
 3. **Authentication → Users → Add user → Create new user**: pon el **email de Patri** y marca *Auto Confirm User*.
-   (La contraseña da igual: ella entrará con un enlace mágico.)
+   La **contraseña** que pongas es con la que ella entrará (email + contraseña). Si un día la olvida, desde ahí mismo
+   puedes ponerle otra. Crea también un usuario para ti si quieres probar la web (cada uno tiene sus datos).
 4. **Authentication → Sign In / Providers**: desactiva **Allow new users to sign up**. Así nadie más puede crearse
    una cuenta.
-5. **Authentication → URL Configuration**: de momento pon `http://localhost:3000` en *Site URL*. Cuando tengas la
-   URL de Vercel (paso 4), cámbiala y añádela también en *Redirect URLs*.
+5. (Opcional) **Authentication → URL Configuration**: pon la URL de Vercel en *Site URL*. Como se entra con
+   contraseña, no se envían emails.
 6. **Project Settings → API Keys** (o *Data API*), copia:
    - **Project URL** → `SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_URL`
    - **anon / publishable key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -139,7 +140,9 @@ online sí queda limitada de verdad a los tres sitios. Coste aproximado: 1–2 �
    `estudio-imr-api`. (Alternativa manual: **New → Web Service**, *Root Directory* `backend`, *Build*
    `npm install --include=dev && npm run build`, *Start* `npm start`, *Health check* `/health`.)
 2. Rellena las variables de entorno que te pida:
-   `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (el email de Patri; si quieres entrar tú también para probar, añade el tuyo detrás separado por una coma: `patri@...,carlos@...`. Cada uno tiene sus propios datos) y
+   `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_EMAIL` (opcional: si lo dejas vacío, puede entrar cualquier usuario que hayas creado en Supabase; si pones
+   uno o varios emails separados por comas, solo esos. El primero debe ser el de Patri, porque el script de la
+   biblioteca de referencia guarda los documentos en su cuenta) y
    `FRONTEND_ORIGIN` (de momento `http://localhost:3000`; luego la URL de Vercel).
 3. Cuando termine, copia la URL del servicio (algo como `https://estudio-imr-api.onrender.com`).
 
@@ -155,7 +158,7 @@ online sí queda limitada de verdad a los tres sitios. Coste aproximado: 1–2 �
 4. **Deploy**. Copia la URL que te da (por ejemplo `https://estudio-imr.vercel.app`).
 5. Pon esa URL en:
    - Render → variable `FRONTEND_ORIGIN`
-   - Supabase → Authentication → URL Configuration → *Site URL* y *Redirect URLs*
+   - Supabase → Authentication → URL Configuration → *Site URL* (opcional)
 
 ### Dominio propio (opcional)
 
@@ -201,7 +204,7 @@ cuando ella pregunta por Bob, por ti o dice que te echa de menos. Hay una versi�
 
 ### 6. Comprobación final
 
-- [ ] Entrar con el email de Patri funciona (le llega un enlace por correo).
+- [ ] Entrar con el email y la contraseña de Patri funciona.
 - [ ] Con otro email no se puede entrar.
 - [ ] Subir un PDF de prueba → pasa de "A processar…" a "Pronto".
 - [ ] Al abrirlo se generan resumen, conceptos, glosario, flashcards y test (la primera vez tarda 1–2 minutos).
@@ -239,7 +242,7 @@ Antes de publicar cambios: `npm run build` en `backend/` y en `frontend/` (y `np
 ```
 backend/src/
   index.ts          servidor Express, CORS y rutas
-  auth.ts           verifica la sesión de Supabase y ALLOWED_EMAIL
+  auth.ts           verifica la sesión de Supabase (y ALLOWED_EMAIL, si está puesto)
   extract.ts        extrae el texto de PDF (con página), DOCX, PPTX y TXT
   chunk.ts          trocea en fragmentos de ~1.500 caracteres con solapamiento
   processing.ts     procesado en segundo plano + sugerencia de asignatura con IA

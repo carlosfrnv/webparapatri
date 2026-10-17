@@ -11,11 +11,14 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   SUPABASE_URL: z.string({ error: "Falta esta variable" }).url("No es una URL válida"),
   SUPABASE_SERVICE_ROLE_KEY: z.string({ error: "Falta esta variable" }).min(1, "Falta esta variable"),
-  // Uno o varios emails separados por comas. El primero es el de Patri (los scripts usan sus datos).
+  // Opcional. Uno o varios emails separados por comas: solo esos pueden usar la web. El primero es el de Patri
+  // (los scripts usan sus datos). Si se deja vacío, puede entrar cualquier usuario creado en Supabase
+  // (con el registro desactivado en Supabase, solo los que crees tú).
   ALLOWED_EMAIL: z
-    .string({ error: "Falta esta variable" })
+    .string()
+    .default("")
     .refine(
-      (v) => v.split(",").every((e) => z.email().safeParse(e.trim()).success),
+      (v) => !v.trim() || v.split(",").every((e) => z.email().safeParse(e.trim()).success),
       "No es un email válido (si son varios, sepáralos con comas)",
     ),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
@@ -41,7 +44,9 @@ if (!parsed.success) {
 
 export const config = {
   ...parsed.data,
-  ALLOWED_EMAILS: parsed.data.ALLOWED_EMAIL.split(",").map((e) => e.trim().toLowerCase()),
+  ALLOWED_EMAILS: parsed.data.ALLOWED_EMAIL.split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   ALLOWED_EMAIL: parsed.data.ALLOWED_EMAIL.split(",")[0].trim().toLowerCase(),
   FRONTEND_ORIGINS: parsed.data.FRONTEND_ORIGIN.split(",")
     .map((o) => o.trim().replace(/\/$/, ""))
