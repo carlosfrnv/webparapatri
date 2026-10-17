@@ -59,14 +59,18 @@ studyRouter.get(
     const now = Date.now();
     const due: { document_id: string; document_title: string; card_index: number; front: string; back: string; is_new: boolean; due_at: string | null }[] = [];
     let totalCards = 0;
+    // Por archivo: tarjetas por repasar y total (para separar el repaso por asignatura y tema).
+    const byDocument: Record<string, { due: number; total: number }> = {};
     for (const m of materials ?? []) {
       // Las tarjetas en el idioma de la web, si ya están traducidas (mismo orden en los dos idiomas).
       const cards = ((materialInLang(m, langOf(req))?.flashcards ?? m.flashcards ?? []) as Card[]);
       const title = (m.documents as unknown as { title: string } | null)?.title ?? "Documento";
+      const counts = (byDocument[m.document_id] = { due: 0, total: cards.length });
       cards.forEach((card, index) => {
         totalCards++;
         const review = reviewMap.get(`${m.document_id}:${index}`);
         if (!review || new Date(review.due_at).getTime() <= now) {
+          counts.due++;
           due.push({
             document_id: m.document_id,
             document_title: title,
@@ -81,7 +85,7 @@ studyRouter.get(
     }
     // Primero los repasos atrasados, luego las nuevas.
     due.sort((a, b) => Number(a.is_new) - Number(b.is_new) || (a.due_at ?? "").localeCompare(b.due_at ?? ""));
-    res.json({ total_due: due.length, total_cards: totalCards, cards: due.slice(0, limit) });
+    res.json({ total_due: due.length, total_cards: totalCards, cards: due.slice(0, limit), by_document: byDocument });
   }),
 );
 
