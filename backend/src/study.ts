@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { complete, completeJson, generate } from "./ai";
+import { AiError, complete, completeJson, generate } from "./ai";
 import type { Lang } from "./i18n";
-import { partialSummaryPrompt, studyContext, studyPackPrompt, summaryPrompt } from "./prompts";
+import { partialSummaryPrompt, studyContext, studyPackPrompt, summaryPrompt, translateStudyPrompt } from "./prompts";
 import { findReferenceForDocument, formatSources } from "./search";
 import { WEB_ENABLED } from "./web";
 import { supabase } from "./supabase";
@@ -58,9 +58,49 @@ async function condensedText(text: string, lang: Lang): Promise<string> {
 
 const inFlight = new Map<string, Promise<unknown>>();
 
+const TRANSLATED_FIELDS = ["summary", "key_concepts", "glossary", "flashcards", "quiz"] as const;
+const translatedSchema = z.object({ summary: z.string().min(1) }).and(studyPackSchema);
+
+interface StudyRow {
+  lang: Lang | null;
+  translations?: Partial<Record<Lang, Record<string, unknown>>> | null;
+  [key: string]: unknown;
+}
+
+/** El material en el idioma pedido: el original o su traducción guardada. Null si aún no está traducido. */
+export function materialInLang<T extends StudyRow>(row: T, lang: Lang): Omit<T, "translations"> | null {
+  const { translations, ...rest } = row;
+  if ((row.lang ?? "es") === lang) return rest;
+  const tr = translations?.[lang];
+  return tr ? { ...rest, ...tr, lang } : null;
+}
+
 /**
- * Genera (o devuelve de la caché) el material de estudio de un documento.
- * La caché no depende del idioma: si cambia de idioma, el frontend ofrece generarlo de nuevo.
+ * Traduce el material ya generado al otro idioma y lo guarda junto al original. Mismas tarjetas
+ * y preguntas en el mismo orden: el progreso de las flashcards sirve para los dos idiomas.
+ */
+async function translateStudy(row: StudyRow, userId: string, lang: Lang) {
+  const original = Object.fromEntries(TRANSLATED_FIELDS.map((f) => [f, row[f]]));
+  const tr = await completeJson(translateStudyPrompt(lang, JSON.stringify(original)), translatedSchema, {
+    lang,
+    effort: "low",
+    maxTokens: 32000,
+  });
+  const same = (a: unknown, b: unknown) => Array.isArray(a) && Array.isArray(b) && a.length === b.length;
+  if (!same(tr.flashcards, row.flashcards) || !same(tr.quiz, row.quiz)) throw new AiError("aiBadFormat");
+  const translations = { ...(row.translations ?? {}), [lang]: tr };
+  const { error } = await supabase
+    .from("study_materials")
+    .update({ translations })
+    .eq("document_id", row.document_id as string)
+    .eq("user_id", userId);
+  if (error) throw error;
+  return materialInLang({ ...row, translations }, lang)!;
+}
+
+/**
+ * Genera (o devuelve de la caché) el material de estudio de un documento en el idioma pedido.
+ * Se genera una vez; el otro idioma se obtiene traduciéndolo la primera vez que se pide y se guarda.
  */
 export async function getOrGenerateStudy(documentId: string, userId: string, lang: Lang, force = false) {
   if (!force) {
@@ -70,7 +110,18 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       .eq("document_id", documentId)
       .eq("user_id", userId)
       .maybeSingle();
-    if (data) return data;
+    if (data) {
+      const ready = materialInLang(data as StudyRow, lang);
+      if (ready) return ready;
+      const key = `${documentId}:${lang}:tr`;
+      const pending = inFlight.get(key) ?? translateStudy(data as StudyRow, userId, lang);
+      inFlight.set(key, pending);
+      try {
+        return await pending;
+      } finally {
+        inFlight.delete(key);
+      }
+    }
   }
 
   // Evita generar dos veces el mismo documento si abre la página dos veces.
@@ -124,6 +175,8 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       quiz: pack.quiz,
       sources,
       lang,
+      // Material nuevo: las traducciones anteriores ya no corresponden.
+      translations: null,
       generated_at: new Date().toISOString(),
     };
     const { data, error } = await supabase.from("study_materials").upsert(row).select("*").single();
@@ -133,7 +186,7 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
       // Las tarjetas han cambiado: el historial de repasos anterior deja de tener sentido.
       await supabase.from("flashcard_reviews").delete().eq("document_id", documentId).eq("user_id", userId);
     }
-    return data;
+    return materialInLang(data as StudyRow, lang) ?? data;
   })();
 
   inFlight.set(jobKey, job);

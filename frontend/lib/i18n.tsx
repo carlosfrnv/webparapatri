@@ -248,6 +248,7 @@ const es = {
     confirmRegenerate:
       "¿Generar de nuevo el resumen, las flashcards y el test? El progreso de las flashcards de este archivo vuelve a empezar.",
     otherLang: (lang: string) => `Este material está en ${lang}.`,
+    translating: (lang: string) => `Traduciendo el material al ${lang}… (solo la primera vez)`,
     generateIn: (lang: string) => `Generar en ${lang}`,
     langName: { es: "español", pt: "portugués" },
     openingFile: "Abriendo el archivo…",
@@ -585,6 +586,7 @@ const pt: Dictionary = {
     confirmRegenerate:
       "Gerar de novo o resumo, as flashcards e o teste? O progresso das flashcards deste ficheiro recomeça.",
     otherLang: (lang: string) => `Este material está em ${lang}.`,
+    translating: (lang: string) => `A traduzir o material para ${lang}… (só da primeira vez)`,
     generateIn: (lang: string) => `Gerar em ${lang}`,
     langName: { es: "espanhol", pt: "português" },
     openingFile: "A abrir o ficheiro…",

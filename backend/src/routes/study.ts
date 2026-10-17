@@ -8,6 +8,7 @@ import { aiLimiter } from "../limits";
 import { quizExplainPrompt } from "../prompts";
 import { findSources, formatSources } from "../search";
 import { sm2 } from "../sm2";
+import { materialInLang } from "../study";
 import { supabase } from "../supabase";
 
 export const studyRouter = Router();
@@ -39,7 +40,7 @@ studyRouter.get(
 
     let materialsQuery = supabase
       .from("study_materials")
-      .select("document_id, flashcards, documents(title)")
+      .select("document_id, flashcards, lang, translations, documents(title)")
       .eq("user_id", userId);
     if (documentId) materialsQuery = materialsQuery.eq("document_id", documentId);
     if (subjectDocs) materialsQuery = materialsQuery.in("document_id", subjectDocs);
@@ -59,7 +60,8 @@ studyRouter.get(
     const due: { document_id: string; document_title: string; card_index: number; front: string; back: string; is_new: boolean; due_at: string | null }[] = [];
     let totalCards = 0;
     for (const m of materials ?? []) {
-      const cards = (m.flashcards ?? []) as Card[];
+      // Las tarjetas en el idioma de la web, si ya están traducidas (mismo orden en los dos idiomas).
+      const cards = ((materialInLang(m, langOf(req))?.flashcards ?? m.flashcards ?? []) as Card[]);
       const title = (m.documents as unknown as { title: string } | null)?.title ?? "Documento";
       cards.forEach((card, index) => {
         totalCards++;
@@ -142,11 +144,12 @@ studyRouter.post(
     const body = explainSchema.parse(req.body);
     const { data: material } = await supabase
       .from("study_materials")
-      .select("quiz")
+      .select("quiz, lang, translations")
       .eq("document_id", body.document_id)
       .eq("user_id", userId)
       .maybeSingle();
-    const question = (material?.quiz as { question: string; options: string[]; correct_index: number }[] | null)?.[
+    const quiz = material ? (materialInLang(material, langOf(req))?.quiz ?? material.quiz) : null;
+    const question = (quiz as { question: string; options: string[]; correct_index: number }[] | null)?.[
       body.question_index
     ];
     if (!question) throw new HttpError(404, "questionNotFound");

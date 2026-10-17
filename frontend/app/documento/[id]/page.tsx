@@ -150,7 +150,8 @@ export default function DocumentPage() {
         if (d.status === "ready" && d.source_type !== "referencia") loadStudy();
       })
       .catch((err) => setError(errorMessage(err)));
-  }, [id, loadStudy]);
+    // Al cambiar de idioma se vuelve a pedir: llega la versión guardada o se traduce la primera vez.
+  }, [id, loadStudy, lang]);
 
   if (error) return <ErrorBox message={error} />;
   if (!doc) return <Spinner label={t.common.loading} />;
@@ -159,9 +160,8 @@ export default function DocumentPage() {
   const backHref = isRef ? "/referencia" : doc.subject_id ? `/asignatura/${doc.subject_id}` : "/biblioteca";
   const visibleTabs = isRef ? (["archivo"] as const) : TABS;
   const activeTab: TabId = isRef ? "archivo" : tab;
-  // Material generado en otro idioma (la caché es por archivo): ofrecemos generarlo de nuevo.
-  const materialsLang = materials?.lang ?? "pt";
-  const otherLang = materials && materialsLang !== lang;
+  // Mientras llega la versión en el idioma nuevo, se avisa de que se está traduciendo.
+  const translating = generating && materials && (materials.lang ?? "es") !== lang;
 
   return (
     <>
@@ -202,18 +202,13 @@ export default function DocumentPage() {
 
       {isRef && <p className="bg-warning-soft mb-5 rounded-xl p-4 text-sm">{t.reference.onlySearch}</p>}
 
-      {otherLang && activeTab !== "archivo" && (
-        <div className="bg-accent-soft mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 text-sm">
-          <span>{t.document.otherLang(t.document.langName[materialsLang])}</span>
-          <button
-            className="btn-primary min-h-9 px-3 py-1 text-sm"
-            disabled={generating}
-            onClick={() => {
-              if (confirm(t.document.confirmRegenerate)) loadStudy(true);
-            }}
-          >
-            {generating ? t.document.regenerating : t.document.generateIn(t.document.langName[lang])}
-          </button>
+      {translating && activeTab !== "archivo" && (
+        <div className="bg-accent-soft mb-5 flex items-center gap-3 rounded-xl p-4 text-sm" role="status">
+          <span
+            className="border-border border-t-accent h-4 w-4 animate-spin rounded-full border-2"
+            aria-hidden="true"
+          />
+          {t.document.translating(t.document.langName[lang])}
         </div>
       )}
 

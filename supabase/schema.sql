@@ -82,6 +82,8 @@ create table if not exists study_materials (
 alter table study_materials add column if not exists lang text default 'pt' check (lang in ('es','pt'));
 -- Fuentes externas usadas en el resumen (solo nombre y enlace, nunca el texto de las páginas).
 alter table study_materials add column if not exists sources jsonb;
+-- Traducción del material al otro idioma ({"pt": {...}} o {"es": {...}}), hecha la primera vez que se pide.
+alter table study_materials add column if not exists translations jsonb;
 
 -- Repaso espaciado (SM-2)
 create table if not exists flashcard_reviews (

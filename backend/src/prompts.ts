@@ -50,6 +50,7 @@ export const summaryPrompt = (lang: Lang, texto: string) =>
 - Secciones con los puntos esenciales
 - "Lo que no puedes olvidar para el examen" (5-8 puntos)
 Mantén la terminología técnica y explícala la primera vez que aparece.
+IDIOMA: escribe TODO en español de España, aunque el texto esté en portugués. Traduce también los términos técnicos (si ayuda, pon el término portugués entre paréntesis la primera vez).
 TEXTO:
 ${texto}`
     : `A partir do texto abaixo, escreve um resumo estruturado em Markdown:
@@ -58,8 +59,27 @@ ${texto}`
 - Secções com os pontos essenciais
 - "O que não podes esquecer para o exame" (5-8 pontos)
 Mantém a terminologia técnica e explica-a quando aparece pela primeira vez.
+IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
 TEXTO:
 ${texto}`;
+
+/** Traduce el material ya generado al otro idioma, sin cambiar el contenido ni el orden (así el progreso de las flashcards sigue valiendo). */
+export const translateStudyPrompt = (lang: Lang, material: string) =>
+  lang === "es"
+    ? `Traduce al español de España este material de estudio (JSON). Reglas:
+- Devuelve SOLO JSON válido con exactamente la misma estructura, el mismo número de elementos y el mismo orden.
+- Traduce todos los textos (el resumen en Markdown, conceptos, glosario, flashcards, preguntas, opciones y explicaciones).
+- No cambies "correct_index" ni añadas, quites o reordenes nada. No inventes contenido.
+- Mantén el formato Markdown del resumen y las etiquetas de origen traducidas ([Tus apuntes], [Biblioteca de referencia – IAEA]…).
+MATERIAL:
+${material}`
+    : `Traduz para português de Portugal este material de estudo (JSON). Regras:
+- Devolve APENAS JSON válido com exatamente a mesma estrutura, o mesmo número de elementos e a mesma ordem.
+- Traduz todos os textos (o resumo em Markdown, conceitos, glossário, flashcards, perguntas, opções e explicações).
+- Não alteres "correct_index" nem acrescentes, retires ou reordenes nada. Não inventes conteúdo.
+- Mantém o formato Markdown do resumo e as etiquetas de origem traduzidas ([Os teus apontamentos], [Biblioteca de referência – IAEA]…).
+MATERIAL:
+${material}`;
 
 export const partialSummaryPrompt = (lang: Lang, texto: string, parte: number, total: number) =>
   lang === "es"
@@ -89,7 +109,8 @@ export const studyPackPrompt = (lang: Lang, texto: string) =>
   físicos, indicaciones, contraindicaciones, posicionamientos, protección radiológica). Respuestas cortas.
 - quiz: 10 preguntas tipo test, dificultad de examen, una sola respuesta correcta (correct_index de 0 a 3),
   distractores plausibles. La explicación indica por qué la correcta es correcta y las otras no.
-Todo en español.
+IDIOMA: escribe TODO en español de España, aunque el texto esté en portugués. Traduce también los términos técnicos (si ayuda, pon el término portugués entre paréntesis la primera vez).
+Cada campo de texto (conceptos, definiciones, flashcards, preguntas, opciones y explicaciones) va en español.
 TEXTO:
 ${texto}`
     : `Devolve APENAS JSON válido, sem texto adicional, com esta forma:
@@ -103,6 +124,7 @@ ${texto}`
   físicos, indicações, contraindicações, posicionamentos, proteção radiológica). Respostas curtas.
 - quiz: 10 perguntas de escolha múltipla, dificuldade de exame, uma só resposta certa (correct_index de 0 a 3),
   distratores plausíveis. A explicação indica porque a certa é certa e as outras não.
+IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
 TEXTO:
 ${texto}`;
 
