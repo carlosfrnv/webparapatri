@@ -128,7 +128,7 @@ export default function SubjectPage() {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">{t.subject.files}</h2>
-        <DocumentList docs={docs} setDocs={setDocsStable} subjects={subjects} emptyText={t.subject.empty} />
+        <DocumentList docs={docs} setDocs={setDocsStable} subjects={subjects} emptyText={t.subject.empty} reorderable />
       </section>
     </>
   );

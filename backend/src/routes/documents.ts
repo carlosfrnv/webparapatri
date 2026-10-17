@@ -77,16 +77,18 @@ documentsRouter.get(
   asyncHandler(async (req, res) => {
     // Por defecto solo sus apuntes; la biblioteca de referencia se pide aparte.
     const sourceType = req.query.source_type === "referencia" ? "referencia" : "apuntes";
-    let query = supabase
-      .from("documents")
-      .select(DOC_FIELDS)
-      .eq("user_id", userIdOf(req))
-      .eq("source_type", sourceType)
-      .order("created_at", { ascending: false });
     const subjectId = typeof req.query.subject_id === "string" ? req.query.subject_id : undefined;
-    if (subjectId === "none") query = query.is("subject_id", null);
-    else if (subjectId) query = query.eq("subject_id", subjectId);
-    const { data, error } = await query;
+    const list = (ordered: boolean) => {
+      let query = supabase.from("documents").select(DOC_FIELDS).eq("user_id", userIdOf(req)).eq("source_type", sourceType);
+      if (subjectId === "none") query = query.is("subject_id", null);
+      else if (subjectId) query = query.eq("subject_id", subjectId);
+      // Primero el orden que ella haya elegido; los que no tienen orden, al final y de más nuevo a más antiguo.
+      if (ordered) query = query.order("position", { ascending: true, nullsFirst: false });
+      return query.order("created_at", { ascending: false });
+    };
+    let { data, error } = await list(true);
+    // Si todavía no existe la columna "position" (falta ejecutar el SQL), se ordena solo por fecha.
+    if (error?.code === "42703") ({ data, error } = await list(false));
     if (error) throw error;
     res.json(data ?? []);
   }),
@@ -97,6 +99,23 @@ documentsRouter.get(
   asyncHandler(async (req, res) => {
     const { storage_path: _path, ...doc } = await ownedDocument(String(req.params.id), userIdOf(req));
     res.json(doc);
+  }),
+);
+
+const reorderSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
+
+/** Guarda el orden de una lista de archivos (el de la asignatura o los "sin asignatura"). */
+documentsRouter.post(
+  "/reorder",
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const { ids } = reorderSchema.parse(req.body);
+    const results = await Promise.all(
+      ids.map((id, position) => supabase.from("documents").update({ position }).eq("id", id).eq("user_id", userId)),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+    res.json({ ok: true });
   }),
 );
 

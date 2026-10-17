@@ -248,7 +248,13 @@ export default function LibraryPage() {
       {unassigned.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{t.library.unassigned}</h2>
-          <DocumentList docs={unassigned} setDocs={setUnassigned} onAssigned={onAssigned} subjects={subjects ?? []} />
+          <DocumentList
+            docs={unassigned}
+            setDocs={setUnassigned}
+            onAssigned={onAssigned}
+            subjects={subjects ?? []}
+            reorderable
+          />
         </section>
       )}
 

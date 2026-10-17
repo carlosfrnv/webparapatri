@@ -48,6 +48,8 @@ create index if not exists documents_user_idx on documents (user_id, created_at 
 alter table documents add column if not exists source_type text not null default 'apuntes'
   check (source_type in ('apuntes','referencia'));
 alter table documents add column if not exists reference_org text check (reference_org in ('IAEA','EFRS'));
+-- Orden que ella elige para sus archivos dentro de cada asignatura (nulo = sin ordenar).
+alter table documents add column if not exists position int;
 
 -- Fragmentos de texto con búsqueda de texto completo en portugués
 create table if not exists chunks (
