@@ -43,5 +43,8 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
   console.error(err);
-  res.status(500).json({ error: t(lang, "unexpected") });
+  // Los errores de la base de datos llevan un código y un mensaje: se muestran para poder diagnosticarlos.
+  // (Solo los ven usuarios que ya han entrado en la web.)
+  const detail = code && (err as { message?: string })?.message;
+  res.status(500).json({ error: detail ? `${t(lang, "unexpected")} [${code}: ${detail}]` : t(lang, "unexpected") });
 }
