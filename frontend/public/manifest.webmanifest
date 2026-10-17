@@ -4,8 +4,11 @@
   "description": "Tu espacio de estudio de Imagen Médica y Radioterapia",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f8fb",
-  "theme_color": "#1f6feb",
+  "background_color": "#f7d4e5",
+  "theme_color": "#c43c80",
   "lang": "es",
-  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [
+    { "src": "/icon-rosa.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icon-rosa-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
 }

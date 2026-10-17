@@ -18,13 +18,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "Estudio IMR", statusBarStyle: "default" },
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: "/icon-rosa.svg", apple: "/apple-icon-rosa.png" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#c2357c",
+  themeColor: "#c43c80",
 };
 
 // Aplica el tema y el idioma antes de pintar, para que no haya un "destello" claro en modo oscuro.
