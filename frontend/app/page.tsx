@@ -8,6 +8,7 @@ import {
   CaretRight,
   ChatCircleDots,
   CheckCircle,
+  Clock,
   Exam,
   FileText,
   Fire,
@@ -21,12 +22,13 @@ import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
 import { SpecialDay } from "@/components/SpecialDay";
+import { BLOCK_STYLE, todayDay } from "@/components/Timetable";
 import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT, type Dictionary } from "@/lib/i18n";
-import type { ExamsResponse, Stats } from "@/lib/types";
+import type { ExamsResponse, ScheduleBlock, Stats } from "@/lib/types";
 
 function greeting(t: Dictionary) {
   const h = new Date().getHours();
@@ -70,6 +72,7 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [exams, setExams] = useState<ExamsResponse | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleBlock[] | null>(null);
   const [error, setError] = useState("");
   // Esta página solo se pinta en el navegador (después del login), así que podemos leer el localStorage.
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -82,12 +85,14 @@ export default function HomePage() {
 
   const load = useCallback(async () => {
     try {
-      const [s, d, e] = await Promise.all([
+      const [s, d, e, sch] = await Promise.all([
         api.get<Stats>("/stats"),
         api.get<{ total_due: number; total_cards: number }>("/flashcards/due?limit=1"),
         // Si falla el calendario, el resto de la página se muestra igual.
         api.get<ExamsResponse>(`/exams?today=${localToday()}`).catch(() => null),
+        api.get<ScheduleBlock[]>("/schedule").catch(() => null),
       ]);
+      setSchedule(sch);
       setStats(s);
       setDue(d);
       setExams(e);
@@ -118,6 +123,7 @@ export default function HomePage() {
   }
 
   const week = stats?.week ?? [];
+  const todayBlocks = (schedule ?? []).filter((b) => b.day === todayDay());
   const kpis = stats &&
     due && [
       { label: t.home.dueCards, value: String(due.total_due), icon: Cards, tone: "violet" as const, href: "/estudiar" },
@@ -214,6 +220,39 @@ export default function HomePage() {
               );
             })}
           </section>
+
+          {/* Hoy en su horario */}
+          {schedule && schedule.length > 0 && (
+            <section className="card p-5 sm:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                  <Clock size={22} weight="duotone" className="text-accent" aria-hidden="true" />
+                  {t.calendar.schedule.today}
+                </h2>
+                <Link href="/calendario#horario" className="text-accent text-sm font-semibold">
+                  {t.calendar.schedule.seeSchedule}
+                </Link>
+              </div>
+              {todayBlocks.length === 0 ? (
+                <p className="text-muted text-sm">{t.calendar.schedule.nothingToday}</p>
+              ) : (
+                <ul className="flex gap-3 overflow-x-auto pb-1">
+                  {todayBlocks.map((b) => (
+                    <li
+                      key={b.id}
+                      className={`min-w-40 shrink-0 rounded-xl border-l-4 px-3 py-2 ${BLOCK_STYLE[b.color].block}`}
+                    >
+                      <p className="text-xs font-semibold opacity-80">
+                        {b.start_time}–{b.end_time}
+                      </p>
+                      <p className="truncate font-bold">{b.title}</p>
+                      {b.location && <p className="truncate text-xs opacity-80">{b.location}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           {/* Actividad + accesos rápidos */}
           <section className="grid gap-6 lg:grid-cols-3">

@@ -136,6 +136,8 @@ export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
 
 export interface Exam {
   id: string;
+  /** "exam": examen. "assignment": entrega de un trabajo. */
+  kind: "exam" | "assignment";
   subject_id: string | null;
   subject_name: string | null;
   title: string;
@@ -159,4 +161,18 @@ export interface ExamsResponse {
   today: string;
   exams: Exam[];
   plan: ExamPlan[];
+}
+
+export type BlockColor = "pink" | "violet" | "teal" | "amber" | "blue" | "slate";
+
+/** Un bloque del horario semanal (día 1 = lunes … 7 = domingo; horas "HH:MM"). */
+export interface ScheduleBlock {
+  id: string;
+  day: number;
+  start_time: string;
+  end_time: string;
+  title: string;
+  subject_id: string | null;
+  location: string | null;
+  color: BlockColor;
 }

@@ -1,14 +1,21 @@
 "use client";
 
-import { CalendarBlank, PencilSimple, Trash } from "@phosphor-icons/react";
+import { CalendarBlank, ClipboardText, Clock, Exam as ExamIcon, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CountdownBadge, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
+import { Timetable } from "@/components/Timetable";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { Exam, ExamsResponse, Subject } from "@/lib/types";
 
+function KindIcon({ kind, size = 18 }: { kind: Exam["kind"]; size?: number }) {
+  const IconCmp = kind === "exam" ? ExamIcon : ClipboardText;
+  return <IconCmp size={size} weight="duotone" aria-hidden="true" />;
+}
+
 interface ExamInput {
+  kind: Exam["kind"];
   subject_id: string | null;
   title: string;
   exam_date: string;
@@ -27,6 +34,7 @@ function ExamForm({
   onCancel: () => void;
 }) {
   const t = useT();
+  const [kind, setKind] = useState<Exam["kind"]>(initial.kind ?? "exam");
   const [subjectId, setSubjectId] = useState(initial.subject_id ?? "");
   const [title, setTitle] = useState(initial.title ?? "");
   const [date, setDate] = useState(initial.exam_date ?? "");
@@ -42,6 +50,7 @@ function ExamForm({
         try {
           const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? "";
           await onSubmit({
+            kind,
             subject_id: subjectId || null,
             title: title.trim() || subjectName,
             exam_date: date,
@@ -53,6 +62,23 @@ function ExamForm({
       }}
     >
       <h2 className="font-semibold">{initial.id ? t.calendar.editTitle : t.calendar.addTitle}</h2>
+      <div className="bg-surface-2 grid grid-cols-2 gap-1 rounded-xl p-1" role="radiogroup">
+        {(["exam", "assignment"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={kind === k}
+            onClick={() => setKind(k)}
+            className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold ${
+              kind === k ? "bg-surface text-accent shadow-sm" : "text-muted"
+            }`}
+          >
+            <KindIcon kind={k} />
+            {k === "exam" ? t.calendar.kindExam : t.calendar.kindAssignment}
+          </button>
+        ))}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block min-w-0">
           <span className="mb-1 block text-sm font-medium">{t.calendar.subject}</span>
@@ -67,17 +93,24 @@ function ExamForm({
           </select>
         </label>
         <label className="block min-w-0">
-          <span className="mb-1 block text-sm font-medium">{t.calendar.date}</span>
+          <span className="mb-1 block text-sm font-medium">
+            {kind === "assignment" ? t.calendar.dateAssignment : t.calendar.date}
+          </span>
           <input className="input" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium">{t.calendar.name}</span>
+        <span className="mb-1 block text-sm font-medium">
+          {kind === "assignment" ? t.calendar.nameAssignment : t.calendar.name}
+        </span>
         <input
           className="input"
           maxLength={120}
           required={!subjectId}
-          placeholder={subjects.find((s) => s.id === subjectId)?.name ?? t.calendar.namePlaceholder}
+          placeholder={
+            subjects.find((s) => s.id === subjectId)?.name ??
+            (kind === "assignment" ? t.calendar.nameAssignmentPlaceholder : t.calendar.namePlaceholder)
+          }
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
@@ -185,7 +218,11 @@ function MonthGrid({
                   : t.calendar.addOnDay(formatExamDate(iso, lang, false))
               }
               className={`flex min-h-12 min-w-0 flex-col items-center rounded-lg p-1 text-sm sm:min-h-16 ${
-                dayExams.length ? "bg-accent-soft" : "hover:bg-surface-2"
+                dayExams.some((e) => e.kind === "exam")
+                  ? "bg-accent-soft"
+                  : dayExams.length
+                    ? "bg-teal-soft"
+                    : "hover:bg-surface-2"
               }`}
             >
               <span
@@ -197,8 +234,19 @@ function MonthGrid({
               </span>
               {dayExams.length > 0 && (
                 <>
-                  <span className="bg-accent mt-0.5 h-1.5 w-1.5 rounded-full sm:hidden" aria-hidden="true" />
-                  <span className="text-accent hidden w-full truncate text-[11px] leading-tight font-medium sm:block">
+                  <span className="mt-0.5 flex gap-0.5 sm:hidden" aria-hidden="true">
+                    {dayExams.slice(0, 3).map((e) => (
+                      <span
+                        key={e.id}
+                        className={`h-1.5 w-1.5 rounded-full ${e.kind === "exam" ? "bg-accent" : "bg-teal"}`}
+                      />
+                    ))}
+                  </span>
+                  <span
+                    className={`hidden w-full truncate text-[11px] leading-tight font-medium sm:block ${
+                      dayExams[0].kind === "exam" ? "text-accent" : "text-teal"
+                    }`}
+                  >
                     {dayExams[0].title}
                     {dayExams.length > 1 ? ` +${dayExams.length - 1}` : ""}
                   </span>
@@ -216,7 +264,13 @@ function ExamRow({ exam, onEdit, onDelete }: { exam: Exam; onEdit: () => void; o
   const t = useT();
   const lang = useLang();
   return (
-    <li className="flex items-start gap-2 px-4 py-3">
+    <li className="flex items-start gap-3 px-4 py-3">
+      <span
+        className={`icon-tile h-10 w-10 ${exam.kind === "exam" ? "bg-accent-soft text-accent" : "bg-teal-soft text-teal"}`}
+        title={exam.kind === "exam" ? t.calendar.kindExam : t.calendar.kindAssignment}
+      >
+        <KindIcon kind={exam.kind} size={22} />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="font-medium break-words">{exam.title}</p>
         <p className="text-muted text-sm">
@@ -224,7 +278,7 @@ function ExamRow({ exam, onEdit, onDelete }: { exam: Exam; onEdit: () => void; o
         </p>
         {exam.notes && <p className="text-muted mt-1 text-sm whitespace-pre-line">{exam.notes}</p>}
         <div className="mt-2">
-          <CountdownBadge days={exam.days_left} />
+          <CountdownBadge days={exam.days_left} kind={exam.kind} />
         </div>
       </div>
       <button className="btn-ghost px-2" aria-label={`${t.common.edit} ${exam.title}`} onClick={onEdit}>
@@ -245,6 +299,14 @@ export default function CalendarPage() {
   const [form, setForm] = useState<(Partial<ExamInput> & { id?: string }) | null>(null);
   const [month, setMonth] = useState(() => new Date());
   const [showPast, setShowPast] = useState(false);
+  // Pestaña: fechas (exámenes y entregas) u horario. Se recuerda con #horario en la dirección.
+  const [tab, setTab] = useState<"dates" | "schedule">(() =>
+    typeof window !== "undefined" && window.location.hash === "#horario" ? "schedule" : "dates",
+  );
+  function chooseTab(next: "dates" | "schedule") {
+    setTab(next);
+    window.history.replaceState(null, "", next === "schedule" ? "#horario" : window.location.pathname);
+  }
 
   // Al cambiar de idioma se vuelven a pedir los datos (p. ej., los nombres de las asignaturas).
   const lang = useLang();
@@ -307,11 +369,34 @@ export default function CalendarPage() {
         title={t.calendar.title}
         subtitle={t.calendar.subtitle}
         actions={
-          <button className="btn-primary" onClick={() => openForm({ exam_date: localToday() })}>
-            {t.calendar.add}
-          </button>
+          tab === "dates" ? (
+            <button className="btn-primary" onClick={() => openForm({ exam_date: localToday() })}>
+              {t.calendar.addDate}
+            </button>
+          ) : undefined
         }
       />
+      <div className="bg-surface-2 mb-6 inline-flex gap-1 rounded-xl p-1" role="tablist">
+        {(
+          [
+            ["dates", t.calendar.tabCalendar, CalendarBlank],
+            ["schedule", t.calendar.tabSchedule, Clock],
+          ] as const
+        ).map(([id, label, TabIcon]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => chooseTab(id)}
+            className={`flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold ${
+              tab === id ? "bg-surface text-accent shadow-sm" : "text-muted hover:text-text"
+            }`}
+          >
+            <TabIcon size={18} weight="duotone" aria-hidden="true" /> {label}
+          </button>
+        ))}
+      </div>
+      {tab === "schedule" && <Timetable subjects={subjects} />}
       {error && (
         <ErrorBox
           message={error}
@@ -321,9 +406,9 @@ export default function CalendarPage() {
           }}
         />
       )}
-      {!data && !error && <Spinner label={t.common.loading} />}
+      {tab === "dates" && !data && !error && <Spinner label={t.common.loading} />}
 
-      {data && (
+      {tab === "dates" && data && (
         <div className="space-y-8">
           <section>
             <h2 className="mb-3 text-lg font-semibold">{t.calendar.todayTitle}</h2>
@@ -363,7 +448,7 @@ export default function CalendarPage() {
             </div>
 
             <div className="min-w-0">
-              <h2 className="mb-3 text-lg font-semibold">{t.calendar.upcoming}</h2>
+              <h2 className="mb-3 text-lg font-semibold">{t.calendar.upcomingDates}</h2>
               {upcoming.length === 0 ? (
                 <p className="card text-muted p-4">{t.calendar.empty}</p>
               ) : (
@@ -375,6 +460,7 @@ export default function CalendarPage() {
                       onEdit={() =>
                         openForm({
                           id: e.id,
+                          kind: e.kind,
                           subject_id: e.subject_id,
                           title: e.title,
                           exam_date: e.exam_date,

@@ -10,6 +10,8 @@ export const examsRouter = Router();
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const createSchema = z.object({
+  // "exam": examen (con plan de estudio). "assignment": entrega de un trabajo.
+  kind: z.enum(["exam", "assignment"]).optional(),
   subject_id: z.string().uuid().nullable().optional(),
   title: z.string().trim().min(1).max(120),
   exam_date: dateSchema,
@@ -24,6 +26,7 @@ const PLAN_DAYS = 45;
 
 interface ExamRow {
   id: string;
+  kind?: "exam" | "assignment";
   subject_id: string | null;
   title: string;
   exam_date: string;
@@ -134,22 +137,24 @@ examsRouter.get(
       ? String(req.query.today)
       : new Date().toISOString().slice(0, 10);
 
-    const { data, error } = await supabase
-      .from("exams")
-      .select("id, subject_id, title, exam_date, notes, subjects(name, translations)")
-      .eq("user_id", userId)
-      .order("exam_date");
+    const list = (fields: string) =>
+      supabase.from("exams").select(fields).eq("user_id", userId).order("exam_date");
+    let { data, error } = await list("id, kind, subject_id, title, exam_date, notes, subjects(name, translations)");
+    // Si todavía no existe la columna "kind" (falta ejecutar el SQL), todo cuenta como examen.
+    if (error?.code === "42703") ({ data, error } = await list("id, subject_id, title, exam_date, notes, subjects(name, translations)"));
     if (error) throw error;
 
     const exams = ((data ?? []) as unknown as ExamRow[]).map(({ subjects, ...e }) => ({
       ...e,
+      kind: e.kind ?? "exam",
       subject_name: subjects ? localName(subjects, langOf(req)) : null,
       days_left: daysBetween(today, e.exam_date),
     }));
 
     const plan = await Promise.all(
       exams
-        .filter((e) => e.days_left >= 0 && e.days_left <= PLAN_DAYS)
+        // Plan de estudio solo para los exámenes (las entregas de trabajos solo llevan cuenta atrás).
+        .filter((e) => e.kind === "exam" && e.days_left >= 0 && e.days_left <= PLAN_DAYS)
         .map(async (e) => ({
           exam_id: e.id,
           ...(e.subject_id && e.days_left > 0

@@ -136,6 +136,23 @@ create table if not exists exams (
   created_at timestamptz default now()
 );
 create index if not exists exams_user_date_idx on exams (user_id, exam_date);
+-- Tipo de fecha: examen o entrega de un trabajo.
+alter table exams add column if not exists kind text not null default 'exam' check (kind in ('exam','assignment'));
+
+-- Horario semanal (clases, prácticas, estudio…), personalizado por ella
+create table if not exists schedule_blocks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day int not null check (day between 1 and 7),
+  start_time time not null,
+  end_time time not null,
+  title text not null,
+  subject_id uuid references subjects(id) on delete set null,
+  location text,
+  color text not null default 'pink',
+  created_at timestamptz default now()
+);
+create index if not exists schedule_blocks_user_idx on schedule_blocks (user_id, day, start_time);
 
 -- Preferencias (p. ej., si ya se crearon las asignaturas iniciales)
 create table if not exists user_settings (
@@ -212,11 +229,12 @@ alter table quiz_attempts enable row level security;
 alter table chat_messages enable row level security;
 alter table user_settings enable row level security;
 alter table exams enable row level security;
+alter table schedule_blocks enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

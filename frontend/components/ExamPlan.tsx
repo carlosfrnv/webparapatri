@@ -27,13 +27,13 @@ export function formatExamDate(iso: string, lang: "es" | "pt", withWeekday = tru
   });
 }
 
-export function CountdownBadge({ days }: { days: number }) {
+export function CountdownBadge({ days, kind = "exam" }: { days: number; kind?: Exam["kind"] }) {
   const t = useT();
   const tone =
     days <= 1 ? "bg-danger-soft text-danger" : days <= 7 ? "bg-warning-soft text-text" : "bg-accent-soft text-accent";
   return (
     <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${tone}`}>
-      {days >= 0 ? t.calendar.daysLeft(days) : t.calendar.daysAgo(-days)}
+      {days < 0 ? t.calendar.daysAgo(-days) : kind === "assignment" ? t.calendar.deliverIn(days) : t.calendar.daysLeft(days)}
     </span>
   );
 }
