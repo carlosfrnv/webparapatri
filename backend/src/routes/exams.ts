@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
+import { langOf } from "../i18n";
+import { seedSubjectsIfEmpty } from "../seed";
 import { supabase } from "../supabase";
 
 export const examsRouter = Router();
@@ -31,7 +33,12 @@ interface ExamRow {
 
 export type PlanTask =
   | { type: "flashcards"; count: number; subject_id: string }
-  | { type: "prepare" | "test"; document_id: string; title: string; last_pct: number | null };
+  | {
+      type: "prepare" | "test";
+      document_id: string;
+      title: string;
+      last_pct: number | null;
+    };
 
 /** Días entre dos fechas "AAAA-MM-DD" (sin horas, así no influye la zona horaria). */
 function daysBetween(from: string, to: string): number {
@@ -57,7 +64,11 @@ async function planFor(userId: string, subjectId: string, daysLeft: number) {
 
   const [materials, reviews, attempts] = await Promise.all([
     supabase.from("study_materials").select("document_id, flashcards").eq("user_id", userId).in("document_id", ids),
-    supabase.from("flashcard_reviews").select("document_id, card_index, due_at").eq("user_id", userId).in("document_id", ids),
+    supabase
+      .from("flashcard_reviews")
+      .select("document_id, card_index, due_at")
+      .eq("user_id", userId)
+      .in("document_id", ids),
     supabase
       .from("quiz_attempts")
       .select("document_id, score, total, created_at")
@@ -103,7 +114,11 @@ async function planFor(userId: string, subjectId: string, daysLeft: number) {
       last_pct: lastPct.get(d.id) ?? null,
     });
   }
-  return { tasks, total_docs: ids.length, mastered_docs: ids.length - pending.length };
+  return {
+    tasks,
+    total_docs: ids.length,
+    mastered_docs: ids.length - pending.length,
+  };
 }
 
 /**
@@ -114,6 +129,7 @@ examsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
+    await seedSubjectsIfEmpty(userId, langOf(req));
     const today = dateSchema.safeParse(req.query.today).success
       ? String(req.query.today)
       : new Date().toISOString().slice(0, 10);
