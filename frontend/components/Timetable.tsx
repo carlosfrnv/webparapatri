@@ -40,9 +40,12 @@ const COLORS = Object.keys(BLOCK_STYLE) as BlockColor[];
 
 const CLASS_TYPES = ["T", "TP", "PL", "OT", "S", "E"];
 
-const HOUR_PX = 56;
+// Como el horario de la escuela: franjas de media hora (9:00, 9:30, 10:00…).
+const SLOT_MIN = 30;
+const SLOT_PX = 34;
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const pad = (n: number) => String(n).padStart(2, "0");
+const toTime = (min: number) => `${pad(Math.floor(min / 60))}:${pad(min % 60)}`;
 /** Día de hoy en el formato del horario (1 = lunes … 7 = domingo). */
 export const todayDay = () => ((new Date().getDay() + 6) % 7) + 1;
 
@@ -332,7 +335,7 @@ function BlockCard({ b, onClick, compact = false }: { b: ScheduleBlock; onClick:
   return (
     <button
       onClick={onClick}
-      className={`h-full w-full overflow-hidden rounded-lg border-l-4 px-2 py-1 text-left shadow-sm transition-transform hover:scale-[1.02] ${BLOCK_STYLE[b.color].block}`}
+      className={`flex h-full w-full flex-col items-stretch justify-start overflow-hidden rounded-lg border-l-4 px-2 py-1 text-left shadow-sm transition-transform hover:scale-[1.02] ${BLOCK_STYLE[b.color].block}`}
     >
       <span className="block truncate text-xs font-bold">{b.title}</span>
       {details && (
@@ -388,11 +391,11 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
 
   const dateOf = (day: number) => addDays(monday, day - 1);
 
-  const newDraft = (day: number, hour = 9): Draft => ({
+  const newDraft = (day: number, startMin = 9 * 60): Draft => ({
     day,
     date: dateOf(day),
-    start_time: `${pad(hour)}:00`,
-    end_time: `${pad(Math.min(hour + 1, 23))}:00`,
+    start_time: toTime(startMin),
+    end_time: toTime(Math.min(startMin + 60, 23 * 60 + 55)),
     title: "",
     subject_id: null,
     location: null,
@@ -473,9 +476,11 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
   const hasSunday = onDay(7).length > 0;
   // Como en el horario de la escuela: de lunes a sábado (el domingo solo si hay algo o si lo pide).
   const days = weekend || hasSunday ? [1, 2, 3, 4, 5, 6, 7] : [1, 2, 3, 4, 5, 6];
-  const startHour = Math.min(8, ...weekBlocks.map((b) => Math.floor(toMin(b.start_time) / 60)));
-  const endHour = Math.max(19, ...weekBlocks.map((b) => Math.ceil(toMin(b.end_time) / 60)));
-  const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  const roundDown = (m: number) => Math.floor(m / SLOT_MIN) * SLOT_MIN;
+  const roundUp = (m: number) => Math.ceil(m / SLOT_MIN) * SLOT_MIN;
+  const startMin = Math.min(9 * 60, ...weekBlocks.map((b) => roundDown(toMin(b.start_time))));
+  const endMin = Math.max(18 * 60 + 30, ...weekBlocks.map((b) => roundUp(toMin(b.end_time))));
+  const slots = Array.from({ length: (endMin - startMin) / SLOT_MIN }, (_, i) => startMin + i * SLOT_MIN);
   const edit = (b: ScheduleBlock) => setDraft({ ...b });
   const isThisWeek = monday === mondayOf(today);
   const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) =>
@@ -544,14 +549,14 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
               {dayName(d, "short")} <span className="text-base">{parseIso(dateOf(d)).getDate()}</span>
             </div>
           ))}
-          <div className="relative" style={{ height: hours.length * HOUR_PX }}>
-            {hours.map((h, i) => (
+          <div className="relative" style={{ height: slots.length * SLOT_PX }}>
+            {[...slots, endMin].map((m, i) => (
               <span
-                key={h}
-                className="text-muted absolute right-2 -translate-y-1/2 text-[11px]"
-                style={{ top: i * HOUR_PX }}
+                key={m}
+                className={`absolute right-2 -translate-y-1/2 text-[11px] ${m % 60 ? "text-muted/70" : "text-muted font-semibold"}`}
+                style={{ top: i * SLOT_PX }}
               >
-                {pad(h)}:00
+                {toTime(m)}
               </span>
             ))}
           </div>
@@ -559,20 +564,20 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
             <div
               key={d}
               className={`border-border relative border-l ${dateOf(d) === today ? "bg-accent-soft/40" : ""}`}
-              style={{ height: hours.length * HOUR_PX }}
+              style={{ height: slots.length * SLOT_PX }}
             >
-              {hours.map((h, i) => (
+              {slots.map((m, i) => (
                 <button
-                  key={h}
-                  className="border-border hover:bg-surface-2 absolute inset-x-0 border-t border-dashed"
-                  style={{ top: i * HOUR_PX, height: HOUR_PX }}
-                  onClick={() => setDraft(newDraft(d, h))}
-                  aria-label={`${ts.addTitle}: ${longDate(dateOf(d))} ${pad(h)}:00`}
+                  key={m}
+                  className={`border-border hover:bg-surface-2 absolute inset-x-0 border-t ${m % 60 ? "border-dotted opacity-60" : "border-dashed"}`}
+                  style={{ top: i * SLOT_PX, height: SLOT_PX }}
+                  onClick={() => setDraft(newDraft(d, m))}
+                  aria-label={`${ts.addTitle}: ${longDate(dateOf(d))} ${toTime(m)}`}
                 />
               ))}
               {onDay(d).map((b) => {
-                const top = ((toMin(b.start_time) - startHour * 60) / 60) * HOUR_PX;
-                const height = Math.max(24, ((toMin(b.end_time) - toMin(b.start_time)) / 60) * HOUR_PX - 2);
+                const top = ((toMin(b.start_time) - startMin) / SLOT_MIN) * SLOT_PX;
+                const height = Math.max(24, ((toMin(b.end_time) - toMin(b.start_time)) / SLOT_MIN) * SLOT_PX - 2);
                 return (
                   <div key={b.id} className="absolute inset-x-1" style={{ top: top + 1, height }}>
                     <BlockCard b={b} onClick={() => edit(b)} compact={height < 60} />
