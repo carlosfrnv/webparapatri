@@ -125,9 +125,11 @@ function originOf(label: string): Origin {
   return "web";
 }
 
-/** Convierte las etiquetas en enlaces especiales (#origen-…) que el Markdown pinta como sellos. */
+/** Quita la etiqueta de "tus apuntes" y convierte las demás en enlaces especiales (#origen-…) que el Markdown pinta como sellos. */
 export function markOrigins(markdown: string): string {
   return markdown
+    // Lo que sale de sus apuntes es lo normal: no se marca (solo se marcan las demás fuentes).
+    .replace(/\[(?:Os teus apontamentos|Tus apuntes)\](?!\()[ \t]*/g, "")
     .replace(LABEL_RE, (_m, label: string) => `[${label}](#origen-${originOf(label)})`)
     .replace(GENERAL_RE, (_m, label: string) => `[${label}](#origen-general)`);
 }

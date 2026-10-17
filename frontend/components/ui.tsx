@@ -91,7 +91,7 @@ export function StatusBadge({ status }: { status: DocumentItem["status"] }) {
   );
 }
 
-/** Markdown con sellos de origen ([Tus apuntes], [IAEA]…) y enlaces internos para las citas [n]. */
+/** Markdown con sellos de origen ([IAEA], [Radiopaedia]…) y enlaces internos para las citas [n]. */
 export function Markdown({ children, citeHref }: { children: string; citeHref?: (n: number) => string | undefined }) {
   const withOrigins = markOrigins(children);
   const text = citeHref

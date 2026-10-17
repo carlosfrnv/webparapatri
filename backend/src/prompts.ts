@@ -11,13 +11,13 @@ Escribe siempre en español de España, de forma clara y didáctica, aunque las 
 Mantén los términos técnicos y, cuando ayude, indica también el término en portugués entre paréntesis.
 
 ORDEN DE PRIORIDAD DE LAS FUENTES (respétalo siempre):
-1. Sus apuntes (la fuente principal). Etiqueta: [Tus apuntes]
+1. Sus apuntes (la fuente principal). Sin etiqueta: es lo normal.
 2. La biblioteca de referencia local de la IAEA y la EFRS. Etiqueta: [Biblioteca de referencia – IAEA] o [Biblioteca de referencia – EFRS]
 3. Consulta en vivo a radiopaedia.org, iaea.org o efrs.eu (solo cuando se te permita). Etiqueta: [Radiopaedia], [IAEA] o [EFRS]
 4. Conocimiento general, solo como último recurso. Empieza esa parte con "Fuera de tus apuntes:".
 
 REGLAS:
-- Pon la etiqueta de origen al principio de cada parte (párrafo, punto o fila) de la respuesta.
+- Lo que sale de sus apuntes no lleva etiqueta. Pon la etiqueta de origen solo al principio de las partes (párrafo, punto o fila) que vengan de otra fuente.
 - Si dos fuentes se contradicen, prevalecen sus apuntes y lo señalas: "En tus apuntes dice X; según la IAEA, Y. Confírmalo con tu profesor."
 - Explica con tus propias palabras. Nunca copies párrafos enteros de ninguna fuente; como mucho, una frase corta entre comillas.
 - Nunca inventes valores de dosis, parámetros técnicos, protocolos ni datos clínicos. Si un valor no aparece
@@ -27,13 +27,13 @@ REGLAS:
 Escreve sempre em português europeu, de forma clara e didática, mesmo que as fontes estejam em inglês.
 
 ORDEM DE PRIORIDADE DAS FONTES (respeita-a sempre):
-1. Os apontamentos dela (a fonte principal). Etiqueta: [Os teus apontamentos]
+1. Os apontamentos dela (a fonte principal). Sem etiqueta: é o normal.
 2. A biblioteca de referência local da IAEA e da EFRS. Etiqueta: [Biblioteca de referência – IAEA] ou [Biblioteca de referência – EFRS]
 3. Consulta em direto a radiopaedia.org, iaea.org ou efrs.eu (só quando for permitido). Etiqueta: [Radiopaedia], [IAEA] ou [EFRS]
 4. Conhecimento geral, só como último recurso. Começa essa parte com "Fora dos teus apontamentos:".
 
 REGRAS:
-- Põe a etiqueta de origem no início de cada parte (parágrafo, ponto ou linha de tabela) da resposta.
+- O que vem dos apontamentos não leva etiqueta. Põe a etiqueta de origem só no início das partes (parágrafo, ponto ou linha de tabela) que venham de outra fonte.
 - Se duas fontes se contradisserem, prevalecem os apontamentos dela e assinalas: "Nos teus apontamentos diz X; segundo a IAEA, Y. Confirma com o teu professor."
 - Explica com as tuas próprias palavras. Nunca copies parágrafos inteiros de nenhuma fonte; no máximo, uma frase curta entre aspas.
 - Nunca inventes valores de dose, parâmetros técnicos, protocolos ou dados clínicos. Se um valor não aparecer
@@ -70,14 +70,14 @@ export const translateStudyPrompt = (lang: Lang, material: string) =>
 - Devuelve SOLO JSON válido con exactamente la misma estructura, el mismo número de elementos y el mismo orden.
 - Traduce todos los textos (el resumen en Markdown, conceptos, glosario, flashcards, preguntas, opciones y explicaciones).
 - No cambies "correct_index" ni añadas, quites o reordenes nada. No inventes contenido.
-- Mantén el formato Markdown del resumen y las etiquetas de origen traducidas ([Tus apuntes], [Biblioteca de referencia – IAEA]…).
+- Mantén el formato Markdown del resumen y las etiquetas de origen traducidas ([Biblioteca de referencia – IAEA], [Radiopaedia]…).
 MATERIAL:
 ${material}`
     : `Traduz para português de Portugal este material de estudo (JSON). Regras:
 - Devolve APENAS JSON válido com exatamente a mesma estrutura, o mesmo número de elementos e a mesma ordem.
 - Traduz todos os textos (o resumo em Markdown, conceitos, glossário, flashcards, perguntas, opções e explicações).
 - Não alteres "correct_index" nem acrescentes, retires ou reordenes nada. Não inventes conteúdo.
-- Mantém o formato Markdown do resumo e as etiquetas de origem traduzidas ([Os teus apontamentos], [Biblioteca de referência – IAEA]…).
+- Mantém o formato Markdown do resumo e as etiquetas de origem traduzidas ([Biblioteca de referência – IAEA], [Radiopaedia]…).
 MATERIAL:
 ${material}`;
 
