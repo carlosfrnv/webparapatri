@@ -5,6 +5,7 @@ import { requireAuth } from "./auth";
 import { config } from "./config";
 import { errorHandler } from "./http";
 import { generalLimiter } from "./limits";
+import { atlasRouter } from "./routes/atlas";
 import { chatRouter } from "./routes/chat";
 import { coupleRouter } from "./routes/couple";
 import { documentsRouter } from "./routes/documents";
@@ -51,6 +52,7 @@ app.use("/sessions", sessionsRouter);
 app.use("/couple", coupleRouter);
 app.use("/push", pushRouter);
 app.use("/oral", oralRouter);
+app.use("/atlas", atlasRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);

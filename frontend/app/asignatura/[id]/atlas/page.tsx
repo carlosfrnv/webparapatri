@@ -19,7 +19,7 @@ export default function AtlasPage() {
         ← {t.common.back}
       </Link>
       <PageHeader icon={Bone} title={t.atlas.title} subtitle={t.atlas.subtitle} />
-      <Atlas3D />
+      <Atlas3D subjectId={id} />
     </>
   );
 }

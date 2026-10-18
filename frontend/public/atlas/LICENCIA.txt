@@ -1,4 +1,4 @@
-Modelos 3D del atlas (huesos.glb y musculos.glb)
+Modelos 3D del atlas (huesos.glb, musculos.glb, organos.glb, vasos.glb y nervios.glb)
 
 Proceden de Z-Anatomy (https://github.com/LluisV/Z-Anatomy), licencia Creative Commons
 Atribución-CompartirIgual 4.0 (CC BY-SA 4.0): https://creativecommons.org/licenses/by-sa/4.0/

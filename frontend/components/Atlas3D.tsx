@@ -7,21 +7,40 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { type AtlasLang, type Layer, normalize, parsePart, type Part, sideLabel, translate } from "@/lib/atlas/names";
+import {
+  type AtlasLang,
+  type Layer,
+  LAYERS,
+  normalize,
+  parsePart,
+  type Part,
+  sideLabel,
+  translate,
+} from "@/lib/atlas/names";
+import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 
 /**
- * Atlas anatómico en 3D: esqueleto y músculos (modelos Z-Anatomy, CC BY-SA 4.0).
+ * Atlas anatómico en 3D: esqueleto, músculos, órganos, corazón y vasos, y sistema nervioso
+ * (modelos Z-Anatomy, CC BY-SA 4.0). Cada capa se descarga solo cuando se activa.
  * Tocar una pieza muestra su nombre; también hay buscador, capas y un modo examen.
  * Solo se dibuja cuando algo cambia (al girar, tocar…), para no gastar batería.
  */
 
-const FILES: Record<Layer, string> = { bones: "/atlas/huesos.glb", muscles: "/atlas/musculos.glb" };
-const COLORS = { bones: "#efe6d2", muscles: "#c0504d", selected: "#ec4899", right: "#16a34a", wrong: "#dc2626" };
+const FILES: Record<Layer, string> = {
+  bones: "/atlas/huesos.glb",
+  muscles: "/atlas/musculos.glb",
+  organs: "/atlas/organos.glb",
+  vessels: "/atlas/vasos.glb",
+  nerves: "/atlas/nervios.glb",
+};
+const ICONS: Record<Layer, string> = { bones: "🦴", muscles: "💪", organs: "🫁", vessels: "🫀", nerves: "🧠" };
+const allLayers = (v: boolean) => Object.fromEntries(LAYERS.map((l) => [l, v])) as Record<Layer, boolean>;
+const COLORS = { bones: "#efe6d2", selected: "#ec4899", right: "#16a34a", wrong: "#dc2626", mine: "#f59e0b" };
 
 type Quiz = { target: string; answered: null | { ok: boolean; tapped: string } };
 
-export default function Atlas3D() {
+export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   const t = useT();
   const ta = t.atlas;
   const lang = useLang() as AtlasLang;
@@ -35,13 +54,13 @@ export default function Atlas3D() {
     /** Mallas de cada pieza (una pieza puede tener varias). */
     meshes: Map<string, THREE.Mesh[]>;
     groups: Partial<Record<Layer, THREE.Group>>;
-    materials: Record<Layer, THREE.MeshStandardMaterial>;
+    bonesMaterial: THREE.MeshStandardMaterial;
     flash: Map<string, THREE.Material>;
   } | null>(null);
 
-  const [loaded, setLoaded] = useState<Record<Layer, boolean>>({ bones: false, muscles: false });
+  const [loaded, setLoaded] = useState<Record<Layer, boolean>>(() => allLayers(false));
   const [loading, setLoading] = useState<Layer | null>("bones");
-  const [visible, setVisible] = useState<Record<Layer, boolean>>({ bones: true, muscles: false });
+  const [visible, setVisible] = useState<Record<Layer, boolean>>(() => ({ ...allLayers(false), bones: true }));
   const [seeThrough, setSeeThrough] = useState(false);
   const [parts, setParts] = useState<Part[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -51,6 +70,15 @@ export default function Atlas3D() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [score, setScore] = useState({ ok: 0, total: 0 });
   const [error, setError] = useState("");
+  // "En mis apuntes": nombres (en inglés, sin lado) de las piezas que salen en sus apuntes de la asignatura.
+  const [mine, setMine] = useState<{
+    on: boolean;
+    loading: boolean;
+    found: Set<string> | null;
+    docs: number;
+    error: string;
+  }>({ on: false, loading: false, found: null, docs: 0, error: "" });
+  const mineOn = mine.on && !!mine.found;
   // Pieza elegida en el buscador cuya capa aún se está cargando: se enfoca al terminar.
   const pending = useRef<string | null>(null);
 
@@ -121,10 +149,7 @@ export default function Atlas3D() {
       render,
       meshes: new Map(),
       groups: {},
-      materials: {
-        bones: new THREE.MeshStandardMaterial({ color: COLORS.bones, roughness: 0.65 }),
-        muscles: new THREE.MeshStandardMaterial({ color: COLORS.muscles, roughness: 0.55, transparent: true }),
-      },
+      bonesMaterial: new THREE.MeshStandardMaterial({ color: COLORS.bones, roughness: 0.65 }),
       flash: new Map(),
     };
     render();
@@ -160,8 +185,9 @@ export default function Atlas3D() {
             while (node && !node.userData.n) node = node.parent;
             const id = (node?.userData.n as string) ?? mesh.name;
             mesh.geometry.computeVertexNormals();
-            // Cada músculo con su propio tono (los vecinos se distinguen); los huesos, todos color hueso.
-            const base = layer === "muscles" ? muscleMaterial(parsePart(id, layer).en) : s.materials.bones;
+            // Cada músculo con su propio tono (los vecinos se distinguen); los huesos, todos color hueso;
+            // arterias rojas, venas azules y nervios amarillos, como en los atlas.
+            const base = layer === "bones" ? s.bonesMaterial : partMaterial(layer, parsePart(id, layer).en);
             mesh.material = base;
             mesh.userData.base = base;
             mesh.userData.layer = layer;
@@ -193,11 +219,8 @@ export default function Atlas3D() {
     // Lista de todas las piezas (pesa poco): el buscador encuentra también los músculos aunque aún no estén cargados.
     fetch("/atlas/piezas.json")
       .then((r) => r.json())
-      .then((index: Record<Layer, string[]>) =>
-        setParts([
-          ...index.bones.map((n) => parsePart(n, "bones")),
-          ...index.muscles.map((n) => parsePart(n, "muscles")),
-        ]),
+      .then((index: Partial<Record<Layer, string[]>>) =>
+        setParts(LAYERS.flatMap((layer) => (index[layer] ?? []).map((n) => parsePart(n, layer)))),
       )
       .catch(() => setError(ta.loadError));
   }, [loadLayer, ta.loadError]);
@@ -206,8 +229,8 @@ export default function Atlas3D() {
   useEffect(() => {
     const s = three.current;
     if (!s) return;
-    for (const layer of ["bones", "muscles"] as Layer[]) if (s.groups[layer]) s.groups[layer]!.visible = visible[layer];
-    for (const m of muscleMaterials.values()) {
+    for (const layer of LAYERS) if (s.groups[layer]) s.groups[layer]!.visible = visible[layer];
+    for (const m of musclePalette.values()) {
       m.opacity = seeThrough ? 0.3 : 1;
       m.depthWrite = !seeThrough;
     }
@@ -215,10 +238,11 @@ export default function Atlas3D() {
       for (const mesh of meshes) {
         mesh.visible = !hidden.has(id);
         const base = mesh.userData.base as THREE.MeshStandardMaterial;
-        mesh.material = s.flash.get(id) ?? (id === selected ? selectedMaterial(base) : base);
+        const marked = mineOn ? (mine.found!.has(partById.get(id)?.en ?? "") ? mineMaterial(base) : DIM) : base;
+        mesh.material = s.flash.get(id) ?? (id === selected ? selectedMaterial(base) : marked);
       }
     s.render();
-  }, [visible, seeThrough, hidden, selected, loaded, quiz]);
+  }, [visible, seeThrough, hidden, selected, loaded, quiz, mineOn, mine.found, partById]);
 
   // ---------- Tocar y pasar el ratón ----------
   const pick = useCallback(
@@ -235,9 +259,9 @@ export default function Atlas3D() {
       const targets = [...s.meshes.values()]
         .flat()
         .filter((m) => m.visible && s.groups[m.userData.layer as Layer]?.visible);
-      // Con los músculos transparentes, se puede tocar el hueso que hay detrás.
+      // Con los músculos transparentes, se puede tocar lo que hay detrás.
       const hits = ray.intersectObjects(targets, false);
-      const hit = seeThrough ? (hits.find((h) => h.object.userData.layer === "bones") ?? hits[0]) : hits[0];
+      const hit = seeThrough ? (hits.find((h) => h.object.userData.layer !== "muscles") ?? hits[0]) : hits[0];
       return hit ? (hit.object.userData.id as string) : null;
     },
     [seeThrough],
@@ -326,9 +350,10 @@ export default function Atlas3D() {
     const seen = new Set<string>();
     return parts.filter((p) => {
       if (!visible[p.layer] || !loaded[p.layer] || hidden.has(p.id) || seen.has(p.en)) return false;
+      if (mineOn && !mine.found!.has(p.en)) return false;
       // Fuera las piezas pequeñas o escondidas que no se pueden tocar bien.
       if (
-        /sinus|cells of ethmoid|incus|malleus|stapes|sesamoid|tarsus|trochlea|ring|cartilage|tooth|incisor|canine|premolar|phalanx|arytenoid|intertransvers|interspinal|rotatores|levatores|tendinous/i.test(
+        /cells of ethmoid|incus|malleus|stapes|sesamoid|tarsus|trochlea|ring|cartilage|tooth|incisor|canine|premolar|phalanx|arytenoid|intertransvers|interspinal|rotatores|levatores|tendinous|branch|digital|leaflet|papillary|segmental|nucleus|tract|fasciculus|commissure|stria|lobule|duct|canaliculus|ganglion|root/i.test(
           p.en,
         )
       )
@@ -340,7 +365,10 @@ export default function Atlas3D() {
 
   function nextQuestion() {
     const list = quizCandidates();
-    if (list.length === 0) return;
+    if (list.length === 0) {
+      if (mineOn) alert(ta.mineQuizEmpty);
+      return;
+    }
     const target = list[Math.floor(Math.random() * list.length)].id;
     three.current?.flash.clear();
     setSelected(null);
@@ -373,6 +401,38 @@ export default function Atlas3D() {
     setQuiz(null);
     setScore({ ok: 0, total: 0 });
   }
+
+  // ---------- En mis apuntes ----------
+  async function toggleMine() {
+    if (mine.on) return setMine((m) => ({ ...m, on: false }));
+    if (mine.found) return setMine((m) => ({ ...m, on: true }));
+    if (!subjectId) return;
+    setMine((m) => ({ ...m, on: true, loading: true, error: "" }));
+    // Se manda cada pieza una vez (sin lados), con su nombre en los dos idiomas.
+    const unique = [...new Set(parts.map((p) => p.en))];
+    try {
+      const r = await api.post<{ documents: number; found: string[] }>("/atlas/mentions", {
+        subject_id: subjectId,
+        parts: unique.map((en) => ({ key: en, terms: [translate(en, "es"), translate(en, "pt")] })),
+      });
+      setMine({ on: true, loading: false, found: new Set(r.found), docs: r.documents, error: "" });
+    } catch (err) {
+      setMine({ on: false, loading: false, found: null, docs: 0, error: errorMessage(err) });
+    }
+  }
+
+  // Piezas de sus apuntes que están en capas aún apagadas (para poder activarlas).
+  const mineLayers = useMemo(() => {
+    if (!mine.found) return [];
+    const count = new Map<Layer, number>();
+    const seen = new Set<string>();
+    for (const p of parts)
+      if (mine.found.has(p.en) && !seen.has(p.en)) {
+        seen.add(p.en);
+        count.set(p.layer, (count.get(p.layer) ?? 0) + 1);
+      }
+    return LAYERS.filter((l) => count.has(l)).map((l) => ({ layer: l, n: count.get(l)! }));
+  }, [mine.found, parts]);
 
   // ---------- Buscador ----------
   const results = useMemo(() => {
@@ -422,7 +482,7 @@ export default function Atlas3D() {
     <div className="space-y-3">
       {/* Barra de herramientas */}
       <div className="flex flex-wrap items-center gap-2">
-        {(["bones", "muscles"] as Layer[]).map((layer) => (
+        {LAYERS.map((layer) => (
           <button
             key={layer}
             onClick={() => toggleLayer(layer)}
@@ -431,8 +491,7 @@ export default function Atlas3D() {
               visible[layer] ? "border-accent bg-accent-soft text-accent" : "border-border"
             }`}
           >
-            {layer === "bones" ? "🦴 " : "💪 "}
-            {ta.layers[layer]}
+            {ICONS[layer]} {ta.layers[layer]}
             {loading === layer && " …"}
           </button>
         ))}
@@ -442,7 +501,17 @@ export default function Atlas3D() {
             {ta.seeThrough}
           </label>
         )}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          {subjectId && (
+            <button
+              className={`min-h-10 rounded-full border-2 px-4 text-sm font-semibold ${mine.on ? "border-amber-500 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" : "border-border"}`}
+              onClick={toggleMine}
+              aria-pressed={mine.on}
+              disabled={parts.length === 0 || mine.loading}
+            >
+              {ta.mine}
+            </button>
+          )}
           {quiz ? (
             <button className="btn-ghost min-h-10 text-sm" onClick={stopQuiz}>
               <X size={18} aria-hidden="true" /> {ta.quizStop}
@@ -462,6 +531,34 @@ export default function Atlas3D() {
           </button>
         </div>
       </div>
+
+      {mine.error && <p className="text-danger text-sm">{mine.error}</p>}
+      {mine.on && (
+        <div className="rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-950/30" role="status">
+          {mine.loading || !mine.found ? (
+            ta.mineLoading
+          ) : mine.docs === 0 ? (
+            ta.mineNoDocs
+          ) : (
+            <>
+              <p>{ta.mineCount(mine.found.size)}</p>
+              {mineLayers.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {mineLayers.map(({ layer, n }) => (
+                    <button
+                      key={layer}
+                      onClick={() => !visible[layer] && toggleLayer(layer)}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${visible[layer] ? "bg-amber-200 text-amber-900" : "border border-amber-400"}`}
+                    >
+                      {ICONS[layer]} {ta.layers[layer]} · {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {!quiz && (
         <div className="relative">
@@ -522,7 +619,11 @@ export default function Atlas3D() {
         {(loading || parts.length === 0) && !error && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="bg-surface/90 rounded-full px-4 py-2 text-sm font-medium shadow">
-              {loading === "muscles" ? ta.loadingMuscles : ta.loading}
+              {loading === "muscles"
+                ? ta.loadingMuscles
+                : loading && loading !== "bones"
+                  ? ta.loadingLayer(ta.layers[loading])
+                  : ta.loading}
             </span>
           </div>
         )}
@@ -611,19 +712,83 @@ const MUSCLE_TONES = [
 const CONNECTIVE = /tendon|ligament|tract|linea alba|arch|ring|tarsus|trochlea/i;
 const CONNECTIVE_COLOR = "#ece4d4";
 
-const muscleMaterials = new Map<string, THREE.MeshStandardMaterial>();
-function muscleMaterial(en: string) {
-  let color = CONNECTIVE_COLOR;
-  if (!CONNECTIVE.test(en)) {
-    // El mismo músculo siempre con el mismo tono (también el izquierdo y el derecho).
-    let h = 0;
-    for (const ch of en) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    color = MUSCLE_TONES[h % MUSCLE_TONES.length];
-  }
-  let m = muscleMaterials.get(color);
+// Órganos: cada uno con su color habitual en los atlas; el resto, tonos rosados variados.
+const ORGAN_COLORS: [RegExp, string][] = [
+  [/liver/i, "#8b3a2f"],
+  [/lung|bronch|trachea|epiglottis/i, "#e8a3a8"],
+  [/kidney|renal|suprarenal/i, "#8e2f3a"],
+  [/stomach|oesophagus|duodenum|jejunum|colon|appendix|taenia|pharynx|soft palate|uvula/i, "#e4a08a"],
+  [/gallbladder|bile/i, "#4f8a4b"],
+  [/pancrea|gland|hypophysis|prostate/i, "#e3c27a"],
+  [/omentum|mesocolon|meso-appendix/i, "#f0dca0"],
+  [/bladder|ureter|urethra/i, "#d9a441"],
+];
+const ORGAN_TONES = ["#e7a1a1", "#d98c8c", "#ecb3a4", "#d4787f", "#e8b0b8"];
+
+// Corazón y vasos: arterias rojas y venas azules (las pulmonares al revés, como en los atlas).
+function vesselColor(en: string) {
+  if (/leaflet|papillary/i.test(en)) return "#f2d7c9";
+  if (/atrium|ventricle/i.test(en)) return "#a32b35";
+  if (/pulmonary trunk|pulmonary artery|artery of (left|right) lung|lobar artery|lingular artery/i.test(en))
+    return "#3b6fd1";
+  if (/pulmonary vein|vein of (left|right) lung/i.test(en)) return "#d02f2f";
+  if (/vein|vena|sinus|venous|plexus/i.test(en)) return "#3b6fd1";
+  return "#d02f2f";
+}
+
+// Sistema nervioso: nervios amarillos, corteza rosada, sustancia blanca y vías blancas, núcleos grises.
+function nerveColor(en: string) {
+  if (/nerve|plexus|branch|trunk|cauda|ganglion|root|chiasm|optic tract/i.test(en)) return "#f2c94c";
+  if (/white matter|tract|fasciculus|commissure|corpus callosum|fornix|stria|peduncle/i.test(en)) return "#f3efe6";
+  if (/retina|sclera|cornea|lens|vitreous|eyeball|iris/i.test(en)) return /iris/i.test(en) ? "#6b8fb8" : "#f4f1ea";
+  if (/nucleus|nuclei|thalamus|putamen|pallidus|caudate|lentiform|body|colliculus|olive|red nucleus/i.test(en))
+    return "#a9a2a8";
+  if (/ventricle|aqueduct|canal|choroid/i.test(en)) return "#7fb3d5";
+  if (/lacrimal|nasolacrimal|cochlea|vestibul|tympanic|auditory/i.test(en)) return "#e8c6a5";
+  return /sulcus|fissure/i.test(en) ? "#c99a9f" : "#e3b5b8";
+}
+
+const hash = (s: string) => {
+  let h = 0;
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+};
+
+function partColor(layer: Layer, en: string) {
+  if (layer === "muscles") return CONNECTIVE.test(en) ? CONNECTIVE_COLOR : MUSCLE_TONES[hash(en) % MUSCLE_TONES.length];
+  if (layer === "organs")
+    return ORGAN_COLORS.find(([re]) => re.test(en))?.[1] ?? ORGAN_TONES[hash(en) % ORGAN_TONES.length];
+  if (layer === "vessels") return vesselColor(en);
+  return nerveColor(en);
+}
+
+// Un material por color y capa (se comparten: así hay pocos y se cambian todos a la vez).
+const musclePalette = new Map<string, THREE.MeshStandardMaterial>();
+const otherPalette = new Map<string, THREE.MeshStandardMaterial>();
+function partMaterial(layer: Layer, en: string) {
+  const color = partColor(layer, en);
+  const palette = layer === "muscles" ? musclePalette : otherPalette;
+  let m = palette.get(color);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, roughness: 0.55, transparent: true });
-    muscleMaterials.set(color, m);
+    m = new THREE.MeshStandardMaterial({ color, roughness: 0.55, transparent: layer === "muscles" });
+    palette.set(color, m);
+  }
+  return m;
+}
+
+// "En mis apuntes": lo que sale se ve con su color y un brillo ámbar; el resto, casi transparente.
+const DIM = new THREE.MeshStandardMaterial({ color: "#9ca3af", transparent: true, opacity: 0.12, depthWrite: false });
+const mineCache = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
+function mineMaterial(base: THREE.MeshStandardMaterial) {
+  let m = mineCache.get(base);
+  if (!m) {
+    m = base.clone();
+    m.opacity = 1;
+    m.transparent = false;
+    m.depthWrite = true;
+    m.emissive.set(COLORS.mine);
+    m.emissiveIntensity = 0.35;
+    mineCache.set(base, m);
   }
   return m;
 }

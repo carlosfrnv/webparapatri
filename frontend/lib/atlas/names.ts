@@ -1,8 +1,12 @@
 import { BONES } from "./bones";
 import { MUSCLES } from "./muscles";
+import { NERVES } from "./nerves";
+import { ORGANS } from "./organs";
+import { VESSELS } from "./vessels";
 
 export type AtlasLang = "es" | "pt";
-export type Layer = "bones" | "muscles";
+export type Layer = "bones" | "muscles" | "organs" | "vessels" | "nerves";
+export const LAYERS: Layer[] = ["bones", "muscles", "organs", "vessels", "nerves"];
 
 const ORD_EN = [
   "first",
@@ -117,7 +121,7 @@ function patterned(en: string, lang: AtlasLang): string | null {
 
 /** Nombre de la pieza en el idioma de la web (o el original si no hay traducción). */
 export function translate(en: string, lang: AtlasLang): string {
-  const pair = BONES[en] ?? MUSCLES[en];
+  const pair = BONES[en] ?? MUSCLES[en] ?? ORGANS[en] ?? VESSELS[en] ?? NERVES[en];
   if (pair) return lang === "es" ? pair[0] : pair[1];
   return patterned(en, lang) ?? en;
 }
@@ -142,4 +146,8 @@ export function sideLabel(side: Part["side"], lang: AtlasLang) {
 }
 
 /** Para buscar sin tildes ni mayúsculas. */
-export const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+export const normalize = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
