@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import { Markdown } from "./ui";
 
 /**
@@ -80,13 +80,14 @@ export function placeFigures(markdown: string, figures: FigureImage[]) {
 }
 
 export function useFigureImages(documentId: string, version = 0) {
+  const lang = useLang();
   const [figures, setFigures] = useState<FigureImage[]>([]);
   useEffect(() => {
     api
       .get<{ figures: FigureImage[] }>(`/documents/${documentId}/figure-images`)
       .then((r) => setFigures(r.figures))
       .catch(() => setFigures([]));
-  }, [documentId, version]);
+  }, [documentId, version, lang]);
   return figures;
 }
 

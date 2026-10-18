@@ -30,6 +30,8 @@ export interface Figure {
   page: number | null;
   label: string;
   description: string;
+  /** Lo que muestra, en español (la descripción va en portugués, como sus apuntes). */
+  captionEs?: string;
   /** Imagen (JPEG en base64) que vio la IA: se guarda para las preguntas con imágenes. */
   image?: string;
   /** false si solo tenía fórmulas o texto (se usa lo transcrito, pero la imagen no se enseña en el resumen). */
@@ -44,7 +46,14 @@ export interface Candidate {
 }
 
 const figuresSchema = z.object({
-  figures: z.array(z.object({ ref: z.number().int(), description: z.string(), visual: z.boolean().optional() })),
+  figures: z.array(
+    z.object({
+      ref: z.number().int(),
+      description: z.string(),
+      visual: z.boolean().optional(),
+      caption_es: z.string().optional(),
+    }),
+  ),
 });
 
 /**
@@ -300,6 +309,7 @@ async function askInBatches(candidates: Candidate[], prompt: (labels: string) =>
           page: c.page,
           label: c.label,
           description: f.description.trim(),
+          captionEs: f.caption_es?.trim() || undefined,
           image: c.image.data,
           visual: f.visual,
         });

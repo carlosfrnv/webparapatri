@@ -384,7 +384,8 @@ gráficos, tabelas em imagem, fluxogramas…), descreve em português europeu o 
 estruturas, legendas e setas, posições e relações entre elas. Inclui todos os rótulos que se consigam ler.
 Ignora logótipos, fotografias decorativas, fundos e páginas que só têm texto.
 Não inventes: se algo não se lê ou não se percebe, não o descrevas. Máximo de 150 palavras por imagem.
-Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"..."}]}
+"caption_es": a mesma descrição, mais curta (1-2 frases), em espanhol de Espanha (para mostrar por baixo da imagem).
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","caption_es":"..."}]}
 Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
 
 export const formulasPrompt = (labels: string) =>
@@ -401,7 +402,8 @@ Para cada imagem que tenha fórmulas, expressões, cálculos, exemplos resolvido
 - Descreve gráficos e tabelas com os seus valores.
 Ignora logótipos e fundos. Omite as imagens que só tenham texto corrido sem fórmulas. Não inventes nada. Máximo de 300 palavras por imagem.
 "visual": true só se a imagem tiver um gráfico, diagrama ou tabela que valha a pena ver como imagem; false se forem só fórmulas ou texto.
-Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","visual":false}]}
+"caption_es": o que mostra a imagem, em 1-2 frases em espanhol de Espanha (para mostrar por baixo da imagem).
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","visual":false,"caption_es":"..."}]}
 Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
 
 export const transcribePrompt = (labels: string) =>

@@ -466,6 +466,7 @@ documentsRouter.get(
   "/:id/figure-images",
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
+    const lang = langOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
     const extras = await getExtras(doc.id, userId);
     if (extras.missing || extras.figures.length === 0) {
@@ -480,7 +481,14 @@ documentsRouter.get(
     res.json({
       figures: extras.figures
         .filter((f) => urls.has(f.path))
-        .map((f) => ({ n: f.n, page: f.page, label: f.label, description: f.description, url: urls.get(f.path) })),
+        .map((f) => ({
+          n: f.n,
+          page: f.page,
+          label: f.label,
+          // Las descripciones se escriben en portugués (como sus apuntes); con la web en español, su versión corta.
+          description: lang === "es" ? (f.description_es ?? "") : f.description,
+          url: urls.get(f.path),
+        })),
     });
   }),
 );

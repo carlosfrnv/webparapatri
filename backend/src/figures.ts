@@ -16,6 +16,8 @@ export interface SavedFigure {
   page: number | null;
   label: string;
   description: string;
+  /** Lo mismo en español (para mostrarlo con la web en español). */
+  description_es?: string;
   path: string;
 }
 
@@ -76,7 +78,14 @@ export async function saveFigures(documentId: string, userId: string, figures: F
       console.error("Error al guardar una figura:", error.message);
       continue;
     }
-    saved.push({ n: i + 1, page: f.page, label: f.label, description: f.description, path });
+    saved.push({
+      n: i + 1,
+      page: f.page,
+      label: f.label,
+      description: f.description,
+      description_es: f.captionEs,
+      path,
+    });
   }
   // Figuras nuevas: las preguntas sobre las anteriores ya no valen.
   await saveExtras(documentId, userId, { figures: saved, figure_quiz: {} });
