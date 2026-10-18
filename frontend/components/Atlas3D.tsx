@@ -83,6 +83,12 @@ export default function Atlas3D() {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0.9, 0);
     controls.enableDamping = true;
+    // Menos sensible que lo que trae three.js por defecto: en el iPad un toque pequeño lo giraba demasiado.
+    controls.rotateSpeed = 0.4;
+    controls.zoomSpeed = 0.6;
+    controls.panSpeed = 0.5;
+    // Al soltar el dedo se para enseguida en vez de seguir girando.
+    controls.dampingFactor = 0.2;
     controls.minDistance = 0.15;
     controls.maxDistance = 6;
 
