@@ -255,7 +255,8 @@ const es = {
     preparingText:
       "La IA está leyendo los apuntes y creando el resumen, los conceptos, las flashcards y el test. La primera vez puede tardar uno o dos minutos. Después queda guardado.",
     whyItMatters: "Por qué importa:",
-    figurePage: (n: number) => `pág. ${n}`,
+    figurePage: (n: number) => `Pág. ${n}`,
+    figureWhat: "¿Qué muestra?",
     moreFigures: "Figuras de tus apuntes",
     disclaimer: "Generado por la IA a partir de tus apuntes. Confirma siempre valores y protocolos con el profesorado.",
     figures: {
@@ -988,7 +989,8 @@ const pt: Dictionary = {
     preparingText:
       "A IA está a ler os apontamentos e a criar o resumo, os conceitos, as flashcards e o teste. Na primeira vez pode demorar um ou dois minutos. Depois fica guardado.",
     whyItMatters: "Porque importa:",
-    figurePage: (n: number) => `pág. ${n}`,
+    figurePage: (n: number) => `Pág. ${n}`,
+    figureWhat: "O que mostra?",
     moreFigures: "Figuras dos teus apontamentos",
     disclaimer:
       "Gerado pela IA a partir dos teus apontamentos. Confirma sempre valores e protocolos com os professores.",

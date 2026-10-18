@@ -57,20 +57,29 @@ export interface FigureOptions {
 const FORMULA_MAX_PAGES = 60;
 
 /** Reduce la imagen a JPEG de como mucho WIDTH px de ancho. Null si el formato no se puede leer (EMF, WMF…). */
-async function toJpeg(data: Uint8Array, small = false): Promise<LlmImage | null> {
+async function toJpeg(
+  data: Uint8Array,
+  small = false,
+  /** Zona a recortar, en fracciones de la imagen: [izquierda, arriba, derecha, abajo]. */
+  crop: [number, number, number, number] | null = null,
+): Promise<LlmImage | null> {
   try {
     const img = await loadImage(Buffer.from(data));
+    const sx = crop ? crop[0] * img.width : 0;
+    const sy = crop ? crop[1] * img.height : 0;
+    const sw = crop ? (crop[2] - crop[0]) * img.width : img.width;
+    const sh = crop ? (crop[3] - crop[1]) * img.height : img.height;
     // Una fórmula suele ser una imagen ancha y baja: en las asignaturas de fórmulas se aceptan.
-    if (small ? img.width < 40 || img.height < 16 : img.width < MIN_PIXELS || img.height < MIN_PIXELS) return null;
-    const scale = Math.min(1, WIDTH / img.width);
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
+    if (small ? sw < 40 || sh < 16 : sw < MIN_PIXELS || sh < MIN_PIXELS) return null;
+    const scale = Math.min(1, WIDTH / sw);
+    const w = Math.round(sw * scale);
+    const h = Math.round(sh * scale);
     const canvas = createCanvas(w, h);
     const ctx = canvas.getContext("2d");
     // Fondo blanco: las imágenes PNG transparentes se verían negras en JPEG.
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
     return { mediaType: "image/jpeg", data: (await canvas.encode("jpeg", 82)).toString("base64") };
   } catch {
     return null;
@@ -90,36 +99,99 @@ const OPS_PAINT_IMAGE = new Set([85, 86]);
 
 interface PdfDoc {
   numPages: number;
-  getPage(n: number): Promise<{ getOperatorList(): Promise<{ fnArray: number[]; argsArray: unknown[][] }> }>;
+  getPage(n: number): Promise<{
+    view: number[];
+    getOperatorList(): Promise<{ fnArray: number[]; argsArray: unknown[][] }>;
+  }>;
+}
+
+// Más códigos de pdf.js: guardar/recuperar el estado gráfico, cambiar la posición y los "formularios" (grupos).
+const OP_SAVE = 10;
+const OP_RESTORE = 11;
+const OP_TRANSFORM = 12;
+const OP_FORM_BEGIN = 74;
+const OP_FORM_END = 75;
+
+type Matrix = [number, number, number, number, number, number];
+const mul = (m: Matrix, n: Matrix): Matrix => [
+  m[0] * n[0] + m[1] * n[2],
+  m[0] * n[1] + m[1] * n[3],
+  m[2] * n[0] + m[3] * n[2],
+  m[2] * n[1] + m[3] * n[3],
+  m[4] * n[0] + m[5] * n[2] + n[4],
+  m[4] * n[1] + m[5] * n[3] + n[5],
+];
+
+/** Una imagen de la página: su tamaño en píxeles y dónde está dibujada (en fracciones de la página, desde arriba). */
+interface PdfImage {
+  key: string;
+  box: [number, number, number, number];
 }
 
 /**
- * Tamaño en píxeles de las imágenes de cada página. pdf-parse tiene getImage(), pero se queda colgado
- * al decodificarlas en el servidor; nos basta con la lista de operaciones de cada página.
+ * Las imágenes de cada página y dónde están. pdf-parse tiene getImage(), pero se queda colgado al decodificarlas
+ * en el servidor; nos basta con la lista de operaciones de cada página (y siguiendo sus transformaciones
+ * se sabe dónde está cada imagen, para recortar solo las figuras y no la diapositiva entera).
  */
-async function pdfImageSizes(parser: PDFParse): Promise<{ total: number; sizes: string[][] }> {
+async function pdfImages(parser: PDFParse): Promise<{ total: number; pages: PdfImage[][] }> {
   const doc = (await (parser as unknown as { load(): Promise<PdfDoc> }).load()) as PdfDoc;
-  const sizes: string[][] = [];
+  const pages: PdfImage[][] = [];
   for (let i = 1; i <= doc.numPages; i++) {
-    const ops = await (await doc.getPage(i)).getOperatorList();
-    const page: string[] = [];
+    const page = await doc.getPage(i);
+    const [vx0, vy0, vx1, vy1] = page.view;
+    const ops = await page.getOperatorList();
+    const found: PdfImage[] = [];
+    let ctm: Matrix = [1, 0, 0, 1, 0, 0];
+    const stack: Matrix[] = [];
     ops.fnArray.forEach((fn, j) => {
-      if (!OPS_PAINT_IMAGE.has(fn)) return;
-      const [, w, h] = (ops.argsArray[j] ?? []) as [string?, number?, number?];
-      if ((w ?? 0) > MIN_PIXELS && (h ?? 0) > MIN_PIXELS) page.push(`${w}x${h}`);
+      const args = (ops.argsArray[j] ?? []) as unknown[];
+      if (fn === OP_SAVE) stack.push(ctm);
+      else if (fn === OP_RESTORE || fn === OP_FORM_END) ctm = stack.pop() ?? ctm;
+      else if (fn === OP_TRANSFORM && args.length === 6) ctm = mul(args as Matrix, ctm);
+      else if (fn === OP_FORM_BEGIN) {
+        stack.push(ctm);
+        const m = args[0] as number[] | null;
+        if (Array.isArray(m) && m.length === 6) ctm = mul(m as Matrix, ctm);
+      } else if (OPS_PAINT_IMAGE.has(fn)) {
+        const [, w, h] = args as [string?, number?, number?];
+        if ((w ?? 0) <= MIN_PIXELS || (h ?? 0) <= MIN_PIXELS) return;
+        // La imagen ocupa el cuadrado unidad transformado por la matriz actual.
+        const xs: number[] = [];
+        const ys: number[] = [];
+        for (const [u, v] of [
+          [0, 0],
+          [1, 0],
+          [0, 1],
+          [1, 1],
+        ]) {
+          xs.push(u * ctm[0] + v * ctm[2] + ctm[4]);
+          ys.push(u * ctm[1] + v * ctm[3] + ctm[5]);
+        }
+        const fx = (x: number) => Math.min(1, Math.max(0, (x - vx0) / (vx1 - vx0)));
+        const fy = (y: number) => Math.min(1, Math.max(0, (vy1 - y) / (vy1 - vy0)));
+        found.push({
+          key: `${w}x${h}`,
+          box: [fx(Math.min(...xs)), fy(Math.max(...ys)), fx(Math.max(...xs)), fy(Math.min(...ys))],
+        });
+      }
     });
-    sizes.push(page);
+    pages.push(found);
   }
-  return { total: doc.numPages, sizes };
+  return { total: doc.numPages, pages };
 }
+
+const boxArea = (b: PdfImage["box"]) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+// Imágenes que ocupan menos de esto de la página: iconos, viñetas o logotipos.
+const MIN_PAGE_FRACTION = 0.015;
 
 async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidate[]> {
   const parser = new PDFParse({ data: buffer });
   try {
-    const { total, sizes } = await pdfImageSizes(parser);
-    let pages: number[];
+    const { total, pages: images } = await pdfImages(parser);
+    // Zona de cada página que se recorta (la que ocupan sus figuras); sin recorte en las de fórmulas.
+    const crops = new Map<number, PdfImage["box"] | null>();
     if (allPages) {
-      pages = Array.from({ length: Math.min(total, FORMULA_MAX_PAGES) }, (_, i) => i + 1);
+      for (let p = 1; p <= Math.min(total, FORMULA_MAX_PAGES); p++) crops.set(p, null);
     } else {
       const area = (key: string) =>
         key
@@ -128,24 +200,38 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
           .reduce((a, b) => a * b, 1);
       // En el PDF solo se sabe el tamaño de cada imagen, no si es la misma: muchas figuras distintas pueden
       // medir lo mismo (p. ej., exportadas de PowerPoint). Solo se descartan las repetidas pequeñas (logotipos).
-      const skip = new Set([...repeated(sizes)].filter((k) => area(k) < LOGO_MAX_AREA));
-      pages = sizes
-        .map((keys, i) => ({
-          page: i + 1,
-          area: keys.filter((k) => !skip.has(k)).reduce((sum, k) => sum + area(k), 0),
-        }))
-        .filter((p) => p.area > 0)
-        // Si hay demasiadas, nos quedamos con las de figuras más grandes.
-        .sort((a, b) => b.area - a.area)
-        .slice(0, MAX_FIGURES)
-        .map((p) => p.page)
-        .sort((a, b) => a - b);
+      const skip = new Set(
+        [...repeated(images.map((p) => p.map((im) => im.key)))].filter((k) => area(k) < LOGO_MAX_AREA),
+      );
+      const ranked = images
+        .map((list, i) => {
+          const figures = list.filter((im) => !skip.has(im.key) && boxArea(im.box) >= MIN_PAGE_FRACTION);
+          return { page: i + 1, figures, size: figures.reduce((sum, im) => sum + boxArea(im.box), 0) };
+        })
+        .filter((p) => p.figures.length > 0)
+        // Si hay demasiadas, nos quedamos con las páginas de figuras más grandes.
+        .sort((a, b) => b.size - a.size)
+        .slice(0, MAX_FIGURES);
+      for (const p of ranked) {
+        // Todas las figuras de la página juntas, con un pequeño margen (así se ven las flechas y leyendas).
+        const pad = 0.015;
+        const box: PdfImage["box"] = [
+          Math.max(0, Math.min(...p.figures.map((f) => f.box[0])) - pad),
+          Math.max(0, Math.min(...p.figures.map((f) => f.box[1])) - pad),
+          Math.min(1, Math.max(...p.figures.map((f) => f.box[2])) + pad),
+          Math.min(1, Math.max(...p.figures.map((f) => f.box[3])) + pad),
+        ];
+        // Si las figuras ocupan casi toda la página, se deja la página entera.
+        crops.set(p.page, boxArea(box) > 0.8 ? null : box);
+      }
     }
+    const pages = [...crops.keys()].sort((a, b) => a - b);
     if (pages.length === 0) return [];
-    const shots = await parser.getScreenshot({ partial: pages, desiredWidth: WIDTH, imageDataUrl: false });
+    // Más resolución al recortar, para que la figura recortada siga viéndose bien.
+    const shots = await parser.getScreenshot({ partial: pages, desiredWidth: WIDTH * 2, imageDataUrl: false });
     const out: Candidate[] = [];
     for (const shot of shots.pages) {
-      const image = await toJpeg(shot.data);
+      const image = await toJpeg(shot.data, false, crops.get(shot.pageNumber) ?? null);
       if (image) out.push({ ref: shot.pageNumber, page: shot.pageNumber, label: `página ${shot.pageNumber}`, image });
     }
     return out;

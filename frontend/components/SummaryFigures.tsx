@@ -92,20 +92,28 @@ export function useFigureImages(documentId: string, version = 0) {
 
 function FigureCard({ f }: { f: FigureImage }) {
   const t = useT();
-  const caption = f.page ? `${f.label} · ${t.document.figurePage(f.page)}` : f.label;
+  // La etiqueta suele ser solo "página 11" o "diapositivo 3": entonces basta con la página.
+  const generic = /^(p[aá]gina|diapositivo|imagem)\s*\d*$/i.test(f.label.trim());
+  const caption = [generic ? null : f.label, f.page ? t.document.figurePage(f.page) : null].filter(Boolean).join(" · ");
   return (
     <figure className="print-avoid-break my-5">
       <a href={f.url} target="_blank" rel="noreferrer" aria-label={t.quiz.zoom}>
         {/* eslint-disable-next-line @next/next/no-img-element -- figura privada con enlace temporal */}
         <img
           src={f.url}
-          alt={f.label}
+          alt={f.description || f.label}
           className="border-border mx-auto max-h-[24rem] w-auto rounded-xl border bg-white object-contain print:max-h-[9cm]"
         />
       </a>
-      <figcaption className="text-muted mx-auto mt-2 max-w-xl text-center text-xs leading-snug">
-        <span className="text-text font-semibold">{caption}</span>
-        {f.description && <span className="block">{f.description}</span>}
+      <figcaption className="text-muted mx-auto mt-1.5 max-w-xl text-center text-xs leading-snug">
+        {caption && <span className="font-semibold">{caption}</span>}
+        {/* La descripción que escribió la IA al mirarla: plegada para no llenar el resumen de texto. */}
+        {f.description && (
+          <details className="no-print mt-1">
+            <summary className="text-accent cursor-pointer">{t.document.figureWhat}</summary>
+            <p className="mt-1 text-left">{f.description}</p>
+          </details>
+        )}
       </figcaption>
     </figure>
   );
