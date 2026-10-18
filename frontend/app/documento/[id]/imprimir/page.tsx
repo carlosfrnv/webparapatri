@@ -4,6 +4,7 @@ import { Printer } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { stripOrigins } from "@/components/Sources";
 import { ErrorBox, Markdown, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
@@ -98,7 +99,7 @@ export default function PrintPage() {
 
         {parts.summary && (
           <section className="mb-8">
-            <Markdown>{materials.summary}</Markdown>
+            <Markdown>{stripOrigins(materials.summary)}</Markdown>
           </section>
         )}
 

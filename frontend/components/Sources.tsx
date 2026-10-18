@@ -125,6 +125,11 @@ function originOf(label: string): Origin {
   return "web";
 }
 
+/** Sin ninguna etiqueta de origen (para el PDF): solo el texto. */
+export function stripOrigins(markdown: string): string {
+  return markdown.replace(LABEL_RE, "").replace(/[ \t]{2,}/g, " ");
+}
+
 /** Quita la etiqueta de "tus apuntes" y convierte las demás en enlaces especiales (#origen-…) que el Markdown pinta como sellos. */
 export function markOrigins(markdown: string): string {
   return markdown
