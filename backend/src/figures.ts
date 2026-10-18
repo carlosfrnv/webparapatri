@@ -166,14 +166,22 @@ export interface MindNode {
   children?: MindNode[];
 }
 
-const leaf = z.object({ label: z.string().min(1).max(200), note: z.string().max(500).optional() });
-const branch = leaf.extend({ children: z.array(leaf).max(10).optional() });
+// Flexible: si la IA se pasa de largo, se recorta en vez de rechazar el esquema y pedirlo otra vez
+// (eso duplicaba el tiempo de espera).
+const text = (max: number) => z.string().transform((v) => v.slice(0, max));
+const list = <T extends z.ZodType>(item: T, max: number) =>
+  z
+    .array(item)
+    .optional()
+    .transform((a) => a?.slice(0, max));
+const leaf = z.object({ label: text(200), note: text(500).optional() });
+const branch = leaf.extend({ children: list(leaf, 12) });
 const mindmapSchema = z.object({
-  label: z.string().min(1).max(200),
+  label: text(200),
   children: z
-    .array(branch.extend({ children: z.array(branch).max(10).optional() }))
-    .min(3)
-    .max(9),
+    .array(branch.extend({ children: list(branch, 12) }))
+    .min(1)
+    .transform((a) => a.slice(0, 10)),
 });
 
 /**
@@ -225,5 +233,5 @@ ${concepts}
 Glossário:
 ${glossary}
 Responde SÓ com JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":"","note":""}]}]}]}`;
-  return completeJson(prompt, mindmapSchema, { lang, effort: "medium", maxTokens: 12000 });
+  return completeJson(prompt, mindmapSchema, { lang, effort: "low", maxTokens: 12000 });
 }

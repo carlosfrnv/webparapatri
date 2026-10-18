@@ -354,7 +354,7 @@ const es = {
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
   mindmap: {
-    loading: "Haciendo el esquema del tema… (solo la primera vez)",
+    loading: "Haciendo el esquema del tema… Puede tardar hasta un minuto (solo la primera vez).",
     print: "Imprimir o guardar en PDF",
     redo: "Hacer otro esquema",
     confirmRedo: "¿Hacer el esquema de nuevo? Se sustituye el actual.",
@@ -1078,7 +1078,7 @@ const pt: Dictionary = {
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
   },
   mindmap: {
-    loading: "A fazer o esquema do tema… (só da primeira vez)",
+    loading: "A fazer o esquema do tema… Pode demorar até um minuto (só da primeira vez).",
     print: "Imprimir ou guardar em PDF",
     redo: "Fazer outro esquema",
     confirmRedo: "Fazer o esquema de novo? Substitui o atual.",
