@@ -22,6 +22,8 @@ const WIDTH = 1200;
 // Por debajo de este tamaño suelen ser iconos o adornos.
 const MIN_PIXELS = 120;
 const MIN_BYTES = 15_000;
+// Un logotipo o adorno de plantilla repetido rara vez pasa de unos 600×400 px.
+const LOGO_MAX_AREA = 250_000;
 
 export interface Figure {
   /** Página (PDF) o diapositiva (PPTX); null en Word. */
@@ -119,12 +121,14 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
     if (allPages) {
       pages = Array.from({ length: Math.min(total, FORMULA_MAX_PAGES) }, (_, i) => i + 1);
     } else {
-      const skip = repeated(sizes);
       const area = (key: string) =>
         key
           .split("x")
           .map(Number)
           .reduce((a, b) => a * b, 1);
+      // En el PDF solo se sabe el tamaño de cada imagen, no si es la misma: muchas figuras distintas pueden
+      // medir lo mismo (p. ej., exportadas de PowerPoint). Solo se descartan las repetidas pequeñas (logotipos).
+      const skip = new Set([...repeated(sizes)].filter((k) => area(k) < LOGO_MAX_AREA));
       pages = sizes
         .map((keys, i) => ({
           page: i + 1,
