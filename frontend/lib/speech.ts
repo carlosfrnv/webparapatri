@@ -11,9 +11,34 @@ export const DEFAULT_RATE = 0.85;
 export const RATE_KEY = "voz-velocidad";
 
 /** Markdown → frases para leer (sin símbolos, etiquetas de origen ni citas [1]). */
+/** Fórmula LaTeX en algo que la voz pueda leer (x̄ = Σx/n en vez de "barra frac llave…"). */
+function plainMath(tex: string) {
+  let t = tex;
+  for (let i = 0; i < 3; i++)
+    t = t
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1) / ($2)")
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")
+      .replace(/\\bar\s*\{([^{}]*)\}/g, "$1̄")
+      .replace(/\^\{?2\}?/g, "²")
+      .replace(/\^\{?3\}?/g, "³");
+  return t
+    .replace(/\\(cdot|times)/g, " × ")
+    .replace(/\\sum/g, "Σ")
+    .replace(/\\(le|leq)/g, " ≤ ")
+    .replace(/\\(ge|geq)/g, " ≥ ")
+    .replace(/\\pm/g, " ± ")
+    .replace(/\\(left|right|,|;|!|quad)/g, " ")
+    .replace(/\\[a-zA-Z]+/g, " ")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function speechChunks(markdown: string): string[] {
   const text = markdown
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex: string) => `\n${plainMath(tex)}\n`)
+    .replace(/\$([^$\n]+?)\$/g, (_m, tex: string) => plainMath(tex))
     .replace(/\[(Os teus apontamentos|Tus apuntes|Biblioteca de refer[eê]ncia[^\]]*|Radiopaedia|IAEA|EFRS)\]/g, "")
     .replace(/\[\d{1,2}\]/g, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "")

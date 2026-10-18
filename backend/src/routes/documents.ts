@@ -12,6 +12,7 @@ import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { detectKind } from "../extract";
 import { generateFigureQuiz, generateMindmap, getExtras, removeFigureFiles, saveExtras, saveFigures } from "../figures";
+import { isFormulaDocument } from "../formulas";
 import { getOrGenerateStudy } from "../study";
 import { describeFigures, figureChunk, FIGURE_PREFIX } from "../vision";
 import { supabase } from "../supabase";
@@ -281,7 +282,8 @@ async function analyseFigures(doc: { id: string; storage_path: string; mime_type
   const { data: file, error } = await supabase.storage.from(STORAGE_BUCKET).download(doc.storage_path);
   if (error || !file) throw error ?? new Error("Archivo no encontrado");
   const kind = detectKind(doc.mime_type ?? "", doc.storage_path);
-  const figures = kind ? await describeFigures(Buffer.from(await file.arrayBuffer()), kind) : [];
+  const formulas = await isFormulaDocument(doc.id, userId).catch(() => false);
+  const figures = kind ? await describeFigures(Buffer.from(await file.arrayBuffer()), kind, { formulas }) : [];
 
   // Se sustituyen las figuras anteriores (si se analiza dos veces) y las nuevas van al final.
   await supabase

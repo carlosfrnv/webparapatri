@@ -61,7 +61,8 @@ export async function removeFigureFiles(documentId: string, userId: string) {
 
 /** Guarda las imágenes de las figuras en Storage y su lista en document_extras (sustituye las anteriores). */
 export async function saveFigures(documentId: string, userId: string, figures: Figure[]) {
-  const withImage = figures.filter((f) => f.image).slice(0, MAX_SAVED);
+  // Las páginas que solo tenían fórmulas o texto no se guardan como imagen (no se enseñan en el resumen).
+  const withImage = figures.filter((f) => f.image && f.visual !== false).slice(0, MAX_SAVED);
   const folder = `${userId}/figuras/${documentId}`;
   // Se borran las de un análisis anterior.
   await removeFigureFiles(documentId, userId);

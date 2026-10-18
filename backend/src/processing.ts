@@ -8,6 +8,7 @@ import { supabase } from "./supabase";
 import { describeFigures, figureChunk, transcribePdf } from "./vision";
 import { transcribeAudio } from "./audio";
 import { saveFigures } from "./figures";
+import { isFormulaDocument } from "./formulas";
 
 /**
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
@@ -53,7 +54,8 @@ export async function processDocument(params: {
     // Figuras (esquemas, radiografías…): la IA las describe y se guardan como fragmentos más.
     // Si falla, el documento se queda solo con el texto.
     if (isNotes && !scanned) {
-      const figures = await describeFigures(params.buffer, params.kind).catch((err) => {
+      const formulas = await isFormulaDocument(documentId, userId).catch(() => false);
+      const figures = await describeFigures(params.buffer, params.kind, { formulas }).catch((err) => {
         console.error(`Error al leer las figuras de ${documentId}:`, err);
         return [];
       });

@@ -2,9 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   // IA: orden de proveedores y modelos. Se salta cualquiera cuya clave no esté configurada.
-  AI_CHAIN: z
-    .string()
-    .default("gemini:gemini-flash-latest,gemini:gemini-flash-lite-latest,groq:openai/gpt-oss-120b"),
+  AI_CHAIN: z.string().default("gemini:gemini-flash-latest,gemini:gemini-flash-lite-latest,groq:openai/gpt-oss-120b"),
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
   // Opcional y de pago: solo se usa si se añade "anthropic:<modelo>" a AI_CHAIN.

@@ -1,4 +1,5 @@
 import mammoth from "mammoth";
+import { withLinearFormulas } from "./omml";
 import { OfficeParser } from "officeparser";
 import { PDFParse } from "pdf-parse";
 import { PROCESSING_ERRORS } from "./i18n";
@@ -52,12 +53,12 @@ export async function extractText(buffer: Buffer, kind: string): Promise<Extract
       pages = await extractPdf(buffer);
       break;
     case "docx": {
-      const result = await mammoth.extractRawText({ buffer });
+      const result = await mammoth.extractRawText({ buffer: await withLinearFormulas(buffer, "docx") });
       pages = [{ page: null, text: result.value }];
       break;
     }
     case "pptx": {
-      const ast = await OfficeParser.parseOffice(buffer);
+      const ast = await OfficeParser.parseOffice(await withLinearFormulas(buffer, "pptx"));
       const out = await ast.to("text");
       pages = [{ page: null, text: String(out.value) }];
       break;

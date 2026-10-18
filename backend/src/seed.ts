@@ -43,17 +43,15 @@ async function seed(userId: string, lang: Lang) {
     .eq("user_id", userId);
   if (error) throw error;
   if ((count ?? 0) === 0) {
-    const { error: insertError } = await supabase
-      .from("subjects")
-      .insert(
-        INITIAL_SUBJECTS.map((s) => ({
-          name: s[lang],
-          translations: { es: s.es, pt: s.pt },
-          year: s.year,
-          area: s.area,
-          user_id: userId,
-        })),
-      );
+    const { error: insertError } = await supabase.from("subjects").insert(
+      INITIAL_SUBJECTS.map((s) => ({
+        name: s[lang],
+        translations: { es: s.es, pt: s.pt },
+        year: s.year,
+        area: s.area,
+        user_id: userId,
+      })),
+    );
     if (insertError) throw insertError;
   }
   await supabase.from("user_settings").upsert({ user_id: userId, seeded: true });

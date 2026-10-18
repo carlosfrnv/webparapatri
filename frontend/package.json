@@ -11,11 +11,14 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.7",
     "@supabase/supabase-js": "^2.117.3",
+    "katex": "^0.16.22",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
     "three": "^0.170.0"
   },
   "devDependencies": {

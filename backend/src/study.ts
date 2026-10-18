@@ -2,6 +2,7 @@ import { z } from "zod";
 import { AiError, complete, completeJson, generate } from "./ai";
 import type { Lang } from "./i18n";
 import { partialSummaryPrompt, studyContext, studyPackPrompt, summaryPrompt, translateStudyPrompt } from "./prompts";
+import { isFormulaDocument } from "./formulas";
 import { findReferenceForDocument, formatSources } from "./search";
 import { WEB_ENABLED } from "./web";
 import { supabase } from "./supabase";
@@ -46,12 +47,14 @@ export async function documentText(documentId: string, userId: string): Promise<
   return (data ?? []).map((c) => c.content).join("\n\n");
 }
 
-async function condensedText(text: string, lang: Lang): Promise<string> {
+async function condensedText(text: string, lang: Lang, formulas = false): Promise<string> {
   if (text.length <= DIRECT_LIMIT) return text;
   const parts: string[] = [];
   for (let i = 0; i < text.length; i += PART_SIZE) parts.push(text.slice(i, i + PART_SIZE));
   const partials = await Promise.all(
-    parts.map((part, i) => complete(partialSummaryPrompt(lang, part, i + 1, parts.length), { lang, effort: "low" })),
+    parts.map((part, i) =>
+      complete(partialSummaryPrompt(lang, part, i + 1, parts.length, formulas), { lang, effort: "low" }),
+    ),
   );
   return partials.map((p, i) => `## Parte ${i + 1}\n${p}`).join("\n\n");
 }
@@ -152,7 +155,8 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
   const job = (async () => {
     const text = await documentText(documentId, userId);
     if (!text.trim()) throw new Error("Documento sin texto");
-    const source = await condensedText(text, lang);
+    const formulas = await isFormulaDocument(documentId, userId).catch(() => false);
+    const source = await condensedText(text, lang, formulas);
 
     // Nivel 2: biblioteca de referencia relacionada (si la hay). Nivel 3: web, solo para el resumen
     // y solo si los apuntes son escasos y la referencia no tiene nada.
@@ -165,11 +169,11 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
 
     // Dos peticiones en total: el resumen y el "paquete" de conceptos, glosario, flashcards y test.
     const [summaryResult, pack] = await Promise.all([
-      generate((webAvailable) => summaryPrompt(lang, source) + studyContext(lang, refText, webAvailable), {
+      generate((webAvailable) => summaryPrompt(lang, source, formulas) + studyContext(lang, refText, webAvailable), {
         lang,
         web: webForSummary,
       }),
-      completeJson(studyPackPrompt(lang, source) + studyContext(lang, refText, false), studyPackSchema, {
+      completeJson(studyPackPrompt(lang, source, formulas) + studyContext(lang, refText, false), studyPackSchema, {
         lang,
         maxTokens: 24000,
       }),

@@ -4,7 +4,9 @@ import type { Icon as PhIcon } from "@phosphor-icons/react";
 import { GradientIcon } from "./GradientIcon";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import { dateLocale, type Lang, useT } from "@/lib/i18n";
 import { markOrigins, OriginBadge } from "./Sources";
 import type { DocumentItem } from "@/lib/types";
@@ -93,7 +95,8 @@ export function StatusBadge({ status }: { status: DocumentItem["status"] }) {
 
 /** Markdown con sellos de origen ([IAEA], [Radiopaedia]…) y enlaces internos para las citas [n]. */
 export function Markdown({ children, citeHref }: { children: string; citeHref?: (n: number) => string | undefined }) {
-  const withOrigins = markOrigins(children);
+  // "$$fórmula$$" en una sola línea: se pasa a bloque para que salga grande y centrada.
+  const withOrigins = markOrigins(children).replace(/^[ \t]*\$\$([^\n]+?)\$\$[ \t]*$/gm, "$$$$\n$1\n$$$$");
   const text = citeHref
     ? withOrigins.replace(/\[(\d{1,2})\](?!\()/g, (m, n) => {
         const href = citeHref(Number(n));
@@ -103,7 +106,9 @@ export function Markdown({ children, citeHref }: { children: string; citeHref?: 
   return (
     <div className="prose-study">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        // Las fórmulas en LaTeX ($…$ y $$…$$) se pintan como fórmulas (asignaturas de matemáticas).
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
         components={{
           a: ({ href, children }) =>
             href?.startsWith("#origen-") ? (

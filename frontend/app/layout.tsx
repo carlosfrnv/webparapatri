@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { AppShell } from "@/components/AppShell";
 import { AuthGate } from "@/components/AuthGate";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });

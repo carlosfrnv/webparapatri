@@ -44,9 +44,52 @@ REGRAS:
 
 const letter = (i: number) => String.fromCharCode(65 + i);
 
-export const summaryPrompt = (lang: Lang, texto: string) =>
+/**
+ * Asignaturas de fórmulas (Biomatemática, Estadística…): lo útil no es la teoría, sino saber aplicar cada fórmula.
+ * Las fórmulas van en LaTeX ($…$ y $$…$$), que la web pinta como fórmulas de verdad.
+ */
+const formulaSummary = (lang: Lang, texto: string) =>
   lang === "es"
-    ? `A partir del texto de abajo, escribe un resumen estructurado en Markdown:
+    ? `A partir del texto de abajo, escribe en Markdown una GUÍA PRÁCTICA para aprender a resolver los ejercicios de este tema
+de una asignatura de fórmulas (matemáticas/estadística de primer curso). Poca teoría: solo la imprescindible para entender cuándo se usa cada cosa.
+Estructura:
+- Título del tema y, en 2-3 frases, para qué sirve lo que se aprende.
+- Una sección por cada fórmula o procedimiento del tema, con:
+  1. **Para qué sirve / cuándo usarla** (qué te pide el enunciado para saber que es esta).
+  2. **La fórmula**, en LaTeX en su propia línea: $$ ... $$
+  3. **Qué es cada símbolo**, con sus unidades si las tiene.
+  4. **Paso a paso**: los pasos numerados para aplicarla.
+  5. **Ejemplo resuelto** con números, paso a paso hasta el resultado. Usa los ejemplos de los apuntes; si no hay, inventa uno sencillo y di que es un ejemplo.
+  6. **Errores típicos** (1-3) y, si ayuda, cómo hacerlo con la calculadora.
+- "Chuleta de fórmulas": una tabla con cada fórmula y cuándo usarla.
+- "Practica": 3 ejercicios cortos con la solución final (y los pasos clave) debajo.
+FÓRMULAS: siempre en LaTeX, $...$ dentro del texto y $$...$$ en línea aparte. Copia las fórmulas de los apuntes con cuidado; no inventes ninguna.
+IDIOMA: escribe TODO en español de España, aunque el texto esté en portugués (si ayuda, pon el término portugués entre paréntesis la primera vez).
+TEXTO:
+${texto}`
+    : `A partir do texto abaixo, escreve em Markdown um GUIA PRÁTICO para aprender a resolver os exercícios deste tema
+de uma cadeira de fórmulas (matemática/estatística do primeiro ano). Pouca teoria: só a indispensável para perceber quando se usa cada coisa.
+Estrutura:
+- Título do tema e, em 2-3 frases, para que serve o que se aprende.
+- Uma secção por cada fórmula ou procedimento do tema, com:
+  1. **Para que serve / quando usar** (o que o enunciado pede para saberes que é esta).
+  2. **A fórmula**, em LaTeX numa linha própria: $$ ... $$
+  3. **O que é cada símbolo**, com as unidades se as tiver.
+  4. **Passo a passo**: os passos numerados para a aplicar.
+  5. **Exemplo resolvido** com números, passo a passo até ao resultado. Usa os exemplos dos apontamentos; se não houver, inventa um simples e diz que é um exemplo.
+  6. **Erros típicos** (1-3) e, se ajudar, como fazer na calculadora.
+- "Cábula de fórmulas": uma tabela com cada fórmula e quando a usar.
+- "Pratica": 3 exercícios curtos com a solução final (e os passos-chave) por baixo.
+FÓRMULAS: sempre em LaTeX, $...$ dentro do texto e $$...$$ numa linha à parte. Copia as fórmulas dos apontamentos com cuidado; não inventes nenhuma.
+IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
+TEXTO:
+${texto}`;
+
+export const summaryPrompt = (lang: Lang, texto: string, formulas = false) =>
+  formulas
+    ? formulaSummary(lang, texto)
+    : lang === "es"
+      ? `A partir del texto de abajo, escribe un resumen estructurado en Markdown:
 - Título del tema
 - Idea principal (2-3 frases)
 - Secciones con los puntos esenciales
@@ -55,7 +98,7 @@ Mantén la terminología técnica y explícala la primera vez que aparece.
 IDIOMA: escribe TODO en español de España, aunque el texto esté en portugués. Traduce también los términos técnicos (si ayuda, pon el término portugués entre paréntesis la primera vez).
 TEXTO:
 ${texto}`
-    : `A partir do texto abaixo, escreve um resumo estruturado em Markdown:
+      : `A partir do texto abaixo, escreve um resumo estruturado em Markdown:
 - Título do tema
 - Ideia principal (2-3 frases)
 - Secções com os pontos essenciais
@@ -74,6 +117,7 @@ export const translateStudyPrompt = (lang: Lang, material: string) =>
 - Traduce todos los textos (el resumen en Markdown, conceptos, glosario, flashcards, preguntas, opciones y explicaciones).
 - No cambies "correct_index" ni añadas, quites o reordenes nada. No inventes contenido.
 - Mantén el formato Markdown del resumen y las etiquetas de origen traducidas ([Biblioteca de referencia – IAEA], [Radiopaedia]…).
+- Las fórmulas en LaTeX ($...$ y $$...$$) se dejan exactamente igual.
 MATERIAL:
 ${material}`
     : `Traduz para português de Portugal este material de estudo (JSON). Regras:
@@ -81,26 +125,43 @@ ${material}`
 - Traduz todos os textos (o resumo em Markdown, conceitos, glossário, flashcards, perguntas, opções e explicações).
 - Não alteres "correct_index" nem acrescentes, retires ou reordenes nada. Não inventes conteúdo.
 - Mantém o formato Markdown do resumo e as etiquetas de origem traduzidas ([Biblioteca de referência – IAEA], [Radiopaedia]…).
+- As fórmulas em LaTeX ($...$ e $$...$$) ficam exatamente iguais.
 MATERIAL:
 ${material}`;
 
-export const partialSummaryPrompt = (lang: Lang, texto: string, parte: number, total: number) =>
+export const partialSummaryPrompt = (lang: Lang, texto: string, parte: number, total: number, formulas = false) =>
   lang === "es"
     ? `Este es el fragmento ${parte} de ${total} de unos apuntes largos.
 Resúmelo en Markdown, con todos los puntos esenciales, definiciones y valores que aparecen
-(copiados tal cual, sin inventar nada). Este resumen se unirá a los de las otras partes.
+(copiados tal cual, sin inventar nada). Este resumen se unirá a los de las otras partes.${formulas ? "\nCopia TODAS las fórmulas (en LaTeX) y los ejemplos resueltos con sus pasos y números." : ""}
 TEXTO:
 ${texto}`
     : `Este é o excerto ${parte} de ${total} de uns apontamentos longos.
 Resume-o em Markdown, com todos os pontos essenciais, definições e valores que aparecem
-(copiados tal como estão, sem inventar nada). Este resumo vai ser juntado aos das outras partes.
+(copiados tal como estão, sem inventar nada). Este resumo vai ser juntado aos das outras partes.${formulas ? "\nCopia TODAS as fórmulas (em LaTeX) e os exemplos resolvidos com os passos e os números." : ""}
 TEXTO:
 ${texto}`;
 
 // Conceptos, glosario, flashcards y test en UNA sola petición: con los cupos gratuitos
 // (pocas peticiones al día) cada petición cuenta.
-export const studyPackPrompt = (lang: Lang, texto: string) =>
+const formulaPack = (lang: Lang) =>
   lang === "es"
+    ? `
+ASIGNATURA DE FÓRMULAS: en vez de teoría, céntrate en aplicar las fórmulas.
+- key_concepts: cada fórmula o procedimiento ("concept" = su nombre y la fórmula en texto sencillo; "explanation" = cuándo se usa y cómo; "why_it_matters" = para qué tipo de ejercicio sirve).
+- flashcards: "¿Qué fórmula usas para…?", "¿Qué significa … en la fórmula de …?", "¿Cuál es el primer paso para…?" y mini cálculos con números sencillos.
+- quiz: sobre todo problemas con números (calcula…, ¿qué fórmula aplicas…?); en la explicación, los pasos del cálculo.
+- En este JSON escribe las fórmulas en texto sencillo (a/b, x², √x, Σ, x̄), sin LaTeX ni símbolos $.`
+    : `
+CADEIRA DE FÓRMULAS: em vez de teoria, concentra-te em aplicar as fórmulas.
+- key_concepts: cada fórmula ou procedimento ("concept" = o nome e a fórmula em texto simples; "explanation" = quando se usa e como; "why_it_matters" = para que tipo de exercício serve).
+- flashcards: "Que fórmula usas para…?", "O que significa … na fórmula de …?", "Qual é o primeiro passo para…?" e mini cálculos com números simples.
+- quiz: sobretudo problemas com números (calcula…, que fórmula aplicas…?); na explicação, os passos do cálculo.
+- Neste JSON escreve as fórmulas em texto simples (a/b, x², √x, Σ, x̄), sem LaTeX nem símbolos $.`;
+
+export const studyPackPrompt = (lang: Lang, texto: string, formulas = false) =>
+  (formulas ? formulaPack(lang) + "\n" : "") +
+  (lang === "es"
     ? `Devuelve SOLO JSON válido, sin texto adicional, con esta forma:
 {"key_concepts":[{"concept":"","explanation":"","why_it_matters":""}],
  "glossary":[{"term":"","definition":""}],
@@ -131,7 +192,7 @@ ${texto}`
 IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
 SEM ETIQUETAS: neste JSON não ponhas etiquetas de origem entre parêntesis retos ([Os teus apontamentos], [Biblioteca de referência – IAEA]…). Só o texto.
 TEXTO:
-${texto}`;
+${texto}`);
 
 /** Marca interna: la IA la devuelve cuando la pregunta no tiene que ver con sus estudios. La web la sustituye por el mensaje de `dedicatoria.ts`. */
 export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
@@ -165,21 +226,21 @@ ${
 }
 - Usa ejemplos, analogías y, si ayuda, una tabla.
 - Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.${
-      p.imagenes
-        ? `
+        p.imagenes
+          ? `
 - Ha adjuntado ${p.imagenes === 1 ? "una foto" : `${p.imagenes} fotos`} (un ejercicio, un esquema, una imagen médica…). Léela con atención
   y descríbela brevemente si hace falta. Si es un ejercicio, resuélvelo paso a paso explicando el porqué de cada paso.
   Si algo no se lee bien, dilo en vez de suponerlo. Si es una imagen clínica, explícala con fines de estudio, sin diagnosticar.`
-        : ""
-    }${
-      p.voz
-        ? `
+          : ""
+      }${
+        p.voz
+          ? `
 - MODO CONVERSACIÓN: tu respuesta se va a leer en voz alta y ella te habla en voz. Responde como en una charla:
   de 3 a 6 frases, lenguaje natural y hablado, sin tablas, sin listas, sin títulos, sin negritas ni emojis.
   Si el tema es largo, explica lo esencial y pregúntale si quiere que sigas con más detalle.
   Lo que ella dice viene de un dictado por voz: si alguna palabra no tiene sentido, interpreta lo más probable.`
-        : ""
-    }
+          : ""
+      }
 FRAGMENTOS:
 ${p.fragmentos || "(no se ha encontrado ningún fragmento relevante en sus apuntes ni en la biblioteca de referencia)"}
 HISTORIAL RECIENTE:
@@ -210,21 +271,21 @@ ${
 }
 - Usa exemplos, analogias e, se ajudar, uma tabela.
 - Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.${
-      p.imagenes
-        ? `
+        p.imagenes
+          ? `
 - Anexou ${p.imagenes === 1 ? "uma foto" : `${p.imagenes} fotos`} (um exercício, um esquema, uma imagem médica…). Lê-a com atenção
   e descreve-a brevemente se for preciso. Se for um exercício, resolve-o passo a passo explicando o porquê de cada passo.
   Se algo não se ler bem, di-lo em vez de supor. Se for uma imagem clínica, explica-a para fins de estudo, sem diagnosticar.`
-        : ""
-    }${
-      p.voz
-        ? `
+          : ""
+      }${
+        p.voz
+          ? `
 - MODO CONVERSA: a tua resposta vai ser lida em voz alta e ela fala contigo por voz. Responde como numa conversa:
   de 3 a 6 frases, linguagem natural e falada, sem tabelas, sem listas, sem títulos, sem negritos nem emojis.
   Se o tema for longo, explica o essencial e pergunta-lhe se quer que continues com mais detalhe.
   O que ela diz vem de um ditado por voz: se alguma palavra não fizer sentido, interpreta o mais provável.`
-        : ""
-    }
+          : ""
+      }
 EXCERTOS:
 ${p.fragmentos || "(nenhum excerto relevante encontrado nos apontamentos nem na biblioteca de referência)"}
 HISTÓRICO RECENTE:
@@ -239,15 +300,23 @@ export const studyContext = (lang: Lang, referencia: string, webAllowed: boolean
     ? `
 
 FUENTES COMPLEMENTARIAS (por debajo de los apuntes en prioridad):
-${referencia ? `Fragmentos de la biblioteca de referencia (IAEA/EFRS). Úsalos solo para aclarar o completar lo que dicen los apuntes y etiqueta lo que saques de ellos:
-${referencia}` : ""}
+${
+  referencia
+    ? `Fragmentos de la biblioteca de referencia (IAEA/EFRS). Úsalos solo para aclarar o completar lo que dicen los apuntes y etiqueta lo que saques de ellos:
+${referencia}`
+    : ""
+}
 ${webAllowed ? "Los apuntes son escasos: puedes consultar radiopaedia.org, iaea.org y efrs.eu (máximo 3 búsquedas, con 'site:radiopaedia.org OR site:iaea.org OR site:efrs.eu'; no uses otras webs) para completar lo esencial. No escribas nada antes de buscar." : ""}
 Lo que viene de los apuntes no lleva etiqueta; lo que venga de otra fuente, sí.`
     : `
 
 FONTES COMPLEMENTARES (abaixo dos apontamentos em prioridade):
-${referencia ? `Excertos da biblioteca de referência (IAEA/EFRS). Usa-os só para esclarecer ou completar o que dizem os apontamentos e etiqueta o que tirares deles:
-${referencia}` : ""}
+${
+  referencia
+    ? `Excertos da biblioteca de referência (IAEA/EFRS). Usa-os só para esclarecer ou completar o que dizem os apontamentos e etiqueta o que tirares deles:
+${referencia}`
+    : ""
+}
 ${webAllowed ? "Os apontamentos são escassos: podes consultar radiopaedia.org, iaea.org e efrs.eu (máximo 3 pesquisas, com 'site:radiopaedia.org OR site:iaea.org OR site:efrs.eu'; não uses outros sites) para completar o essencial. Não escrevas nada antes de pesquisar." : ""}
 O que vem dos apontamentos não leva etiqueta; o que vier de outra fonte, sim.`;
 };
@@ -316,6 +385,23 @@ estruturas, legendas e setas, posições e relações entre elas. Inclui todos o
 Ignora logótipos, fotografias decorativas, fundos e páginas que só têm texto.
 Não inventes: se algo não se lê ou não se percebe, não o descrevas. Máximo de 150 palavras por imagem.
 Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"..."}]}
+Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
+
+export const formulasPrompt = (labels: string) =>
+  `As imagens anexas são páginas, diapositivos ou imagens dos apontamentos de uma cadeira com fórmulas
+(matemática/estatística do primeiro ano de Imagem Médica e Radioterapia). O texto corrido já foi extraído à parte,
+mas as fórmulas perdem-se: aqui interessa sobretudo transcrevê-las bem.
+Ordem das imagens:
+${labels}
+
+Para cada imagem que tenha fórmulas, expressões, cálculos, exemplos resolvidos, gráficos ou tabelas:
+- Transcreve TODAS as fórmulas e expressões em LaTeX entre $...$ (as fórmulas NÃO são decoração).
+- Se a imagem diz o que significa cada símbolo, inclui-o.
+- Transcreve os exemplos e exercícios resolvidos com todos os passos e números.
+- Descreve gráficos e tabelas com os seus valores.
+Ignora logótipos e fundos. Omite as imagens que só tenham texto corrido sem fórmulas. Não inventes nada. Máximo de 300 palavras por imagem.
+"visual": true só se a imagem tiver um gráfico, diagrama ou tabela que valha a pena ver como imagem; false se forem só fórmulas ou texto.
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","visual":false}]}
 Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
 
 export const transcribePrompt = (labels: string) =>

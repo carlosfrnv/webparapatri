@@ -5,7 +5,7 @@ import { z } from "zod";
 import { completeJson } from "./ai";
 import type { ExtractedPage } from "./extract";
 import type { LlmImage } from "./llm/types";
-import { figuresPrompt, transcribePrompt } from "./prompts";
+import { figuresPrompt, formulasPrompt, transcribePrompt } from "./prompts";
 
 /**
  * Lectura de las imágenes de los apuntes (esquemas, figuras legendadas, radiografías…).
@@ -30,6 +30,8 @@ export interface Figure {
   description: string;
   /** Imagen (JPEG en base64) que vio la IA: se guarda para las preguntas con imágenes. */
   image?: string;
+  /** false si solo tenía fórmulas o texto (se usa lo transcrito, pero la imagen no se enseña en el resumen). */
+  visual?: boolean;
 }
 
 export interface Candidate {
@@ -40,14 +42,24 @@ export interface Candidate {
 }
 
 const figuresSchema = z.object({
-  figures: z.array(z.object({ ref: z.number().int(), description: z.string() })),
+  figures: z.array(z.object({ ref: z.number().int(), description: z.string(), visual: z.boolean().optional() })),
 });
 
+/**
+ * Asignaturas de fórmulas (Biomatemática, Estadística…): las fórmulas suelen ir como imagen pequeña o dibujadas
+ * en el PDF, y la IA las descartaba como "adornos". En estas se mira cada página y no se tira nada pequeño.
+ */
+export interface FigureOptions {
+  formulas?: boolean;
+}
+const FORMULA_MAX_PAGES = 60;
+
 /** Reduce la imagen a JPEG de como mucho WIDTH px de ancho. Null si el formato no se puede leer (EMF, WMF…). */
-async function toJpeg(data: Uint8Array): Promise<LlmImage | null> {
+async function toJpeg(data: Uint8Array, small = false): Promise<LlmImage | null> {
   try {
     const img = await loadImage(Buffer.from(data));
-    if (img.width < MIN_PIXELS || img.height < MIN_PIXELS) return null;
+    // Una fórmula suele ser una imagen ancha y baja: en las asignaturas de fórmulas se aceptan.
+    if (small ? img.width < 40 || img.height < 16 : img.width < MIN_PIXELS || img.height < MIN_PIXELS) return null;
     const scale = Math.min(1, WIDTH / img.width);
     const w = Math.round(img.width * scale);
     const h = Math.round(img.height * scale);
@@ -105,7 +117,7 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
     const { total, sizes } = await pdfImageSizes(parser);
     let pages: number[];
     if (allPages) {
-      pages = Array.from({ length: Math.min(total, MAX_FIGURES) }, (_, i) => i + 1);
+      pages = Array.from({ length: Math.min(total, FORMULA_MAX_PAGES) }, (_, i) => i + 1);
     } else {
       const skip = repeated(sizes);
       const area = (key: string) =>
@@ -139,7 +151,7 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
 }
 
 /** Imágenes de cada diapositiva (sin las de la plantilla, que están en el patrón y no en la diapositiva). */
-async function pptxCandidates(buffer: Buffer): Promise<Candidate[]> {
+async function pptxCandidates(buffer: Buffer, small = false): Promise<Candidate[]> {
   const zip = await JSZip.loadAsync(buffer);
   const slides = Object.keys(zip.files)
     .map((name) => Number(name.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1]))
@@ -155,26 +167,26 @@ async function pptxCandidates(buffer: Buffer): Promise<Candidate[]> {
   const out: Candidate[] = [];
   for (const [i, files] of media.entries()) {
     for (const file of files) {
-      if (out.length >= MAX_FIGURES) return out;
+      if (out.length >= (small ? FORMULA_MAX_PAGES : MAX_FIGURES)) return out;
       if (skip.has(file)) continue;
       const data = await zip.file(file)?.async("uint8array");
-      if (!data || data.length < MIN_BYTES) continue;
-      const image = await toJpeg(data);
+      if (!data || data.length < (small ? 500 : MIN_BYTES)) continue;
+      const image = await toJpeg(data, small);
       if (image) out.push({ ref: out.length + 1, page: slides[i], label: `diapositivo ${slides[i]}`, image });
     }
   }
   return out;
 }
 
-async function docxCandidates(buffer: Buffer): Promise<Candidate[]> {
+async function docxCandidates(buffer: Buffer, small = false): Promise<Candidate[]> {
   const zip = await JSZip.loadAsync(buffer);
   const files = Object.keys(zip.files).filter((n) => n.startsWith("word/media/"));
   const out: Candidate[] = [];
   for (const file of files) {
-    if (out.length >= MAX_FIGURES) break;
+    if (out.length >= (small ? FORMULA_MAX_PAGES : MAX_FIGURES)) break;
     const data = await zip.file(file)!.async("uint8array");
-    if (data.length < MIN_BYTES) continue;
-    const image = await toJpeg(data);
+    if (data.length < (small ? 500 : MIN_BYTES)) continue;
+    const image = await toJpeg(data, small);
     if (image) out.push({ ref: out.length + 1, page: null, label: `imagem ${out.length + 1}`, image });
   }
   return out;
@@ -194,25 +206,33 @@ async function askInBatches(candidates: Candidate[], prompt: (labels: string) =>
     for (const f of result.figures) {
       const c = batch.find((x) => x.ref === f.ref);
       if (c && f.description.trim())
-        figures.push({ page: c.page, label: c.label, description: f.description.trim(), image: c.image.data });
+        figures.push({
+          page: c.page,
+          label: c.label,
+          description: f.description.trim(),
+          image: c.image.data,
+          visual: f.visual,
+        });
     }
   }
   return figures;
 }
 
 /** Páginas o imágenes que merece la pena enseñar a la IA. */
-export async function figureCandidates(buffer: Buffer, kind: string): Promise<Candidate[]> {
-  if (kind === "pdf") return pdfCandidates(buffer);
-  if (kind === "pptx") return pptxCandidates(buffer);
-  if (kind === "docx") return docxCandidates(buffer);
+export async function figureCandidates(buffer: Buffer, kind: string, opts: FigureOptions = {}): Promise<Candidate[]> {
+  if (kind === "pdf") return pdfCandidates(buffer, opts.formulas);
+  if (kind === "pptx") return pptxCandidates(buffer, opts.formulas);
+  if (kind === "docx") return docxCandidates(buffer, opts.formulas);
   return [];
 }
 
 /** Describe las figuras de un documento. Devuelve [] si no tiene imágenes útiles. */
-export async function describeFigures(buffer: Buffer, kind: string): Promise<Figure[]> {
-  const candidates = await figureCandidates(buffer, kind);
+export async function describeFigures(buffer: Buffer, kind: string, opts: FigureOptions = {}): Promise<Figure[]> {
+  const candidates = await figureCandidates(buffer, kind, opts);
   if (candidates.length === 0) return [];
-  return askInBatches(candidates, figuresPrompt, 8000);
+  return opts.formulas
+    ? askInBatches(candidates, formulasPrompt, 16000)
+    : askInBatches(candidates, figuresPrompt, 8000);
 }
 
 /** PDF escaneado (sin texto): la IA lee cada página. Devuelve las páginas como si fueran texto extraído. */

@@ -22,7 +22,7 @@ function normalize(text: string): string {
 function splitText(text: string): string[] {
   const paragraphs = normalize(text)
     .split(/\n\s*\n/)
-    .flatMap((p) => (p.length > TARGET ? p.match(new RegExp(`[\\s\\S]{1,${TARGET}}(?=\\s|$)`, "g")) ?? [p] : [p]))
+    .flatMap((p) => (p.length > TARGET ? (p.match(new RegExp(`[\\s\\S]{1,${TARGET}}(?=\\s|$)`, "g")) ?? [p]) : [p]))
     .map((p) => p.trim())
     .filter(Boolean);
 

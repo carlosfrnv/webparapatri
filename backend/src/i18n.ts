@@ -12,8 +12,14 @@ const messages = {
   expiredSession: { es: "La sesión ha caducado. Vuelve a entrar.", pt: "Sessão expirada. Entra novamente." },
   forbiddenEmail: { es: "Este email no tiene acceso a esta web.", pt: "Este email não tem acesso a esta web." },
   invalidData: { es: "Datos no válidos.", pt: "Dados inválidos." },
-  fileTooLarge: { es: "El archivo es demasiado grande (máximo 25 MB).", pt: "O ficheiro é demasiado grande (máximo 25 MB)." },
-  unexpected: { es: "Ha ocurrido un error inesperado. Inténtalo de nuevo.", pt: "Ocorreu um erro inesperado. Tenta novamente." },
+  fileTooLarge: {
+    es: "El archivo es demasiado grande (máximo 25 MB).",
+    pt: "O ficheiro é demasiado grande (máximo 25 MB).",
+  },
+  unexpected: {
+    es: "Ha ocurrido un error inesperado. Inténtalo de nuevo.",
+    pt: "Ocorreu um erro inesperado. Tenta novamente.",
+  },
   tooManyAi: {
     es: "Demasiadas peticiones seguidas. Espera un minuto y vuelve a intentarlo.",
     pt: "Muitos pedidos seguidos. Espera um minuto e tenta outra vez.",
