@@ -1,12 +1,14 @@
 "use client";
 
-import { Camera, X } from "@phosphor-icons/react";
+import { Camera, Microphone, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localSourceHref, SourceChips } from "@/components/Sources";
 import { Markdown } from "@/components/ui";
+import { VoiceChat } from "@/components/VoiceChat";
 import { apiFetch, api, errorMessage } from "@/lib/api";
 import { prepareImage, type ImageAttachment } from "@/lib/images";
 import { dict, useT } from "@/lib/i18n";
+import { recognitionClass, unlockSpeech } from "@/lib/speech";
 import { useDedicatoria } from "@/config/dedicatoria";
 import {
   isImageSource,
@@ -49,6 +51,7 @@ async function streamChat(
     conversation_id?: string;
     document_id?: string;
     images?: { media_type: string; data: string }[];
+    voice?: boolean;
   },
   handlers: {
     meta: (d: { conversation_id: string; sources: AnySource[] }) => void;
@@ -123,6 +126,11 @@ export default function ChatPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [docFilter, setDocFilter] = useState<DocumentItem | null>(null);
   const [webPhase, setWebPhase] = useState<WebPhase | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  // El modo conversación necesita reconocimiento de voz y voz para leer (Safari, Chrome…).
+  const [voiceSupported] = useState(
+    () => !!recognitionClass() && typeof window !== "undefined" && "speechSynthesis" in window,
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(() => {
@@ -189,10 +197,12 @@ export default function ChatPage() {
     }
   }
 
-  async function send(text: string) {
+  /** Envía la pregunta. Devuelve el texto de la respuesta (para leerlo en el modo conversación) o null si falla. */
+  async function send(text: string, opts: { voice?: boolean } = {}): Promise<string | null> {
     const question = text.trim();
-    const images = attachments;
-    if ((!question && images.length === 0) || busy) return;
+    const images = opts.voice ? [] : attachments;
+    if ((!question && images.length === 0) || busy) return null;
+    let answer = "";
     setInput("");
     setAttachments([]);
     setError("");
@@ -213,6 +223,7 @@ export default function ChatPage() {
           conversation_id: conversationId,
           document_id: docFilter?.id,
           images: images.map(({ media_type, data }) => ({ media_type, data })),
+          voice: opts.voice,
         },
         {
           meta: ({ conversation_id, sources }) => {
@@ -231,13 +242,19 @@ export default function ChatPage() {
           // Un modelo ha fallado a mitad de respuesta y contesta otro: borramos el texto parcial.
           reset: () => updateLast((msg) => ({ ...msg, content: "" })),
           // Respuesta final (solo el texto después de las búsquedas) y todas las fuentes, incluidas las web.
-          done: ({ text, sources }) => updateLast((msg) => ({ ...msg, content: text || msg.content, sources })),
+          done: ({ text, sources }) => {
+            answer = text;
+            updateLast((msg) => ({ ...msg, content: text || msg.content, sources }));
+          },
         },
       );
       loadConversations();
+      // Lo mismo que se ve en pantalla: si es "fuera de tema", el mensaje de Carlos.
+      return answer.trim() === OFF_TOPIC_MARKER ? pickOffTopic(dedicatoria.fueraDeTema, question) : answer;
     } catch (err) {
       setError(errorMessage(err));
       setMessages((m) => (m[m.length - 1]?.content ? m : m.slice(0, -1)));
+      return null;
     } finally {
       setBusy(false);
       setWebPhase(null);
@@ -417,6 +434,7 @@ export default function ChatPage() {
             ))}
           </div>
         )}
+        {voiceMode && <VoiceChat onAsk={(q) => send(q, { voice: true })} onClose={() => setVoiceMode(false)} />}
         <form
           className="border-border bg-surface sticky bottom-20 mt-4 flex items-end gap-2 rounded-2xl border p-2 shadow-sm md:bottom-4"
           onSubmit={(e) => {
@@ -435,6 +453,23 @@ export default function ChatPage() {
               e.target.value = "";
             }}
           />
+          {voiceSupported && (
+            <button
+              type="button"
+              className={`btn-ghost px-2.5 ${voiceMode ? "text-accent" : ""}`}
+              onClick={() => {
+                // Se "despierta" la voz dentro del toque (necesario en el iPad).
+                unlockSpeech();
+                setVoiceMode((v) => !v);
+              }}
+              disabled={busy && !voiceMode}
+              aria-pressed={voiceMode}
+              aria-label={t.voiceChat.button}
+              title={t.voiceChat.button}
+            >
+              <Microphone size={22} weight={voiceMode ? "fill" : "duotone"} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             className="btn-ghost px-2.5"

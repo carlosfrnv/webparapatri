@@ -38,6 +38,8 @@ export async function answerQuestion(p: {
   history: string;
   documentId?: string;
   images?: LlmImage[];
+  /** Modo conversación: respuestas cortas y habladas (se leen en voz alta). */
+  voice?: boolean;
   onMeta?: (meta: { sources: PublicSource[]; tiers: ChatTiers }) => void;
   onText?: (delta: string) => void;
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
@@ -52,7 +54,9 @@ export async function answerQuestion(p: {
     reference: found.referencesSufficient,
     web: WEB_ENABLED && !found.notesSufficient && !found.referencesSufficient && !p.documentId,
   };
-  const publicLocal: PublicSource[] = localSources.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s);
+  const publicLocal: PublicSource[] = localSources.map(
+    ({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s,
+  );
   p.onMeta?.({ sources: publicLocal, tiers });
 
   // Si la IA responde con la marca de "fuera de tema", no la mandamos a la web mientras se escribe:
@@ -85,6 +89,7 @@ export async function answerQuestion(p: {
         pregunta: p.question,
         webAllowed: tiers.web && webAvailable,
         imagenes: p.images?.length ?? 0,
+        voz: p.voice,
       }),
     {
       lang: p.lang,
@@ -99,7 +104,14 @@ export async function answerQuestion(p: {
   );
   if (result.text.trimStart().startsWith(OFF_TOPIC_MARKER)) {
     // Pregunta ajena a sus estudios: la web muestra el mensaje de dedicatoria.ts en lugar del texto.
-    return { ...result, text: OFF_TOPIC_MARKER, webSources: [], searchSuggestionsHtml: undefined, sources: [], tiers: { ...tiers, web: false } };
+    return {
+      ...result,
+      text: OFF_TOPIC_MARKER,
+      webSources: [],
+      searchSuggestionsHtml: undefined,
+      sources: [],
+      tiers: { ...tiers, web: false },
+    };
   }
   // En los chips solo aparecen los fragmentos que la respuesta cita de verdad ([n]) y las fuentes web usadas.
   const cited = new Set([...result.text.matchAll(/\[(\d{1,2})\]/g)].map((m) => Number(m[1])));

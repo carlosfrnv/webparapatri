@@ -135,7 +135,7 @@ export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
 
 export const chatPrompt = (
   lang: Lang,
-  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean; imagenes?: number },
+  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean; imagenes?: number; voz?: boolean },
 ) =>
   lang === "es"
     ? `ANTES DE NADA, decide si la pregunta tiene que ver con sus estudios. Cuentan como estudio: cualquier materia de la carrera
@@ -167,6 +167,14 @@ ${
 - Ha adjuntado ${p.imagenes === 1 ? "una foto" : `${p.imagenes} fotos`} (un ejercicio, un esquema, una imagen médica…). Léela con atención
   y descríbela brevemente si hace falta. Si es un ejercicio, resuélvelo paso a paso explicando el porqué de cada paso.
   Si algo no se lee bien, dilo en vez de suponerlo. Si es una imagen clínica, explícala con fines de estudio, sin diagnosticar.`
+        : ""
+    }${
+      p.voz
+        ? `
+- MODO CONVERSACIÓN: tu respuesta se va a leer en voz alta y ella te habla en voz. Responde como en una charla:
+  de 3 a 6 frases, lenguaje natural y hablado, sin tablas, sin listas, sin títulos, sin negritas ni emojis.
+  Si el tema es largo, explica lo esencial y pregúntale si quiere que sigas con más detalle.
+  Lo que ella dice viene de un dictado por voz: si alguna palabra no tiene sentido, interpreta lo más probable.`
         : ""
     }
 FRAGMENTOS:
@@ -204,6 +212,14 @@ ${
 - Anexou ${p.imagenes === 1 ? "uma foto" : `${p.imagenes} fotos`} (um exercício, um esquema, uma imagem médica…). Lê-a com atenção
   e descreve-a brevemente se for preciso. Se for um exercício, resolve-o passo a passo explicando o porquê de cada passo.
   Se algo não se ler bem, di-lo em vez de supor. Se for uma imagem clínica, explica-a para fins de estudo, sem diagnosticar.`
+        : ""
+    }${
+      p.voz
+        ? `
+- MODO CONVERSA: a tua resposta vai ser lida em voz alta e ela fala contigo por voz. Responde como numa conversa:
+  de 3 a 6 frases, linguagem natural e falada, sem tabelas, sem listas, sem títulos, sem negritos nem emojis.
+  Se o tema for longo, explica o essencial e pergunta-lhe se quer que continues com mais detalhe.
+  O que ela diz vem de um ditado por voz: se alguma palavra não fizer sentido, interpreta o mais provável.`
         : ""
     }
 EXCERTOS:

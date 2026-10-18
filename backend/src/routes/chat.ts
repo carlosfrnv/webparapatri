@@ -34,6 +34,8 @@ const chatSchema = z.object({
   images: z.array(imageSchema).max(MAX_IMAGES).default([]),
   conversation_id: z.string().uuid().optional(),
   document_id: z.string().uuid().optional(),
+  // Modo conversación (por voz): respuestas cortas y habladas.
+  voice: z.boolean().default(false),
 });
 
 chatRouter.post(
@@ -70,7 +72,12 @@ chatRouter.post(
     const history = (recent ?? [])
       .reverse()
       .map((m) => {
-        const content = m.content === OFF_TOPIC_MARKER ? (lang === "es" ? "(pregunta ajena a los estudios)" : "(pergunta alheia aos estudos)") : m.content;
+        const content =
+          m.content === OFF_TOPIC_MARKER
+            ? lang === "es"
+              ? "(pregunta ajena a los estudios)"
+              : "(pergunta alheia aos estudos)"
+            : m.content;
         return `${m.role === "user" ? (lang === "es" ? "Estudiante" : "Estudante") : "Tutor"}: ${content.slice(0, 1500)}`;
       })
       .join("\n");
@@ -104,6 +111,7 @@ chatRouter.post(
         images: body.images.map((i) => ({ mediaType: i.media_type, data: i.data })),
         history,
         documentId: body.document_id,
+        voice: body.voice,
         onMeta: ({ sources, tiers }) => send("meta", { conversation_id: conversationId, sources, tiers }),
         onText: (text) => send("delta", { text }),
         // El frontend muestra "Buscando…" y borra cualquier preámbulo: solo cuenta la respuesta final.
@@ -145,7 +153,8 @@ chatRouter.get(
     const map = new Map<string, { conversation_id: string; title: string; updated_at: string }>();
     for (const m of data ?? []) {
       const existing = map.get(m.conversation_id);
-      if (!existing) map.set(m.conversation_id, { conversation_id: m.conversation_id, title: m.content, updated_at: m.created_at });
+      if (!existing)
+        map.set(m.conversation_id, { conversation_id: m.conversation_id, title: m.content, updated_at: m.created_at });
       else existing.title = m.content;
     }
     res.json([...map.values()].slice(0, 30).map((c) => ({ ...c, title: c.title.slice(0, 80) })));

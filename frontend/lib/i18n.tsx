@@ -337,6 +337,21 @@ const es = {
     again: "Otro simulacro",
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
+  voiceChat: {
+    button: "Modo conversación",
+    title: "🎙️ Modo conversación",
+    listening: "Te escucho…",
+    thinking: "Pensando…",
+    speaking: "Respondiendo",
+    interruptHint: "toca para interrumpir",
+    interrupt: "Interrumpir y hablar",
+    tapToTalk: "Toca el micrófono para hablar",
+    end: "Terminar",
+    noPermission:
+      "No tengo permiso para usar el micrófono. Actívalo en los ajustes del navegador (en el iPad: Ajustes → Safari → Micrófono).",
+    notHeard: "No te he entendido bien. Toca el micrófono y vuelve a intentarlo.",
+    failed: "No he podido responder. Toca el micrófono para intentarlo otra vez.",
+  },
   readAloud: {
     listen: "Escuchar",
     pause: "Pausa",
@@ -923,6 +938,21 @@ const pt: Dictionary = {
     studyTopic: "Rever o tema →",
     again: "Outra simulação",
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
+  },
+  voiceChat: {
+    button: "Modo conversa",
+    title: "🎙️ Modo conversa",
+    listening: "Estou a ouvir…",
+    thinking: "A pensar…",
+    speaking: "A responder",
+    interruptHint: "toca para interromper",
+    interrupt: "Interromper e falar",
+    tapToTalk: "Toca no microfone para falar",
+    end: "Terminar",
+    noPermission:
+      "Não tenho permissão para usar o microfone. Ativa-a nas definições do navegador (no iPad: Definições → Safari → Microfone).",
+    notHeard: "Não percebi bem. Toca no microfone e tenta outra vez.",
+    failed: "Não consegui responder. Toca no microfone para tentar outra vez.",
   },
   readAloud: {
     listen: "Ouvir",

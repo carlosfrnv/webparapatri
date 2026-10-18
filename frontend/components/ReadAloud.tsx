@@ -3,65 +3,12 @@
 import { Pause, Play, SpeakerHigh, Stop } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang, useT } from "@/lib/i18n";
+import { pickVoice, RATE_KEY, RATES, savedRate, speechChunks } from "@/lib/speech";
 
 /**
  * Lee el resumen en voz alta con la voz del propio dispositivo (gratis: no pasa por el servidor ni gasta IA).
  * Se lee frase a frase: el iPad corta los textos largos si se le pasan de una vez.
  */
-
-// Por defecto, algo más despacio que la voz normal (para estudiar). Se recuerda la última elegida.
-const RATES = [0.6, 0.7, 0.85, 1, 1.2];
-const DEFAULT_RATE = 0.85;
-const RATE_KEY = "voz-velocidad";
-
-/** Markdown → frases para leer (sin símbolos, etiquetas de origen ni citas [1]). */
-export function speechChunks(markdown: string): string[] {
-  const text = markdown
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/\[(Os teus apontamentos|Tus apuntes|Biblioteca de refer[eê]ncia[^\]]*|Radiopaedia|IAEA|EFRS)\]/g, "")
-    .replace(/\[\d{1,2}\]/g, "")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/^[ \t]*\|?[ \t]*:?-{2,}.*$/gm, "")
-    // Filas de tabla: "| Término | Significado |" → "Término: Significado"
-    .replace(/^[ \t]*\|(.*)\|[ \t]*$/gm, (_m, row: string) =>
-      row
-        .split("|")
-        .map((c) => c.trim())
-        .filter(Boolean)
-        .join(": "),
-    )
-    .replace(/^#{1,6}\s*/gm, "")
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^\s*\d+\.\s+/gm, "")
-    .replace(/[*_`>~]/g, "")
-    .replace(/^-{3,}$/gm, "")
-    .replace(/\s+([.,;:!?])/g, "$1");
-  const parts: string[] = [];
-  for (const block of text
-    .split(/\n+/)
-    .map((l) => l.trim())
-    .filter(Boolean)) {
-    // Títulos y puntos sin punto final: se lo añadimos para que la voz haga la pausa.
-    const line = /[.!?:;]$/.test(block) ? block : `${block}.`;
-    // Frases de como mucho ~220 caracteres.
-    for (const sentence of line.match(/[^.!?]+[.!?]+/g) ?? [line]) {
-      const s = sentence.trim();
-      if (s.length > 1) parts.push(s);
-    }
-  }
-  return parts;
-}
-
-function pickVoice(lang: "es" | "pt") {
-  const voices = window.speechSynthesis.getVoices();
-  const wanted = lang === "pt" ? ["pt-PT", "pt_PT", "pt"] : ["es-ES", "es_ES", "es"];
-  for (const w of wanted) {
-    const v = voices.find((x) => x.lang.replace("_", "-").toLowerCase().startsWith(w.replace("_", "-").toLowerCase()));
-    if (v) return v;
-  }
-  return null;
-}
 
 export function ReadAloud({ text }: { text: string }) {
   const t = useT();
@@ -69,14 +16,7 @@ export function ReadAloud({ text }: { text: string }) {
   const lang = useLang();
   const [state, setState] = useState<"idle" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
-  const [rate, setRate] = useState(() => {
-    try {
-      const saved = Number(localStorage.getItem(RATE_KEY));
-      return RATES.includes(saved) ? saved : DEFAULT_RATE;
-    } catch {
-      return DEFAULT_RATE;
-    }
-  });
+  const [rate, setRate] = useState(savedRate);
   const chunks = useMemo(() => speechChunks(text), [text]);
   const run = useRef(0);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
