@@ -662,6 +662,21 @@ const es = {
       nextWeek: "Semana siguiente",
       thisWeek: "Esta semana",
       copyWeek: "Copiar a la semana siguiente",
+      planButton: "Plan de estudio",
+      planAdded: (n: number) => `He añadido ${n} ${n === 1 ? "bloque" : "bloques"} de estudio a tu horario 📚`,
+      plan: {
+        title: "Plan de estudio para esta semana",
+        intro:
+          "Te propongo horas de estudio en los huecos libres de tu horario, con más tiempo para las asignaturas con examen o entrega cerca. Quita las que no quieras.",
+        perDay: "Horas al día:",
+        hours: (n: number) => `${n} h`,
+        noSlots: "No encuentro huecos libres de una hora en lo que queda de semana.",
+        noSubjects: "Primero crea tus asignaturas en la biblioteca.",
+        examIn: (title: string, days: number) =>
+          days === 0 ? `${title}: ¡hoy!` : days === 1 ? `${title}: mañana` : `${title}: en ${days} días`,
+        add: (n: number) => `Añadir ${n} ${n === 1 ? "bloque" : "bloques"} al horario`,
+        blockTitle: (subject: string) => `Estudiar · ${subject}`,
+      },
       confirmCopy: (n: number) => `¿Copiar las ${n} clases de esta semana a la semana siguiente?`,
       copied: (n: number) => `Copiadas ${n} clases a la semana siguiente.`,
       start: "Empieza",
@@ -1351,6 +1366,21 @@ const pt: Dictionary = {
       nextWeek: "Semana seguinte",
       thisWeek: "Esta semana",
       copyWeek: "Copiar para a semana seguinte",
+      planButton: "Plano de estudo",
+      planAdded: (n: number) => `Acrescentei ${n} ${n === 1 ? "bloco" : "blocos"} de estudo ao teu horário 📚`,
+      plan: {
+        title: "Plano de estudo para esta semana",
+        intro:
+          "Proponho-te horas de estudo nos espaços livres do teu horário, com mais tempo para as cadeiras com exame ou entrega perto. Tira as que não quiseres.",
+        perDay: "Horas por dia:",
+        hours: (n: number) => `${n} h`,
+        noSlots: "Não encontro espaços livres de uma hora no que resta da semana.",
+        noSubjects: "Primeiro cria as tuas cadeiras na biblioteca.",
+        examIn: (title: string, days: number) =>
+          days === 0 ? `${title}: hoje!` : days === 1 ? `${title}: amanhã` : `${title}: daqui a ${days} dias`,
+        add: (n: number) => `Acrescentar ${n} ${n === 1 ? "bloco" : "blocos"} ao horário`,
+        blockTitle: (subject: string) => `Estudar · ${subject}`,
+      },
       confirmCopy: (n: number) => `Copiar as ${n} aulas desta semana para a semana seguinte?`,
       copied: (n: number) => `Copiadas ${n} aulas para a semana seguinte.`,
       start: "Começa",

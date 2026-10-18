@@ -1,11 +1,12 @@
 "use client";
 
-import { CaretLeft, CaretRight, ChalkboardTeacher, Copy, MapPin, Plus, Trash, X } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, ChalkboardTeacher, Copy, MapPin, Plus, Sparkle, Trash, X } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { BlockColor, ScheduleBlock, Subject } from "@/lib/types";
 import { localToday, toIsoDate } from "./ExamPlan";
+import { StudyPlanner } from "./StudyPlanner";
 import { subjectLook } from "./subjectLook";
 import { ErrorBox, Spinner } from "./ui";
 
@@ -374,6 +375,7 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [mobileDay, setMobileDay] = useState(todayDay);
   const [weekend, setWeekend] = useState(false);
+  const [planning, setPlanning] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -441,6 +443,7 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
 
   function goWeek(next: string) {
     setNotice("");
+    setPlanning(false);
     setMonday(next);
   }
 
@@ -526,6 +529,11 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
               {ts.weekend}
             </label>
           )}
+          {sunday >= today && (
+            <button className="btn-ghost text-accent px-3 text-sm" onClick={() => setPlanning((p) => !p)}>
+              <Sparkle size={18} weight="duotone" aria-hidden="true" /> {ts.planButton}
+            </button>
+          )}
           {datedThisWeek > 0 && (
             <button className="btn-ghost px-3 text-sm" onClick={() => copyWeek(datedThisWeek)}>
               <Copy size={18} weight="duotone" aria-hidden="true" /> {ts.copyWeek}
@@ -534,6 +542,19 @@ export function Timetable({ subjects }: { subjects: Subject[] }) {
         </div>
       </div>
 
+      {planning && (
+        <StudyPlanner
+          monday={monday}
+          blocks={weekBlocks}
+          subjects={subjects}
+          onClose={() => setPlanning(false)}
+          onAdded={(n) => {
+            setPlanning(false);
+            setNotice(ts.planAdded(n));
+            load();
+          }}
+        />
+      )}
       {notice && <p className="bg-success-soft rounded-xl p-3 text-sm">{notice}</p>}
       {weekBlocks.length === 0 && <p className="card text-muted p-4 text-sm">{ts.empty}</p>}
 
