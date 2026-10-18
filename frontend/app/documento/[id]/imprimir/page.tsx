@@ -10,7 +10,7 @@ import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, StudyMaterials, Subject } from "@/lib/types";
 
-type Part = "summary" | "concepts" | "glossary" | "flashcards";
+type Part = "summary" | "concepts" | "glossary";
 
 /**
  * Versión para imprimir o guardar en PDF del material de un archivo. Usa la impresión del navegador
@@ -29,7 +29,6 @@ export default function PrintPage() {
     summary: true,
     concepts: true,
     glossary: true,
-    flashcards: false,
   });
 
   useEffect(() => {
@@ -133,22 +132,6 @@ export default function PrintPage() {
                 </div>
               ))}
             </dl>
-          </section>
-        )}
-
-        {parts.flashcards && materials.flashcards.length > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-3 text-xl font-bold">{tp.parts.flashcards}</h2>
-            <ol className="space-y-2 text-sm">
-              {materials.flashcards.map((f, i) => (
-                <li key={i} className="print-avoid-break border-border rounded-lg border p-3">
-                  <p className="font-semibold">
-                    {i + 1}. {f.front}
-                  </p>
-                  <p className="text-muted mt-1">→ {f.back}</p>
-                </li>
-              ))}
-            </ol>
           </section>
         )}
 

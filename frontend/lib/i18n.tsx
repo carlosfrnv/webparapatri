@@ -253,7 +253,8 @@ const es = {
     disclaimer: "Generado por la IA a partir de tus apuntes. Confirma siempre valores y protocolos con el profesorado.",
     figures: {
       title: "Imágenes del archivo",
-      intro: "La IA puede mirar los esquemas, figuras y radiografías de este archivo y añadirlos al resumen, las flashcards y el test.",
+      intro:
+        "La IA puede mirar los esquemas, figuras y radiografías de este archivo y añadirlos al resumen, las flashcards y el test.",
       read: "🖼️ Leer las imágenes",
       reread: "Volver a leer",
       reading: "Leyendo las imágenes… Puede tardar un par de minutos.",
@@ -357,7 +358,7 @@ const es = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "¿Qué quieres incluir?",
-    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario", flashcards: "Flashcards (pregunta y respuesta)" },
+    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario" },
     print: "Guardar PDF / Imprimir",
     howTo:
       "En el iPad o el móvil se abre el menú de imprimir: puedes imprimirlo o, con el botón de compartir, guardarlo como PDF en Archivos. En el ordenador elige «Guardar como PDF».",
@@ -402,7 +403,8 @@ const es = {
   },
   push: {
     title: "Recordatorios",
-    intro: "Te aviso en este dispositivo de los exámenes y entregas, de las flashcards pendientes y de las notas de Carlos.",
+    intro:
+      "Te aviso en este dispositivo de los exámenes y entregas, de las flashcards pendientes y de las notas de Carlos.",
     on: "Activados en este dispositivo ✓ Cada mañana te llega un resumen si hay algo que recordar.",
     needsInstall:
       "En el iPad y el iPhone, los avisos solo funcionan con la web en la pantalla de inicio:\n1. Pulsa el botón Compartir (el cuadrado con la flecha).\n2. «Añadir a pantalla de inicio».\n3. Abre Estudio IMR desde ese icono y vuelve aquí.",
@@ -484,10 +486,12 @@ const es = {
   mistakes: {
     title: "Repaso de fallos",
     subtitle: "Las preguntas de test que has fallado. Cuando aciertas una, sale de la lista.",
-    count: (n: number) => (n === 0 ? "No tienes fallos pendientes 🎉" : `${n} ${n === 1 ? "pregunta por repasar" : "preguntas por repasar"}`),
+    count: (n: number) =>
+      n === 0 ? "No tienes fallos pendientes 🎉" : `${n} ${n === 1 ? "pregunta por repasar" : "preguntas por repasar"}`,
     start: "Repasar fallos",
     all: "Todas",
-    empty: "¡No tienes ninguna pregunta fallada pendiente! 🎉 Cuando falles alguna en un test o simulacro, aparecerá aquí.",
+    empty:
+      "¡No tienes ninguna pregunta fallada pendiente! 🎉 Cuando falles alguna en un test o simulacro, aparecerá aquí.",
     times: (n: number) => (n === 1 ? "fallada 1 vez" : `fallada ${n} veces`),
     done: "¡Repaso terminado!",
   },
@@ -548,7 +552,8 @@ const es = {
     nameAssignment: "Nombre del trabajo",
     nameAssignmentPlaceholder: "Ej.: Trabajo de radioprotección, informe de prácticas…",
     dateAssignment: "Fecha de entrega",
-    deliverIn: (n: number): string => (n === 0 ? "¡Se entrega hoy!" : n === 1 ? "Se entrega mañana" : `Entrega en ${n} días`),
+    deliverIn: (n: number): string =>
+      n === 0 ? "¡Se entrega hoy!" : n === 1 ? "Se entrega mañana" : `Entrega en ${n} días`,
     upcomingDates: "Próximas fechas",
     addDate: "+ Añadir fecha",
     tabCalendar: "Exámenes y entregas",
@@ -867,7 +872,8 @@ const pt: Dictionary = {
       "Gerado pela IA a partir dos teus apontamentos. Confirma sempre valores e protocolos com os professores.",
     figures: {
       title: "Imagens do ficheiro",
-      intro: "A IA pode ver os esquemas, figuras e radiografias deste ficheiro e acrescentá-los ao resumo, às flashcards e ao teste.",
+      intro:
+        "A IA pode ver os esquemas, figuras e radiografias deste ficheiro e acrescentá-los ao resumo, às flashcards e ao teste.",
       read: "🖼️ Ler as imagens",
       reread: "Ler de novo",
       reading: "A ler as imagens… Pode demorar um par de minutos.",
@@ -971,7 +977,7 @@ const pt: Dictionary = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "O que queres incluir?",
-    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário", flashcards: "Flashcards (pergunta e resposta)" },
+    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário" },
     print: "Guardar PDF / Imprimir",
     howTo:
       "No iPad ou no telemóvel abre-se o menu de imprimir: podes imprimir ou, com o botão de partilhar, guardar como PDF em Ficheiros. No computador escolhe «Guardar como PDF».",
@@ -1098,7 +1104,8 @@ const pt: Dictionary = {
   mistakes: {
     title: "Revisão de erros",
     subtitle: "As perguntas de teste que erraste. Quando acertas uma, sai da lista.",
-    count: (n: number) => (n === 0 ? "Não tens erros pendentes 🎉" : `${n} ${n === 1 ? "pergunta para rever" : "perguntas para rever"}`),
+    count: (n: number) =>
+      n === 0 ? "Não tens erros pendentes 🎉" : `${n} ${n === 1 ? "pergunta para rever" : "perguntas para rever"}`,
     start: "Rever erros",
     all: "Todas",
     empty: "Não tens nenhuma pergunta errada pendente! 🎉 Quando errares alguma num teste ou simulação, aparece aqui.",
@@ -1161,7 +1168,8 @@ const pt: Dictionary = {
     nameAssignment: "Nome do trabalho",
     nameAssignmentPlaceholder: "Ex.: Trabalho de proteção radiológica, relatório de estágio…",
     dateAssignment: "Data de entrega",
-    deliverIn: (n: number): string => (n === 0 ? "Entrega-se hoje!" : n === 1 ? "Entrega-se amanhã" : `Entrega em ${n} dias`),
+    deliverIn: (n: number): string =>
+      n === 0 ? "Entrega-se hoje!" : n === 1 ? "Entrega-se amanhã" : `Entrega em ${n} dias`,
     upcomingDates: "Próximas datas",
     addDate: "+ Adicionar data",
     tabCalendar: "Exames e entregas",
