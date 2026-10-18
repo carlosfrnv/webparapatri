@@ -110,7 +110,14 @@ export default function ChatPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [input, setInput] = useState("");
+  // Pregunta preparada desde otra página (p. ej., "Explícamelo" en el atlas 3D).
+  const [input, setInput] = useState(() => {
+    try {
+      return (typeof window !== "undefined" && sessionStorage.getItem("chat-draft")) || "";
+    } catch {
+      return "";
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
@@ -126,6 +133,11 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    try {
+      sessionStorage.removeItem("chat-draft");
+    } catch {
+      /* se ignora */
+    }
     loadConversations();
     const docId = window.location.hash.match(/doc=([0-9a-f-]{36})/)?.[1];
     if (docId)

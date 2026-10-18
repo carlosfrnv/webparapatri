@@ -111,6 +111,11 @@ export default function SubjectPage() {
             .join(" · ")}
           actions={
             <>
+              {/anatom/i.test(subject.name) && (
+                <Link href={`/asignatura/${subject.id}/atlas`} className="btn-primary">
+                  {t.atlas.button}
+                </Link>
+              )}
               <button className="btn-secondary" onClick={() => setEditing(true)}>
                 <PencilSimple size={18} weight="duotone" aria-hidden="true" /> {t.common.edit}
               </button>

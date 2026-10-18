@@ -1,0 +1,8 @@
+Modelos 3D del atlas (huesos.glb y musculos.glb)
+
+Proceden de Z-Anatomy (https://github.com/LluisV/Z-Anatomy), licencia Creative Commons
+Atribución-CompartirIgual 4.0 (CC BY-SA 4.0): https://creativecommons.org/licenses/by-sa/4.0/
+Z-Anatomy se basa en BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 Japón).
+
+Cambios: se han quitado etiquetas, fascias y bolsas sinoviales, se han simplificado las mallas
+y se han comprimido (meshopt) para la web. Estos archivos modificados se comparten con la misma licencia.
