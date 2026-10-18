@@ -166,41 +166,64 @@ export interface MindNode {
   children?: MindNode[];
 }
 
-const leaf = z.object({ label: z.string().min(1).max(160), note: z.string().max(300).optional() });
-const branch = leaf.extend({ children: z.array(leaf).max(8).optional() });
+const leaf = z.object({ label: z.string().min(1).max(200), note: z.string().max(500).optional() });
+const branch = leaf.extend({ children: z.array(leaf).max(10).optional() });
 const mindmapSchema = z.object({
-  label: z.string().min(1).max(160),
+  label: z.string().min(1).max(200),
   children: z
-    .array(branch.extend({ children: z.array(branch).max(8).optional() }))
-    .min(2)
-    .max(8),
+    .array(branch.extend({ children: z.array(branch).max(10).optional() }))
+    .min(3)
+    .max(9),
 });
 
-/** Esquema del tema a partir del resumen y los conceptos clave (en el idioma de la web). */
-export async function generateMindmap(lang: Lang, title: string, summary: string, concepts: string): Promise<MindNode> {
+/**
+ * Esquema del tema a partir del resumen, los conceptos clave y el glosario (en el idioma de la web).
+ * Completo, como el esquema que ella haría para estudiar: con definiciones, valores, clasificaciones y ejemplos.
+ */
+export async function generateMindmap(
+  lang: Lang,
+  title: string,
+  summary: string,
+  concepts: string,
+  glossary: string,
+): Promise<MindNode> {
   const prompt =
     lang === "es"
-      ? `Haz el ESQUEMA de este tema de Imagen Médica y Radioterapia para que una estudiante de primer curso lo estudie de un vistazo.
+      ? `Haz el ESQUEMA COMPLETO de este tema de Imagen Médica y Radioterapia, como el que haría una buena estudiante de primer curso para repasar antes del examen: que con el esquema pueda recordar TODO el tema, no solo los títulos.
 Título del archivo: ${title}
-- label de la raíz: el tema central (corto).
-- De 3 a 7 ramas principales (los grandes apartados del tema), cada una con 2-6 subapartados y, si hace falta, un tercer nivel.
-- Cada label: pocas palabras (un término, no una frase). "note" opcional: una aclaración muy corta (valor, ejemplo, función).
-- Usa SOLO lo que hay en el resumen y los conceptos. En español de España.
+Estructura:
+- label de la raíz: el tema central.
+- De 4 a 8 ramas principales que cubran TODOS los apartados del resumen (ninguno se queda fuera), en el orden lógico del tema.
+- Cada rama con 3-8 subapartados; usa el tercer nivel siempre que haya clasificaciones, tipos, partes, fases, causas o ejemplos.
+Contenido:
+- label: el término o idea (corto, sin frases largas).
+- note: lo que hay que saber de él en una frase clara: la definición, la función, el valor numérico con su unidad, la diferencia con lo parecido o su utilidad en imagen médica o radioterapia. Ponla en casi todos los elementos.
+- Incluye los datos que suelen preguntar en el examen (cifras, unidades, fórmulas, clasificaciones, relaciones causa-efecto).
+- Usa SOLO lo que hay en el resumen, los conceptos y el glosario. En español de España.
 Resumen:
 ${summary}
 Conceptos clave:
 ${concepts}
-Responde SOLO con JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":""}]}]}]}`
-      : `Faz o ESQUEMA deste tema de Imagem Médica e Radioterapia para que uma estudante do primeiro ano o estude de relance.
+Glosario:
+${glossary}
+Responde SOLO con JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":"","note":""}]}]}]}`
+      : `Faz o ESQUEMA COMPLETO deste tema de Imagem Médica e Radioterapia, como o que faria uma boa estudante do primeiro ano para rever antes do exame: que com o esquema consiga lembrar-se de TODO o tema, não só dos títulos.
 Título do ficheiro: ${title}
-- label da raiz: o tema central (curto).
-- De 3 a 7 ramos principais (as grandes partes do tema), cada um com 2-6 subpartes e, se for preciso, um terceiro nível.
-- Cada label: poucas palavras (um termo, não uma frase). "note" opcional: um esclarecimento muito curto (valor, exemplo, função).
-- Usa SÓ o que está no resumo e nos conceitos. Em português de Portugal.
+Estrutura:
+- label da raiz: o tema central.
+- De 4 a 8 ramos principais que cubram TODAS as partes do resumo (nenhuma fica de fora), pela ordem lógica do tema.
+- Cada ramo com 3-8 subpartes; usa o terceiro nível sempre que houver classificações, tipos, partes, fases, causas ou exemplos.
+Conteúdo:
+- label: o termo ou ideia (curto, sem frases longas).
+- note: o que é preciso saber dele numa frase clara: a definição, a função, o valor numérico com a unidade, a diferença em relação ao que é parecido ou a utilidade em imagem médica ou radioterapia. Põe-na em quase todos os elementos.
+- Inclui os dados que costumam sair no exame (valores, unidades, fórmulas, classificações, relações causa-efeito).
+- Usa SÓ o que está no resumo, nos conceitos e no glossário. Em português de Portugal.
 Resumo:
 ${summary}
 Conceitos-chave:
 ${concepts}
-Responde SÓ com JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":""}]}]}]}`;
-  return completeJson(prompt, mindmapSchema, { lang, effort: "low", maxTokens: 4000 });
+Glossário:
+${glossary}
+Responde SÓ com JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":"","note":""}]}]}]}`;
+  return completeJson(prompt, mindmapSchema, { lang, effort: "medium", maxTokens: 12000 });
 }

@@ -405,6 +405,8 @@ documentsRouter.get(
 
 // ---------- Esquema del tema ----------
 
+// Sube al cambiar cómo se hace el esquema: los ya guardados se vuelven a hacer.
+const MINDMAP_VERSION = 2;
 const mindmapJobs = new Map<string, Promise<unknown>>();
 
 documentsRouter.get(
@@ -422,11 +424,13 @@ documentsRouter.get(
     const study = (await getOrGenerateStudy(doc.id, userId, lang, false)) as {
       summary: string;
       key_concepts: { concept: string; explanation: string }[];
+      glossary: { term: string; definition: string }[];
       generated_at: string;
     };
     // Se guarda junto a la fecha del material: si se genera de nuevo el resumen, el esquema se rehace.
     const cached = extras.mindmap[lang];
-    if (cached && cached.from === study.generated_at && !force) {
+    const from = `${study.generated_at}#${MINDMAP_VERSION}`;
+    if (cached && cached.from === from && !force) {
       res.json(cached.tree);
       return;
     }
@@ -438,11 +442,12 @@ documentsRouter.get(
         doc.title,
         study.summary.slice(0, 30000),
         study.key_concepts.map((c) => `- ${c.concept}: ${c.explanation}`).join("\n"),
+        (study.glossary ?? []).map((g) => `- ${g.term}: ${g.definition}`).join("\n"),
       )
         .then(async (tree) => {
           const latest = await getExtras(doc.id, userId);
           const mindmap = latest.missing ? {} : latest.mindmap;
-          await saveExtras(doc.id, userId, { mindmap: { ...mindmap, [lang]: { from: study.generated_at, tree } } });
+          await saveExtras(doc.id, userId, { mindmap: { ...mindmap, [lang]: { from, tree } } });
           return tree;
         })
         .finally(() => mindmapJobs.delete(key));
