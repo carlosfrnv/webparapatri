@@ -3,7 +3,8 @@
 import { Printer } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { HighlightTools, useHighlightPaint, useHighlights } from "@/components/Highlights";
 import { MindMapView, useMindMap } from "@/components/MindMap";
 import { SummaryWithFigures, useFigureImages } from "@/components/SummaryFigures";
 import { stripOrigins } from "@/components/Sources";
@@ -38,6 +39,10 @@ function Print() {
   });
   const map = useMindMap(id, parts.mindmap);
   const figures = useFigureImages(id);
+  // Sus subrayados se ven también en el PDF, y sus notas al final del resumen.
+  const summaryRef = useRef<HTMLElement>(null);
+  const [highlights, setHighlights] = useHighlights(id);
+  useHighlightPaint(summaryRef, highlights, `${parts.summary}-${figures.length}-${materials?.generated_at}`);
 
   useEffect(() => {
     Promise.all([
@@ -123,8 +128,9 @@ function Print() {
         )}
 
         {parts.summary && (
-          <section className="mb-8">
+          <section className="mb-8" ref={summaryRef}>
             <SummaryWithFigures markdown={stripOrigins(materials.summary)} figures={parts.images ? figures : []} />
+            <HighlightTools documentId={id} root={summaryRef} items={highlights} setItems={setHighlights} />
           </section>
         )}
 

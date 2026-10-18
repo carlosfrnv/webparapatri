@@ -172,6 +172,19 @@ create table if not exists document_extras (
   updated_at timestamptz default now()
 );
 
+-- Subrayados y notas en los resúmenes: el trozo de texto subrayado, su color y una nota opcional.
+create table if not exists highlights (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references documents(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lang text not null default 'es',
+  quote text not null check (char_length(quote) <= 2000),
+  color text not null default 'yellow',
+  note text check (char_length(note) <= 2000),
+  created_at timestamptz default now()
+);
+create index if not exists highlights_doc_idx on highlights (user_id, document_id);
+
 -- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
@@ -301,11 +314,12 @@ alter table love_notes enable row level security;
 alter table couple_settings enable row level security;
 alter table push_subscriptions enable row level security;
 alter table document_extras enable row level security;
+alter table highlights enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras','highlights']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

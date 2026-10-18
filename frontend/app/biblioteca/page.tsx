@@ -16,20 +16,73 @@ import type { DocumentItem, Source, Subject } from "@/lib/types";
 
 const YEARS = [1, 2, 3, 4] as const;
 
-function SearchBox() {
+/** Marca en el texto las palabras buscadas (sin tildes ni mayúsculas). */
+function Highlighted({ text, words }: { text: string; words: string[] }) {
+  // Una letra sin tilde por cada letra del original: así las posiciones coinciden.
+  const flat = [...text]
+    .map(
+      (ch) =>
+        ch
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()[0] ?? ch,
+    )
+    .join("");
+  const marks: [number, number][] = [];
+  for (const w of words) {
+    const needle = w
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    if (needle.length < 2) continue;
+    for (let i = flat.indexOf(needle); i >= 0; i = flat.indexOf(needle, i + needle.length))
+      marks.push([i, i + needle.length]);
+  }
+  marks.sort((x, y) => x[0] - y[0]);
+  const parts: React.ReactNode[] = [];
+  let at = 0;
+  for (const [s, e] of marks) {
+    if (s < at) continue;
+    parts.push(text.slice(at, s), <mark key={s}>{text.slice(s, e)}</mark>);
+    at = e;
+  }
+  parts.push(text.slice(at));
+  return <>{parts}</>;
+}
+
+interface SummaryHit {
+  document_id: string;
+  title: string;
+  snippet: string;
+}
+
+/**
+ * Buscador: en los apuntes (en portugués; también en la biblioteca de referencia) y en los resúmenes
+ * (en el idioma de la web, así encuentra también lo que escriba en español). Se puede limitar a una asignatura.
+ */
+function SearchBox({ subjects }: { subjects: Subject[] }) {
   const t = useT();
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<Source[] | null>(null);
+  const [subjectId, setSubjectId] = useState("");
+  const [results, setResults] = useState<{ notes: Source[]; summaries: SummaryHit[] } | null>(null);
+  const [searched, setSearched] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function search(e: React.FormEvent) {
     e.preventDefault();
-    if (q.trim().length < 2) return;
+    const query = q.trim();
+    if (query.length < 2) return;
     setLoading(true);
     setError("");
+    const params = `q=${encodeURIComponent(query)}${subjectId ? `&subject_id=${subjectId}` : ""}`;
     try {
-      setResults(await api.get<Source[]>(`/search?q=${encodeURIComponent(q.trim())}`));
+      const [notes, found] = await Promise.all([
+        api.get<Source[]>(`/search?${params}`),
+        api.get<{ summaries: SummaryHit[] }>(`/find?${params}`).catch(() => ({ summaries: [] })),
+      ]);
+      setResults({ notes, summaries: found.summaries });
+      setSearched(query.split(/\s+/));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -39,9 +92,9 @@ function SearchBox() {
 
   return (
     <div className="mb-8">
-      <form onSubmit={search} className="flex gap-2" role="search">
+      <form onSubmit={search} className="flex flex-wrap gap-2" role="search">
         <input
-          className="input"
+          className="input min-w-0 flex-1 basis-60"
           type="search"
           placeholder={t.library.searchPlaceholder}
           aria-label={t.library.searchLabel}
@@ -51,6 +104,21 @@ function SearchBox() {
             if (!e.target.value) setResults(null);
           }}
         />
+        {subjects.length > 1 && (
+          <select
+            className="input w-auto max-w-[14rem]"
+            value={subjectId}
+            onChange={(e) => setSubjectId(e.target.value)}
+            aria-label={t.library.searchIn}
+          >
+            <option value="">{t.library.allSubjects}</option>
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
         <button className="btn-secondary shrink-0" disabled={loading}>
           {loading ? (
             "…"
@@ -63,32 +131,59 @@ function SearchBox() {
       </form>
       {error && <p className="text-danger mt-2 text-sm">{error}</p>}
       {results && (
-        <div className="mt-3">
-          {results.length === 0 ? (
+        <div className="mt-3 space-y-4">
+          {results.notes.length === 0 && results.summaries.length === 0 && (
             <p className="text-muted">{t.library.noResults}</p>
-          ) : (
-            <ul className="space-y-2">
-              {results.map((r) => (
-                <li key={r.chunk_id}>
-                  <Link
-                    href={localSourceHref(r)}
-                    className={`card card-hover block p-3 ${r.kind === "referencia" ? "bg-warning-soft" : ""}`}
-                  >
-                    <p className="text-sm font-semibold">
-                      {r.kind === "referencia" && <span>📚 {t.reference.badge(r.org ?? "IAEA / EFRS")} · </span>}
-                      {r.document_title}
-                      {r.page ? (
-                        <span className="text-muted font-normal">
-                          {" "}
-                          · {t.library.page} {r.page}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-muted mt-1 text-sm">{r.excerpt}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          )}
+          {results.notes.length > 0 && (
+            <section>
+              <p className="text-muted mb-2 text-xs font-semibold tracking-wide uppercase">
+                {t.library.inNotes(results.notes.length)}
+              </p>
+              <ul className="space-y-2">
+                {results.notes.map((r) => (
+                  <li key={r.chunk_id}>
+                    <Link
+                      href={localSourceHref(r)}
+                      className={`card card-hover block p-3 ${r.kind === "referencia" ? "bg-warning-soft" : ""}`}
+                    >
+                      <p className="text-sm font-semibold">
+                        {r.kind === "referencia" && <span>📚 {t.reference.badge(r.org ?? "IAEA / EFRS")} · </span>}
+                        {r.document_title}
+                        {r.page ? (
+                          <span className="text-muted font-normal">
+                            {" "}
+                            · {t.library.page} {r.page}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-muted mt-1 text-sm">
+                        <Highlighted text={r.excerpt} words={searched} />
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {results.summaries.length > 0 && (
+            <section>
+              <p className="text-muted mb-2 text-xs font-semibold tracking-wide uppercase">
+                {t.library.inSummaries(results.summaries.length)}
+              </p>
+              <ul className="space-y-2">
+                {results.summaries.map((r) => (
+                  <li key={r.document_id}>
+                    <Link href={`/documento/${r.document_id}#resumen`} className="card card-hover block p-3">
+                      <p className="text-sm font-semibold">📝 {r.title}</p>
+                      <p className="text-muted mt-1 text-sm">
+                        <Highlighted text={r.snippet} words={searched} />
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
       )}
@@ -195,7 +290,7 @@ export default function LibraryPage() {
         }
       />
 
-      <SearchBox />
+      <SearchBox subjects={subjects ?? []} />
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">{t.library.upload}</h2>

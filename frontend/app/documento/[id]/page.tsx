@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDocError } from "@/components/DocumentList";
 import { FigureQuiz } from "@/components/FigureQuiz";
+import { HighlightTools, useHighlightPaint, useHighlights } from "@/components/Highlights";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { MindMapTab } from "@/components/MindMap";
 import { Quiz } from "@/components/Quiz";
@@ -258,6 +259,10 @@ export default function DocumentPage() {
   const [figVersion, setFigVersion] = useState(0);
   const figures = useFigureImages(id, figVersion);
   const figuresRead = useCallback(() => setFigVersion((v) => v + 1), []);
+  // Subrayados y notas del resumen.
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const [highlights, setHighlights] = useHighlights(id);
+  useHighlightPaint(summaryRef, highlights, `${tab}-${materials?.generated_at}-${figures.length}`);
 
   const loadStudy = useCallback(
     async (regenerate = false) => {
@@ -372,7 +377,11 @@ export default function DocumentPage() {
           {tab === "resumen" && (
             <article className="card p-5 sm:p-8">
               <ReadAloud key={`${materials.generated_at}-${materials.lang}`} text={materials.summary} />
-              <SummaryWithFigures markdown={materials.summary} figures={figures} />
+              {highlights.length === 0 && <p className="text-muted mb-2 text-xs">{t.highlights.hint}</p>}
+              <div ref={summaryRef}>
+                <SummaryWithFigures markdown={materials.summary} figures={figures} />
+              </div>
+              <HighlightTools documentId={doc.id} root={summaryRef} items={highlights} setItems={setHighlights} />
               {materials.sources && materials.sources.length > 0 && (
                 <div className="border-border mt-6 border-t pt-4">
                   <SourceChips sources={materials.sources} title={t.sources.consulted} />

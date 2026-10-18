@@ -361,3 +361,25 @@ h3 {
   border-radius: 0.75rem;
   background: var(--surface-2);
 }
+
+/* Palabras buscadas, resaltadas en los resultados del buscador. */
+mark {
+  background: #fde68a;
+  color: #1f1f1f;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* Subrayados del resumen (resaltado nativo del navegador). */
+::highlight(hl-yellow) {
+  background-color: rgb(250 204 21 / 0.45);
+}
+::highlight(hl-green) {
+  background-color: rgb(74 222 128 / 0.45);
+}
+::highlight(hl-pink) {
+  background-color: rgb(244 114 182 / 0.45);
+}
+::highlight(hl-blue) {
+  background-color: rgb(96 165 250 / 0.45);
+}

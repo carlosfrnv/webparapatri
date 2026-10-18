@@ -12,6 +12,8 @@ import { documentsRouter } from "./routes/documents";
 import { examsRouter } from "./routes/exams";
 import { maybeSendDailyReminders } from "./push";
 import { exercisesRouter } from "./routes/exercises";
+import { findRouter } from "./routes/find";
+import { highlightsRouter } from "./routes/highlights";
 import { oralRouter } from "./routes/oral";
 import { pushRouter } from "./routes/push";
 import { quizRouter } from "./routes/quiz";
@@ -54,6 +56,8 @@ app.use("/couple", coupleRouter);
 app.use("/push", pushRouter);
 app.use("/oral", oralRouter);
 app.use("/exercises", exercisesRouter);
+app.use("/find", findRouter);
+app.use("/highlights", highlightsRouter);
 app.use("/atlas", atlasRouter);
 app.use("/", studyRouter);
 

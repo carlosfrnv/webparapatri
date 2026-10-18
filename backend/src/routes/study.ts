@@ -269,8 +269,20 @@ studyRouter.get(
   "/search",
   asyncHandler(async (req, res) => {
     const q = z.string().trim().min(2).max(200).parse(req.query.q);
-    // Incluye la biblioteca de referencia (aparece identificada como tal en los resultados).
-    const sources = await findSources(userIdOf(req), q, { limit: 20, includeReference: true });
+    const subjectId = z.string().uuid().optional().catch(undefined).parse(req.query.subject_id);
+    const userId = userIdOf(req);
+    // Incluye la biblioteca de referencia (aparece identificada como tal en los resultados),
+    // salvo si se busca dentro de una asignatura: entonces, solo sus apuntes.
+    let sources = await findSources(userId, q, { limit: subjectId ? 40 : 20, includeReference: !subjectId });
+    if (subjectId) {
+      const { data: docs } = await supabase
+        .from("documents")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("subject_id", subjectId);
+      const ids = new Set((docs ?? []).map((d) => d.id));
+      sources = sources.filter((s) => ids.has(s.document_id)).slice(0, 20);
+    }
     res.json(sources.map(({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s));
   }),
 );
