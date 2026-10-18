@@ -1,6 +1,6 @@
 "use client";
 
-import { Microphone, SpeakerSlash, X } from "@phosphor-icons/react";
+import { Microphone, PaperPlaneRight, SpeakerSlash, X } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { useLang, useT } from "@/lib/i18n";
 import { type Recognition, recognitionClass, speak } from "@/lib/speech";
@@ -8,12 +8,27 @@ import { type Recognition, recognitionClass, speak } from "@/lib/speech";
 /**
  * Modo conversación del chat: escucha lo que dice (reconocimiento de voz del dispositivo), lo pregunta al tutor,
  * lee la respuesta en voz alta y vuelve a escuchar. Todo gratis: solo gasta la pregunta a la IA, como si la escribiera.
+ *
+ * En el iPad el reconocimiento no siempre detecta solo que ha terminado de hablar, así que:
+ *  - si deja de hablar un momento, se envía lo que ha dicho (temporizador de silencio propio);
+ *  - y puede tocar el botón grande para enviarlo en cuanto termine.
  */
 
 type State = "listening" | "thinking" | "speaking" | "waiting";
 
-// Si se queda callada, se vuelve a escuchar un par de veces antes de esperar a que toque el micrófono.
-const MAX_SILENT_RETRIES = 2;
+// Silencio tras el que se da por terminada la pregunta.
+const SILENCE_MS = 1800;
+// Si no dice nada en este tiempo, se deja de escuchar y se espera a que toque el micrófono.
+const NOTHING_SAID_MS = 12_000;
+
+/** Para el reconocimiento sin que un error del navegador corte lo que viene después. */
+function safely(fn: () => void) {
+  try {
+    fn();
+  } catch {
+    /* el iPad a veces lanza un error al parar: no importa */
+  }
+}
 
 export function VoiceChat({
   onAsk,
@@ -31,59 +46,86 @@ export function VoiceChat({
   const rec = useRef<Recognition | null>(null);
   const stopSpeaking = useRef<(() => void) | null>(null);
   const active = useRef(true);
-  const silent = useRef(0);
+  // Lo oído en la escucha en curso y si ya se ha enviado (para no enviarlo dos veces).
+  const turn = useRef<{ text: string; sent: boolean; timer: ReturnType<typeof setTimeout> | null }>({
+    text: "",
+    sent: false,
+    timer: null,
+  });
 
   // Las funciones se llaman desde los avisos de la voz (asíncronos): siempre la versión más reciente.
-  const latest = useRef<{ listen: () => void; ask: (text: string) => void }>({ listen: () => {}, ask: () => {} });
+  const latest = useRef<{ listen: () => void; ask: (text: string) => void; finish: () => void }>({
+    listen: () => {},
+    ask: () => {},
+    finish: () => {},
+  });
+
+  function stopListening() {
+    if (turn.current.timer) clearTimeout(turn.current.timer);
+    turn.current.timer = null;
+    const r = rec.current;
+    rec.current = null;
+    if (r) {
+      r.onresult = null;
+      r.onerror = null;
+      r.onend = null;
+      safely(() => r.abort());
+    }
+  }
+
+  /** Da la pregunta por terminada y la envía (una sola vez por escucha). */
+  function finishTurn() {
+    if (turn.current.sent || !active.current) return;
+    const text = turn.current.text.trim();
+    turn.current.sent = true;
+    stopListening();
+    if (text) latest.current.ask(text);
+    else setState("waiting");
+  }
 
   function listen() {
     const Rec = recognitionClass();
     if (!Rec || !active.current) return;
-    stopSpeaking.current?.();
+    safely(() => stopSpeaking.current?.());
+    stopSpeaking.current = null;
+    stopListening();
     const r = new Rec();
     r.lang = lang === "pt" ? "pt-PT" : "es-ES";
-    r.continuous = false;
+    r.continuous = true;
     r.interimResults = true;
-    let finalText = "";
-    let failed = false;
+    turn.current = { text: "", sent: false, timer: null };
+    const armTimer = (ms: number) => {
+      if (turn.current.timer) clearTimeout(turn.current.timer);
+      turn.current.timer = setTimeout(() => latest.current.finish(), ms);
+    };
     r.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res.isFinal) finalText += res[0].transcript;
-        else interim += res[0].transcript;
-      }
-      setHeard((finalText + interim).trim());
+      // Con "continuous", results trae todo lo dicho en esta escucha (frases ya cerradas y la que está diciendo).
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      turn.current.text = text.trim();
+      setHeard(turn.current.text);
+      armTimer(SILENCE_MS);
     };
     r.onerror = (e) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
-      failed = true;
+      turn.current.sent = true;
+      stopListening();
       setProblem(e.error === "not-allowed" || e.error === "service-not-allowed" ? tv.noPermission : tv.notHeard);
       setState("waiting");
     };
-    r.onend = () => {
-      rec.current = null;
-      if (!active.current || failed) return;
-      const text = finalText.trim();
-      if (text) {
-        silent.current = 0;
-        latest.current.ask(text);
-      } else if (silent.current < MAX_SILENT_RETRIES) {
-        silent.current++;
-        latest.current.listen();
-      } else {
-        silent.current = 0;
-        setState("waiting");
-      }
-    };
+    // Si el navegador corta la escucha por su cuenta, se envía lo que haya oído.
+    r.onend = () => latest.current.finish();
     setHeard("");
     setProblem("");
     setState("listening");
     rec.current = r;
+    armTimer(NOTHING_SAID_MS);
     try {
       r.start();
     } catch {
       // En el iPad a veces solo deja empezar a escuchar tras un toque: se espera a que pulse el micrófono.
+      turn.current.sent = true;
+      stopListening();
       setState("waiting");
     }
   }
@@ -105,74 +147,83 @@ export function VoiceChat({
   }
 
   useEffect(() => {
-    latest.current = { listen, ask };
+    latest.current = { listen, ask, finish: finishTurn };
   });
 
   // Al abrir el modo conversación se empieza a escuchar; al cerrarlo se corta todo.
   useEffect(() => {
     active.current = true;
+    const turnRef = turn;
+    const recRef = rec;
+    const speakingRef = stopSpeaking;
     latest.current.listen();
     return () => {
       active.current = false;
-      rec.current?.abort();
-      stopSpeaking.current?.();
+      if (turnRef.current.timer) clearTimeout(turnRef.current.timer);
+      const r = recRef.current;
+      recRef.current = null;
+      if (r) {
+        r.onresult = null;
+        r.onerror = null;
+        r.onend = null;
+        safely(() => r.abort());
+      }
+      safely(() => speakingRef.current?.());
     };
   }, []);
 
-  function interrupt() {
-    stopSpeaking.current?.();
-    stopSpeaking.current = null;
-    listen();
+  function close() {
+    // Primero se cierra el panel (así "Terminar" siempre funciona); al desmontarse se corta la escucha y la voz.
+    active.current = false;
+    onClose();
   }
 
-  const label = { listening: tv.listening, thinking: tv.thinking, speaking: tv.speaking, waiting: tv.tapToTalk }[state];
+  function mainButton() {
+    if (state === "listening") finishTurn();
+    else if (state === "speaking" || state === "waiting") listen();
+  }
+
+  const label = {
+    listening: heard ? tv.listeningSend : tv.listening,
+    thinking: tv.thinking,
+    speaking: `${tv.speaking} · ${tv.interruptHint}`,
+    waiting: tv.tapToTalk,
+  }[state];
 
   return (
     <div className="card border-accent mt-4 border-2 p-4 sm:p-5" role="region" aria-label={tv.title}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-accent text-sm font-bold">{tv.title}</p>
-        <button
-          className="btn-ghost min-h-9 px-3 text-sm"
-          onClick={() => {
-            active.current = false;
-            rec.current?.abort();
-            stopSpeaking.current?.();
-            onClose();
-          }}
-        >
-          <X size={16} aria-hidden="true" /> {tv.end}
+        <button className="btn-secondary min-h-10 px-4 text-sm" onClick={close}>
+          <X size={16} weight="bold" aria-hidden="true" /> {tv.end}
         </button>
       </div>
 
       <div className="mt-3 flex flex-col items-center gap-3 text-center">
         <button
-          onClick={() => (state === "speaking" ? interrupt() : state === "waiting" ? listen() : undefined)}
-          disabled={state === "thinking" || state === "listening"}
-          aria-label={state === "speaking" ? tv.interrupt : tv.tapToTalk}
-          className={`relative flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg transition-transform ${
-            state === "listening"
-              ? "scale-105 bg-[var(--accent)]"
-              : state === "speaking"
-                ? "bg-[#14b8a6]"
-                : state === "thinking"
-                  ? "bg-[var(--accent)] opacity-70"
-                  : "bg-[var(--accent)] hover:scale-105"
-          }`}
+          onClick={mainButton}
+          disabled={state === "thinking"}
+          aria-label={state === "listening" ? tv.send : state === "speaking" ? tv.interrupt : tv.tapToTalk}
+          className={`relative flex h-24 w-24 items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95 ${
+            state === "speaking" ? "bg-[#14b8a6]" : "bg-[var(--accent)]"
+          } ${state === "thinking" ? "opacity-70" : ""}`}
         >
           {state === "listening" && (
             <span
-              className="absolute inset-0 animate-ping rounded-full bg-[var(--accent)] opacity-30"
+              className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-[var(--accent)] opacity-30"
               aria-hidden="true"
             />
           )}
           {state === "speaking" ? (
             <SpeakerSlash size={40} weight="fill" aria-hidden="true" />
+          ) : state === "listening" && heard ? (
+            <PaperPlaneRight size={40} weight="fill" aria-hidden="true" />
           ) : (
             <Microphone size={40} weight="fill" aria-hidden="true" />
           )}
         </button>
         <p className="font-semibold" role="status" aria-live="polite">
-          {state === "speaking" ? `${label} · ${tv.interruptHint}` : label}
+          {label}
         </p>
         {heard && (state === "listening" || state === "thinking") && (
           <p className="text-muted max-w-md text-sm italic">«{heard}»</p>
