@@ -406,7 +406,7 @@ documentsRouter.get(
 // ---------- Esquema del tema ----------
 
 // Sube al cambiar cómo se hace el esquema: los ya guardados se vuelven a hacer.
-const MINDMAP_VERSION = 2;
+const MINDMAP_VERSION = 3;
 const mindmapJobs = new Map<string, Promise<unknown>>();
 
 documentsRouter.get(

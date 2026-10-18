@@ -186,7 +186,7 @@ const mindmapSchema = z.object({
 
 /**
  * Esquema del tema a partir del resumen, los conceptos clave y el glosario (en el idioma de la web).
- * Completo, como el esquema que ella haría para estudiar: con definiciones, valores, clasificaciones y ejemplos.
+ * Ligero, para leerlo de un vistazo: las ideas principales y solo los datos clave.
  */
 export async function generateMindmap(
   lang: Lang,
@@ -197,16 +197,16 @@ export async function generateMindmap(
 ): Promise<MindNode> {
   const prompt =
     lang === "es"
-      ? `Haz el ESQUEMA COMPLETO de este tema de Imagen Médica y Radioterapia, como el que haría una buena estudiante de primer curso para repasar antes del examen: que con el esquema pueda recordar TODO el tema, no solo los títulos.
+      ? `Haz el ESQUEMA de este tema de Imagen Médica y Radioterapia, como el que haría una buena estudiante de primer curso para repasar antes del examen: las ideas principales y cómo se relacionan.
 Título del archivo: ${title}
 Estructura:
 - label de la raíz: el tema central.
-- De 4 a 8 ramas principales que cubran TODOS los apartados del resumen (ninguno se queda fuera), en el orden lógico del tema.
-- Cada rama con 3-8 subapartados; usa el tercer nivel siempre que haya clasificaciones, tipos, partes, fases, causas o ejemplos.
+- De 4 a 7 ramas principales que cubran los apartados importantes del resumen, en el orden lógico del tema.
+- Cada rama con 2-5 subapartados; el tercer nivel solo para clasificaciones o tipos (como mucho 4 elementos).
 Contenido:
 - label: el término o idea (corto, sin frases largas).
-- note: lo que hay que saber de él en una frase clara: la definición, la función, el valor numérico con su unidad, la diferencia con lo parecido o su utilidad en imagen médica o radioterapia. Ponla en casi todos los elementos.
-- Incluye los datos que suelen preguntar en el examen (cifras, unidades, fórmulas, clasificaciones, relaciones causa-efecto).
+- note: solo cuando aporte algo clave (un valor con su unidad, una definición o una función), en pocas palabras (máximo 8). Muchos elementos no la necesitan.
+- Debe poder leerse de un vistazo: mejor claro y ligero que cargado.
 - Usa SOLO lo que hay en el resumen, los conceptos y el glosario. En español de España.
 Resumen:
 ${summary}
@@ -215,16 +215,16 @@ ${concepts}
 Glosario:
 ${glossary}
 Responde SOLO con JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":"","note":""}]}]}]}`
-      : `Faz o ESQUEMA COMPLETO deste tema de Imagem Médica e Radioterapia, como o que faria uma boa estudante do primeiro ano para rever antes do exame: que com o esquema consiga lembrar-se de TODO o tema, não só dos títulos.
+      : `Faz o ESQUEMA deste tema de Imagem Médica e Radioterapia, como o que faria uma boa estudante do primeiro ano para rever antes do exame: as ideias principais e como se relacionam.
 Título do ficheiro: ${title}
 Estrutura:
 - label da raiz: o tema central.
-- De 4 a 8 ramos principais que cubram TODAS as partes do resumo (nenhuma fica de fora), pela ordem lógica do tema.
-- Cada ramo com 3-8 subpartes; usa o terceiro nível sempre que houver classificações, tipos, partes, fases, causas ou exemplos.
+- De 4 a 7 ramos principais que cubram as partes importantes do resumo, pela ordem lógica do tema.
+- Cada ramo com 2-5 subpartes; o terceiro nível só para classificações ou tipos (no máximo 4 elementos).
 Conteúdo:
 - label: o termo ou ideia (curto, sem frases longas).
-- note: o que é preciso saber dele numa frase clara: a definição, a função, o valor numérico com a unidade, a diferença em relação ao que é parecido ou a utilidade em imagem médica ou radioterapia. Põe-na em quase todos os elementos.
-- Inclui os dados que costumam sair no exame (valores, unidades, fórmulas, classificações, relações causa-efeito).
+- note: só quando acrescentar algo essencial (um valor com a unidade, uma definição ou uma função), em poucas palavras (máximo 8). Muitos elementos não precisam dela.
+- Deve ler-se de relance: mais vale claro e leve do que carregado.
 - Usa SÓ o que está no resumo, nos conceitos e no glossário. Em português de Portugal.
 Resumo:
 ${summary}
@@ -233,5 +233,5 @@ ${concepts}
 Glossário:
 ${glossary}
 Responde SÓ com JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":"","note":""}]}]}]}`;
-  return completeJson(prompt, mindmapSchema, { lang, effort: "low", maxTokens: 12000 });
+  return completeJson(prompt, mindmapSchema, { lang, effort: "low", maxTokens: 6000 });
 }
