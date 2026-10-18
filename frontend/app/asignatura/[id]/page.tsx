@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilSimple, Trash } from "@phosphor-icons/react";
+import { Microphone, PencilSimple, Trash } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -117,6 +117,9 @@ export default function SubjectPage() {
                   {t.atlas.button}
                 </Link>
               )}
+              <Link href={`/oral?asignatura=${subject.id}`} className="btn-secondary">
+                <Microphone size={18} weight="duotone" aria-hidden="true" /> {t.oral.button}
+              </Link>
               <button className="btn-secondary" onClick={() => setEditing(true)}>
                 <PencilSimple size={18} weight="duotone" aria-hidden="true" /> {t.common.edit}
               </button>

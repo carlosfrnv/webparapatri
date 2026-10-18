@@ -7,6 +7,7 @@ import {
   Cards,
   CheckCircle,
   Exam,
+  Microphone,
   Shuffle,
   Timer,
 } from "@phosphor-icons/react";
@@ -235,6 +236,14 @@ function StudyPageContent() {
                             className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
                           >
                             <Timer size={18} weight="duotone" aria-hidden="true" /> {t.mock.button}
+                          </Link>
+                        )}
+                        {g.subject && (
+                          <Link
+                            href={`/oral?asignatura=${g.subject.id}`}
+                            className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
+                          >
+                            <Microphone size={18} weight="duotone" aria-hidden="true" /> {t.oral.button}
                           </Link>
                         )}
                       </div>

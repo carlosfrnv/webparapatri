@@ -10,6 +10,7 @@ import { coupleRouter } from "./routes/couple";
 import { documentsRouter } from "./routes/documents";
 import { examsRouter } from "./routes/exams";
 import { maybeSendDailyReminders } from "./push";
+import { oralRouter } from "./routes/oral";
 import { pushRouter } from "./routes/push";
 import { quizRouter } from "./routes/quiz";
 import { scheduleRouter } from "./routes/schedule";
@@ -49,13 +50,15 @@ app.use("/quiz", quizRouter);
 app.use("/sessions", sessionsRouter);
 app.use("/couple", coupleRouter);
 app.use("/push", pushRouter);
+app.use("/oral", oralRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);
 
 app.listen(config.PORT, () => {
   console.log(`API de Estudio IMR funcionando en el puerto ${config.PORT}`);
-  if (CHAIN.length === 0) console.error("⚠️  Ningún modelo de AI_CHAIN tiene su clave configurada: la IA no funcionará.");
+  if (CHAIN.length === 0)
+    console.error("⚠️  Ningún modelo de AI_CHAIN tiene su clave configurada: la IA no funcionará.");
   else console.log(`IA (en este orden): ${CHAIN.map((s) => s.key).join(" → ")}`);
   setInterval(maybeSendDailyReminders, 15 * 60_000);
 });

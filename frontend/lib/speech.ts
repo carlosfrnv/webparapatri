@@ -134,3 +134,102 @@ export function recognitionClass(): (new () => Recognition) | null {
   };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
+
+/**
+ * Dictado: escucha hasta que se queda callada `silenceMs` (o hasta llamar a finish) y entrega el texto.
+ * Si el navegador corta el micrófono antes (el iPad lo hace tras una pausa corta), se vuelve a abrir
+ * y lo nuevo se añade a lo ya dicho. `base` es el texto que ya había (para seguir hablando).
+ */
+export function dictate(opts: {
+  lang: "es" | "pt";
+  base?: string;
+  silenceMs?: number;
+  nothingMs?: number;
+  onText: (text: string) => void;
+  onEnd: (text: string, error?: "permission" | "failed") => void;
+}): { finish: () => void; cancel: () => void } {
+  const Rec = recognitionClass();
+  const silenceMs = opts.silenceMs ?? 4000;
+  let base = opts.base?.trim() ?? "";
+  let text = base;
+  let done = false;
+  let rec: Recognition | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const stopRec = () => {
+    const r = rec;
+    rec = null;
+    if (r) {
+      r.onresult = null;
+      r.onerror = null;
+      r.onend = null;
+      try {
+        r.abort();
+      } catch {
+        /* el iPad a veces lanza un error al parar */
+      }
+    }
+  };
+  const end = (error?: "permission" | "failed") => {
+    if (done) return;
+    done = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    stopRec();
+    opts.onEnd(text.trim(), error);
+  };
+  const arm = (ms: number) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = null;
+      end();
+    }, ms);
+  };
+  const open = () => {
+    if (!Rec || done) return;
+    const r = new Rec();
+    r.lang = opts.lang === "pt" ? "pt-PT" : "es-ES";
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      let heard = "";
+      for (let i = 0; i < e.results.length; i++) heard += e.results[i][0].transcript;
+      text = `${base} ${heard}`.trim();
+      opts.onText(text);
+      arm(silenceMs);
+    };
+    r.onerror = (e) => {
+      if (e.error === "no-speech" || e.error === "aborted") return;
+      end(e.error === "not-allowed" || e.error === "service-not-allowed" ? "permission" : "failed");
+    };
+    r.onend = () => {
+      rec = null;
+      if (done) return;
+      if (timer) {
+        base = text;
+        open();
+      } else end();
+    };
+    rec = r;
+    try {
+      r.start();
+    } catch {
+      end("failed");
+    }
+  };
+
+  if (!Rec) {
+    setTimeout(() => end("failed"), 0);
+  } else {
+    arm(opts.nothingMs ?? 20_000);
+    open();
+  }
+  return {
+    finish: () => end(),
+    cancel: () => {
+      done = true;
+      if (timer) clearTimeout(timer);
+      stopRec();
+    },
+  };
+}
