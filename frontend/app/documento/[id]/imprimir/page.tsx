@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { MindMapView, useMindMap } from "@/components/MindMap";
+import { SummaryWithFigures, useFigureImages } from "@/components/SummaryFigures";
 import { stripOrigins } from "@/components/Sources";
-import { ErrorBox, Markdown, Spinner } from "@/components/ui";
+import { ErrorBox, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, StudyMaterials, Subject } from "@/lib/types";
 
-type Part = "summary" | "concepts" | "glossary" | "mindmap";
+type Part = "summary" | "images" | "concepts" | "glossary" | "mindmap";
 
 /**
  * Versión para imprimir o guardar en PDF del material de un archivo. Usa la impresión del navegador
@@ -30,11 +31,13 @@ function Print() {
   const onlyMap = useSearchParams().get("esquema") === "1";
   const [parts, setParts] = useState<Record<Part, boolean>>({
     summary: !onlyMap,
+    images: !onlyMap,
     concepts: !onlyMap,
     glossary: !onlyMap,
     mindmap: onlyMap,
   });
   const map = useMindMap(id, parts.mindmap);
+  const figures = useFigureImages(id);
 
   useEffect(() => {
     Promise.all([
@@ -66,25 +69,31 @@ function Print() {
         <div className="card space-y-4 p-5">
           <p className="font-semibold">{tp.choose}</p>
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(parts) as Part[]).map((p) => (
-              <label
-                key={p}
-                className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-full border-2 px-4 text-sm font-medium ${
-                  parts[p] ? "border-accent bg-accent-soft text-accent" : "border-border"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={parts[p]}
-                  onChange={(e) => setParts((x) => ({ ...x, [p]: e.target.checked }))}
-                />
-                {parts[p] ? "✓ " : ""}
-                {tp.parts[p]}
-              </label>
-            ))}
+            {(Object.keys(parts) as Part[])
+              .filter((p) => p !== "images" || (figures.length > 0 && parts.summary))
+              .map((p) => (
+                <label
+                  key={p}
+                  className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-full border-2 px-4 text-sm font-medium ${
+                    parts[p] ? "border-accent bg-accent-soft text-accent" : "border-border"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={parts[p]}
+                    onChange={(e) => setParts((x) => ({ ...x, [p]: e.target.checked }))}
+                  />
+                  {parts[p] ? "✓ " : ""}
+                  {tp.parts[p]}
+                </label>
+              ))}
           </div>
-          <button className="btn-primary" onClick={() => window.print()} disabled={!Object.values(parts).some(Boolean)}>
+          <button
+            className="btn-primary"
+            onClick={() => window.print()}
+            disabled={!(Object.keys(parts) as Part[]).some((p) => p !== "images" && parts[p])}
+          >
             <Printer size={18} weight="duotone" aria-hidden="true" /> {tp.print}
           </button>
           <p className="text-muted text-xs">{tp.howTo}</p>
@@ -115,7 +124,7 @@ function Print() {
 
         {parts.summary && (
           <section className="mb-8">
-            <Markdown>{stripOrigins(materials.summary)}</Markdown>
+            <SummaryWithFigures markdown={stripOrigins(materials.summary)} figures={parts.images ? figures : []} />
           </section>
         )}
 

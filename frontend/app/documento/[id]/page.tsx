@@ -10,7 +10,8 @@ import { MindMapTab } from "@/components/MindMap";
 import { Quiz } from "@/components/Quiz";
 import { ReadAloud } from "@/components/ReadAloud";
 import { SourceChips } from "@/components/Sources";
-import { ErrorBox, fileIcon, Markdown, Spinner, StatusBadge } from "@/components/ui";
+import { SummaryWithFigures, useFigureImages } from "@/components/SummaryFigures";
+import { ErrorBox, fileIcon, Spinner, StatusBadge } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard, StudyMaterials } from "@/lib/types";
@@ -151,7 +152,20 @@ function TestTab({ doc, materials }: { doc: DocumentItem; materials: StudyMateri
 }
 
 /** Leer las figuras de un archivo subido antes de que la IA mirase las imágenes. */
-function FiguresPanel({ doc, onRegenerate, busy }: { doc: DocumentItem; onRegenerate: () => void; busy: boolean }) {
+function FiguresPanel({
+  doc,
+  onRegenerate,
+  busy,
+  saved,
+  onRead,
+}: {
+  doc: DocumentItem;
+  onRegenerate: () => void;
+  busy: boolean;
+  /** Figuras guardadas como imagen (las que salen en el resumen). */
+  saved: number;
+  onRead: () => void;
+}) {
   const t = useT();
   const tf = t.document.figures;
   const [state, setState] = useState<{ count: number; running: boolean; failed: boolean } | null>(null);
@@ -168,6 +182,8 @@ function FiguresPanel({ doc, onRegenerate, busy }: { doc: DocumentItem; onRegene
         if (!alive) return;
         setState(s);
         if (s.running) timer = setTimeout(poll, 5000);
+        // Acaba de leerlas: el resumen vuelve a pedir las imágenes.
+        else if (runs > 0) onRead();
       } catch {
         /* si falla, simplemente no se muestra */
       }
@@ -177,7 +193,7 @@ function FiguresPanel({ doc, onRegenerate, busy }: { doc: DocumentItem; onRegene
       alive = false;
       clearTimeout(timer);
     };
-  }, [doc.id, runs]);
+  }, [doc.id, runs, onRead]);
 
   if (!state) return null;
 
@@ -207,6 +223,7 @@ function FiguresPanel({ doc, onRegenerate, busy }: { doc: DocumentItem; onRegene
           <p className="text-muted mt-1">
             {state.failed ? tf.failed : state.count > 0 ? tf.done(state.count) : justRead ? tf.none : tf.intro}
           </p>
+          {!justRead && state.count > 0 && saved === 0 && <p className="text-muted mt-1">{tf.needImages}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             {justRead && state.count > 0 && !state.failed ? (
               <>
@@ -238,6 +255,9 @@ export default function DocumentPage() {
   const [studyError, setStudyError] = useState("");
   const [generating, setGenerating] = useState(false);
   const [tab, setTab] = useHashTab();
+  const [figVersion, setFigVersion] = useState(0);
+  const figures = useFigureImages(id, figVersion);
+  const figuresRead = useCallback(() => setFigVersion((v) => v + 1), []);
 
   const loadStudy = useCallback(
     async (regenerate = false) => {
@@ -352,7 +372,7 @@ export default function DocumentPage() {
           {tab === "resumen" && (
             <article className="card p-5 sm:p-8">
               <ReadAloud key={`${materials.generated_at}-${materials.lang}`} text={materials.summary} />
-              <Markdown>{materials.summary}</Markdown>
+              <SummaryWithFigures markdown={materials.summary} figures={figures} />
               {materials.sources && materials.sources.length > 0 && (
                 <div className="border-border mt-6 border-t pt-4">
                   <SourceChips sources={materials.sources} title={t.sources.consulted} />
@@ -409,6 +429,8 @@ export default function DocumentPage() {
           {studyError && <p className="text-danger mt-2 text-sm">{studyError}</p>}
           <FiguresPanel
             doc={doc}
+            saved={figures.length}
+            onRead={figuresRead}
             busy={generating}
             onRegenerate={() => {
               if (confirm(t.document.confirmRegenerate)) loadStudy(true);

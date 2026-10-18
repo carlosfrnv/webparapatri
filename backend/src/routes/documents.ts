@@ -456,3 +456,29 @@ documentsRouter.get(
     res.json(await job);
   }),
 );
+
+// ---------- Figuras guardadas (para mostrarlas en el resumen) ----------
+// No gasta IA: son las imágenes que se guardaron al leer las figuras del archivo.
+
+documentsRouter.get(
+  "/:id/figure-images",
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const doc = await ownedDocument(String(req.params.id), userId);
+    const extras = await getExtras(doc.id, userId);
+    if (extras.missing || extras.figures.length === 0) {
+      res.json({ figures: [] });
+      return;
+    }
+    const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(
+      extras.figures.map((f) => f.path),
+      3600,
+    );
+    const urls = new Map((signed ?? []).filter((s) => s.path && s.signedUrl).map((s) => [s.path!, s.signedUrl]));
+    res.json({
+      figures: extras.figures
+        .filter((f) => urls.has(f.path))
+        .map((f) => ({ n: f.n, page: f.page, label: f.label, description: f.description, url: urls.get(f.path) })),
+    });
+  }),
+);

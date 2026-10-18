@@ -255,16 +255,20 @@ const es = {
     preparingText:
       "La IA está leyendo los apuntes y creando el resumen, los conceptos, las flashcards y el test. La primera vez puede tardar uno o dos minutos. Después queda guardado.",
     whyItMatters: "Por qué importa:",
+    figurePage: (n: number) => `pág. ${n}`,
+    moreFigures: "Figuras de tus apuntes",
     disclaimer: "Generado por la IA a partir de tus apuntes. Confirma siempre valores y protocolos con el profesorado.",
     figures: {
       title: "Imágenes del archivo",
       intro:
-        "La IA puede mirar los esquemas, figuras y radiografías de este archivo y añadirlos al resumen, las flashcards y el test.",
+        "La IA mira los esquemas, figuras y radiografías de este archivo: las más importantes salen en el resumen y en el test con imágenes, y el chat puede responder sobre ellas.",
       read: "🖼️ Leer las imágenes",
       reread: "Volver a leer",
       reading: "Leyendo las imágenes… Puede tardar un par de minutos.",
       done: (n: number) => `He leído ${n} ${n === 1 ? "figura" : "figuras"} de este archivo ✓`,
-      redoHint: "Genera de nuevo el material para que las incluya.",
+      redoHint:
+        "Ya salen en el resumen ✓. Si quieres que el texto del resumen, las flashcards y el test también hablen de ellas, genera de nuevo el material.",
+      needImages: "Léelas otra vez para que salgan como imágenes en el resumen.",
       none: "No he encontrado figuras útiles en este archivo (solo texto o adornos).",
       failed: "No he podido leer las imágenes. Inténtalo otra vez en un rato.",
     },
@@ -432,7 +436,13 @@ const es = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "¿Qué quieres incluir?",
-    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario", mindmap: "Esquema" },
+    parts: {
+      summary: "Resumen",
+      images: "Imágenes",
+      concepts: "Conceptos clave",
+      glossary: "Glosario",
+      mindmap: "Esquema",
+    },
     print: "Guardar PDF / Imprimir",
     howTo:
       "En el iPad o el móvil se abre el menú de imprimir: puedes imprimirlo o, con el botón de compartir, guardarlo como PDF en Archivos. En el ordenador elige «Guardar como PDF».",
@@ -978,17 +988,21 @@ const pt: Dictionary = {
     preparingText:
       "A IA está a ler os apontamentos e a criar o resumo, os conceitos, as flashcards e o teste. Na primeira vez pode demorar um ou dois minutos. Depois fica guardado.",
     whyItMatters: "Porque importa:",
+    figurePage: (n: number) => `pág. ${n}`,
+    moreFigures: "Figuras dos teus apontamentos",
     disclaimer:
       "Gerado pela IA a partir dos teus apontamentos. Confirma sempre valores e protocolos com os professores.",
     figures: {
       title: "Imagens do ficheiro",
       intro:
-        "A IA pode ver os esquemas, figuras e radiografias deste ficheiro e acrescentá-los ao resumo, às flashcards e ao teste.",
+        "A IA vê os esquemas, figuras e radiografias deste ficheiro: as mais importantes aparecem no resumo e no teste com imagens, e o chat pode responder sobre elas.",
       read: "🖼️ Ler as imagens",
       reread: "Ler de novo",
       reading: "A ler as imagens… Pode demorar um par de minutos.",
       done: (n: number) => `Li ${n} ${n === 1 ? "figura" : "figuras"} deste ficheiro ✓`,
-      redoHint: "Gera de novo o material para as incluir.",
+      redoHint:
+        "Já aparecem no resumo ✓. Se quiseres que o texto do resumo, as flashcards e o teste também falem delas, gera de novo o material.",
+      needImages: "Lê-as outra vez para aparecerem como imagens no resumo.",
       none: "Não encontrei figuras úteis neste ficheiro (só texto ou decorações).",
       failed: "Não consegui ler as imagens. Tenta outra vez daqui a pouco.",
     },
@@ -1155,7 +1169,13 @@ const pt: Dictionary = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "O que queres incluir?",
-    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário", mindmap: "Esquema" },
+    parts: {
+      summary: "Resumo",
+      images: "Imagens",
+      concepts: "Conceitos-chave",
+      glossary: "Glossário",
+      mindmap: "Esquema",
+    },
     print: "Guardar PDF / Imprimir",
     howTo:
       "No iPad ou no telemóvel abre-se o menu de imprimir: podes imprimir ou, com o botão de partilhar, guardar como PDF em Ficheiros. No computador escolhe «Guardar como PDF».",
