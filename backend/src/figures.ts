@@ -35,7 +35,7 @@ export async function getExtras(documentId: string, userId: string) {
     missing: false as const,
     figures: (data?.figures ?? []) as SavedFigure[],
     figure_quiz: (data?.figure_quiz ?? {}) as Partial<Record<Lang, FigureQuestion[]>>,
-    mindmap: (data?.mindmap ?? {}) as Partial<Record<Lang, MindNode>>,
+    mindmap: (data?.mindmap ?? {}) as Partial<Record<Lang, { from: string; tree: MindNode }>>,
   };
 }
 
@@ -164,4 +164,43 @@ export interface MindNode {
   label: string;
   note?: string;
   children?: MindNode[];
+}
+
+const leaf = z.object({ label: z.string().min(1).max(160), note: z.string().max(300).optional() });
+const branch = leaf.extend({ children: z.array(leaf).max(8).optional() });
+const mindmapSchema = z.object({
+  label: z.string().min(1).max(160),
+  children: z
+    .array(branch.extend({ children: z.array(branch).max(8).optional() }))
+    .min(2)
+    .max(8),
+});
+
+/** Esquema del tema a partir del resumen y los conceptos clave (en el idioma de la web). */
+export async function generateMindmap(lang: Lang, title: string, summary: string, concepts: string): Promise<MindNode> {
+  const prompt =
+    lang === "es"
+      ? `Haz el ESQUEMA de este tema de Imagen Médica y Radioterapia para que una estudiante de primer curso lo estudie de un vistazo.
+Título del archivo: ${title}
+- label de la raíz: el tema central (corto).
+- De 3 a 7 ramas principales (los grandes apartados del tema), cada una con 2-6 subapartados y, si hace falta, un tercer nivel.
+- Cada label: pocas palabras (un término, no una frase). "note" opcional: una aclaración muy corta (valor, ejemplo, función).
+- Usa SOLO lo que hay en el resumen y los conceptos. En español de España.
+Resumen:
+${summary}
+Conceptos clave:
+${concepts}
+Responde SOLO con JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":""}]}]}]}`
+      : `Faz o ESQUEMA deste tema de Imagem Médica e Radioterapia para que uma estudante do primeiro ano o estude de relance.
+Título do ficheiro: ${title}
+- label da raiz: o tema central (curto).
+- De 3 a 7 ramos principais (as grandes partes do tema), cada um com 2-6 subpartes e, se for preciso, um terceiro nível.
+- Cada label: poucas palavras (um termo, não uma frase). "note" opcional: um esclarecimento muito curto (valor, exemplo, função).
+- Usa SÓ o que está no resumo e nos conceitos. Em português de Portugal.
+Resumo:
+${summary}
+Conceitos-chave:
+${concepts}
+Responde SÓ com JSON: {"label":"","children":[{"label":"","note":"","children":[{"label":"","note":"","children":[{"label":""}]}]}]}`;
+  return completeJson(prompt, mindmapSchema, { lang, effort: "low", maxTokens: 4000 });
 }

@@ -11,7 +11,7 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { detectKind } from "../extract";
-import { generateFigureQuiz, getExtras, removeFigureFiles, saveExtras, saveFigures } from "../figures";
+import { generateFigureQuiz, generateMindmap, getExtras, removeFigureFiles, saveExtras, saveFigures } from "../figures";
 import { getOrGenerateStudy } from "../study";
 import { describeFigures, figureChunk, FIGURE_PREFIX } from "../vision";
 import { supabase } from "../supabase";
@@ -400,5 +400,54 @@ documentsRouter.get(
         })
         .filter(Boolean),
     });
+  }),
+);
+
+// ---------- Esquema del tema ----------
+
+const mindmapJobs = new Map<string, Promise<unknown>>();
+
+documentsRouter.get(
+  "/:id/mindmap",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const lang = langOf(req);
+    const force = req.query.force === "1";
+    const doc = await ownedDocument(String(req.params.id), userId);
+    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
+    const extras = await getExtras(doc.id, userId);
+    if (extras.missing) throw new HttpError(409, "needsUpdate");
+    const study = (await getOrGenerateStudy(doc.id, userId, lang, false)) as {
+      summary: string;
+      key_concepts: { concept: string; explanation: string }[];
+      generated_at: string;
+    };
+    // Se guarda junto a la fecha del material: si se genera de nuevo el resumen, el esquema se rehace.
+    const cached = extras.mindmap[lang];
+    if (cached && cached.from === study.generated_at && !force) {
+      res.json(cached.tree);
+      return;
+    }
+    const key = `${doc.id}:${lang}`;
+    let job = mindmapJobs.get(key);
+    if (!job) {
+      job = generateMindmap(
+        lang,
+        doc.title,
+        study.summary.slice(0, 30000),
+        study.key_concepts.map((c) => `- ${c.concept}: ${c.explanation}`).join("\n"),
+      )
+        .then(async (tree) => {
+          const latest = await getExtras(doc.id, userId);
+          const mindmap = latest.missing ? {} : latest.mindmap;
+          await saveExtras(doc.id, userId, { mindmap: { ...mindmap, [lang]: { from: study.generated_at, tree } } });
+          return tree;
+        })
+        .finally(() => mindmapJobs.delete(key));
+      mindmapJobs.set(key, job);
+    }
+    res.json(await job);
   }),
 );

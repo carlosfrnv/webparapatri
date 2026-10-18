@@ -243,6 +243,7 @@ const es = {
       resumen: "Resumen",
       conceptos: "Conceptos",
       glosario: "Glosario",
+      esquema: "Esquema",
       flashcards: "Flashcards",
       test: "Test",
       archivo: "Archivo original",
@@ -352,6 +353,12 @@ const es = {
     again: "Otro simulacro",
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
+  mindmap: {
+    loading: "Haciendo el esquema del tema… (solo la primera vez)",
+    print: "Imprimir o guardar en PDF",
+    redo: "Hacer otro esquema",
+    confirmRedo: "¿Hacer el esquema de nuevo? Se sustituye el actual.",
+  },
   oral: {
     button: "Examen oral",
     title: "Examen oral",
@@ -425,7 +432,7 @@ const es = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "¿Qué quieres incluir?",
-    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario" },
+    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario", mindmap: "Esquema" },
     print: "Guardar PDF / Imprimir",
     howTo:
       "En el iPad o el móvil se abre el menú de imprimir: puedes imprimirlo o, con el botón de compartir, guardarlo como PDF en Archivos. En el ordenador elige «Guardar como PDF».",
@@ -928,6 +935,7 @@ const pt: Dictionary = {
       resumen: "Resumo",
       conceptos: "Conceitos",
       glosario: "Glossário",
+      esquema: "Esquema",
       flashcards: "Flashcards",
       test: "Teste",
       archivo: "Ficheiro original",
@@ -1038,6 +1046,12 @@ const pt: Dictionary = {
     again: "Outra simulação",
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
   },
+  mindmap: {
+    loading: "A fazer o esquema do tema… (só da primeira vez)",
+    print: "Imprimir ou guardar em PDF",
+    redo: "Fazer outro esquema",
+    confirmRedo: "Fazer o esquema de novo? Substitui o atual.",
+  },
   oral: {
     button: "Exame oral",
     title: "Exame oral",
@@ -1110,7 +1124,7 @@ const pt: Dictionary = {
   print: {
     button: "📄 PDF / Imprimir",
     choose: "O que queres incluir?",
-    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário" },
+    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário", mindmap: "Esquema" },
     print: "Guardar PDF / Imprimir",
     howTo:
       "No iPad ou no telemóvel abre-se o menu de imprimir: podes imprimir ou, com o botão de partilhar, guardar como PDF em Ficheiros. No computador escolhe «Guardar como PDF».",

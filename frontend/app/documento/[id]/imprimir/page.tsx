@@ -2,21 +2,22 @@
 
 import { Printer } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { MindMapView, useMindMap } from "@/components/MindMap";
 import { stripOrigins } from "@/components/Sources";
 import { ErrorBox, Markdown, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, StudyMaterials, Subject } from "@/lib/types";
 
-type Part = "summary" | "concepts" | "glossary";
+type Part = "summary" | "concepts" | "glossary" | "mindmap";
 
 /**
  * Versión para imprimir o guardar en PDF del material de un archivo. Usa la impresión del navegador
  * (en el iPad: Compartir/Imprimir → guardar en Archivos), así que no gasta nada ni necesita servidor.
  */
-export default function PrintPage() {
+function Print() {
   const t = useT();
   const tp = t.print;
   const lang = useLang();
@@ -25,11 +26,15 @@ export default function PrintPage() {
   const [subject, setSubject] = useState<string | null>(null);
   const [materials, setMaterials] = useState<StudyMaterials | null>(null);
   const [error, setError] = useState("");
+  // Desde la pestaña Esquema se llega con ?esquema=1: solo el esquema marcado.
+  const onlyMap = useSearchParams().get("esquema") === "1";
   const [parts, setParts] = useState<Record<Part, boolean>>({
-    summary: true,
-    concepts: true,
-    glossary: true,
+    summary: !onlyMap,
+    concepts: !onlyMap,
+    glossary: !onlyMap,
+    mindmap: onlyMap,
   });
+  const map = useMindMap(id, parts.mindmap);
 
   useEffect(() => {
     Promise.all([
@@ -96,6 +101,18 @@ export default function PrintPage() {
           <h1 className="mt-1 text-2xl font-extrabold">{doc.title}</h1>
         </header>
 
+        {parts.mindmap && (
+          <section className="mb-8 print:break-after-page">
+            {map.tree ? (
+              <MindMapView tree={map.tree} />
+            ) : map.error ? (
+              <p className="text-danger text-sm">{map.error}</p>
+            ) : (
+              <Spinner label={t.mindmap.loading} />
+            )}
+          </section>
+        )}
+
         {parts.summary && (
           <section className="mb-8">
             <Markdown>{stripOrigins(materials.summary)}</Markdown>
@@ -138,5 +155,13 @@ export default function PrintPage() {
         <footer className="border-border text-muted border-t pt-3 text-xs">{tp.footer(today)}</footer>
       </article>
     </>
+  );
+}
+
+export default function PrintPage() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <Print />
+    </Suspense>
   );
 }
