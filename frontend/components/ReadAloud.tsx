@@ -10,7 +10,7 @@ import { useLang, useT } from "@/lib/i18n";
  */
 
 // Por defecto, algo más despacio que la voz normal (para estudiar). Se recuerda la última elegida.
-const RATES = [0.7, 0.85, 1, 1.2];
+const RATES = [0.6, 0.7, 0.85, 1, 1.2];
 const DEFAULT_RATE = 0.85;
 const RATE_KEY = "voz-velocidad";
 
