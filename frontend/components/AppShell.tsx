@@ -8,6 +8,7 @@ import {
   House,
   Moon,
   SignOut,
+  Student,
   Sun,
   Timer,
   type Icon,
@@ -31,7 +32,10 @@ const NAV: { href: string; key: keyof Dictionary["nav"]; icon: Icon }[] = [
   { href: "/chat", key: "chat", icon: ChatCircleDots },
 ];
 // En el ordenador hay sitio para más; en el móvil se llega desde Inicio y Estudiar.
-const NAV_DESKTOP_EXTRA: typeof NAV = [{ href: "/pomodoro", key: "pomodoro", icon: Timer }];
+const NAV_DESKTOP_EXTRA: typeof NAV = [
+  { href: "/pomodoro", key: "pomodoro", icon: Timer },
+  { href: "/notas", key: "grades", icon: Student },
+];
 
 /** Aviso flotante del Pomodoro en marcha (en cualquier página salvo la suya). */
 function PomodoroPill() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Books, Broom, GraduationCap, MagnifyingGlass, Trash } from "@phosphor-icons/react";
+import { Books, Broom, GraduationCap, MagnifyingGlass, Student, Trash } from "@phosphor-icons/react";
 import { GradientIcon } from "@/components/GradientIcon";
 import { subjectLook } from "@/components/subjectLook";
 import Link from "next/link";
@@ -184,7 +184,16 @@ export default function LibraryPage() {
 
   return (
     <>
-      <PageHeader icon={Books} title={t.library.title} subtitle={t.library.subtitle} />
+      <PageHeader
+        icon={Books}
+        title={t.library.title}
+        subtitle={t.library.subtitle}
+        actions={
+          <Link href="/notas" className="btn-secondary">
+            <Student size={18} weight="duotone" aria-hidden="true" /> {t.grades.title}
+          </Link>
+        }
+      />
 
       <SearchBox />
 

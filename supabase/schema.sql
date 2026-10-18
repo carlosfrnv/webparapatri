@@ -48,6 +48,9 @@ create index if not exists documents_user_idx on documents (user_id, created_at 
 alter table documents add column if not exists source_type text not null default 'apuntes'
   check (source_type in ('apuntes','referencia'));
 alter table documents add column if not exists reference_org text check (reference_org in ('IAEA','EFRS'));
+-- Créditos ECTS y nota final (0-20) de cada asignatura, para calcular la media.
+alter table subjects add column if not exists ects numeric(4,1);
+alter table subjects add column if not exists grade numeric(4,2) check (grade between 0 and 20);
 -- Orden que ella elige para sus archivos dentro de cada asignatura (nulo = sin ordenar).
 alter table documents add column if not exists position int;
 

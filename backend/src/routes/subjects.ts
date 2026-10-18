@@ -85,3 +85,57 @@ subjectsRouter.delete(
     res.status(204).end();
   }),
 );
+
+// ---------- Notas y créditos ----------
+// Van aparte de GET / para que la Biblioteca siga funcionando aunque aún no se hayan creado las columnas.
+
+subjectsRouter.get(
+  "/grades/all",
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("id, name, translations, year, area, ects, grade")
+      .eq("user_id", userId)
+      .order("year", { ascending: true, nullsFirst: false })
+      .order("name");
+    if (error?.code === "42703") throw new HttpError(409, "needsUpdate");
+    if (error) throw error;
+    res.json(
+      (data ?? []).map(({ translations, ...s }) => ({
+        ...s,
+        name: localName({ name: s.name, translations }, langOf(req)),
+        ects: s.ects === null ? null : Number(s.ects),
+        grade: s.grade === null ? null : Number(s.grade),
+      })),
+    );
+  }),
+);
+
+const gradeSchema = z.object({
+  ects: z.number().min(0).max(60).nullable().optional(),
+  // Escala portuguesa de 0 a 20; vacío = todavía sin nota.
+  grade: z.number().min(0).max(20).nullable().optional(),
+});
+
+subjectsRouter.patch(
+  "/:id/grade",
+  asyncHandler(async (req, res) => {
+    const body = gradeSchema.parse(req.body);
+    const { data, error } = await supabase
+      .from("subjects")
+      .update(body)
+      .eq("id", String(req.params.id))
+      .eq("user_id", userIdOf(req))
+      .select("id, ects, grade")
+      .maybeSingle();
+    if (error?.code === "42703") throw new HttpError(409, "needsUpdate");
+    if (error) throw error;
+    if (!data) throw new HttpError(404, "subjectNotFound");
+    res.json({
+      ...data,
+      ects: data.ects === null ? null : Number(data.ects),
+      grade: data.grade === null ? null : Number(data.grade),
+    });
+  }),
+);
