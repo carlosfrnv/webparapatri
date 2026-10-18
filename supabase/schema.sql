@@ -162,6 +162,16 @@ create table if not exists push_subscriptions (
   created_at timestamptz default now()
 );
 
+-- Extras de cada archivo: figuras guardadas como imagen, test con imágenes y esquema del tema.
+create table if not exists document_extras (
+  document_id uuid primary key references documents(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  figures jsonb,
+  figure_quiz jsonb,
+  mindmap jsonb,
+  updated_at timestamptz default now()
+);
+
 -- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
@@ -290,11 +300,12 @@ alter table study_sessions enable row level security;
 alter table love_notes enable row level security;
 alter table couple_settings enable row level security;
 alter table push_subscriptions enable row level security;
+alter table document_extras enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

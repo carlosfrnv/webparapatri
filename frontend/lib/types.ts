@@ -56,6 +56,10 @@ export interface QuizItem extends QuizQuestion {
   document_title?: string;
   subject_id?: string | null;
   wrong_count?: number;
+  /** Pregunta sobre una figura de sus apuntes. */
+  image_url?: string;
+  figure_label?: string;
+  figure_page?: number | null;
 }
 
 export interface StudyMaterials {

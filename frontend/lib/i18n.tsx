@@ -312,6 +312,16 @@ const es = {
     next: "Siguiente pregunta →",
     seeResult: "Ver resultado",
     finish: "Terminar",
+    normal: "Test",
+    withImages: "🖼️ Con imágenes",
+    zoom: "Toca la imagen para verla en grande",
+    figureFrom: (label: string, page: number | null) => (page ? `${label} · pág. ${page}` : label),
+    imagesLoading: "Preparando preguntas sobre las imágenes de tus apuntes… (solo la primera vez)",
+    imagesIntro:
+      "Para hacer preguntas con imágenes, la IA tiene que mirar primero las figuras de este archivo (esquemas, radiografías…).",
+    imagesRead: "🖼️ Leer las imágenes",
+    imagesReading: "Leyendo las imágenes… Puede tardar un par de minutos.",
+    imagesNone: "Este archivo no tiene figuras útiles para hacer preguntas (solo texto o adornos).",
   },
   mock: {
     title: "Simulacro de examen",
@@ -369,7 +379,8 @@ const es = {
     save: "Terminar y guardar",
     discard: "Descartar la grabación",
     confirmDiscard: "¿Descartar la grabación? Se perderá.",
-    keepOpen: "Deja esta página abierta y la pantalla encendida mientras grabas: si se bloquea, el iPad corta la grabación.",
+    keepOpen:
+      "Deja esta página abierta y la pantalla encendida mientras grabas: si se bloquea, el iPad corta la grabación.",
     uploading: "Subiendo la grabación…",
     noMic: "No se ha podido usar el micrófono. Dale permiso en los ajustes del navegador.",
     fileName: "Clase",
@@ -950,6 +961,16 @@ const pt: Dictionary = {
     next: "Próxima pergunta →",
     seeResult: "Ver resultado",
     finish: "Terminar",
+    normal: "Teste",
+    withImages: "🖼️ Com imagens",
+    zoom: "Toca na imagem para a ver em grande",
+    figureFrom: (label: string, page: number | null) => (page ? `${label} · pág. ${page}` : label),
+    imagesLoading: "A preparar perguntas sobre as imagens dos teus apontamentos… (só da primeira vez)",
+    imagesIntro:
+      "Para fazer perguntas com imagens, a IA tem de ver primeiro as figuras deste ficheiro (esquemas, radiografias…).",
+    imagesRead: "🖼️ Ler as imagens",
+    imagesReading: "A ler as imagens… Pode demorar um par de minutos.",
+    imagesNone: "Este ficheiro não tem figuras úteis para fazer perguntas (só texto ou decorações).",
   },
   mock: {
     title: "Simulação de exame",

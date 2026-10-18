@@ -7,6 +7,7 @@ import { classifyPrompt } from "./prompts";
 import { supabase } from "./supabase";
 import { describeFigures, figureChunk, transcribePdf } from "./vision";
 import { transcribeAudio } from "./audio";
+import { saveFigures } from "./figures";
 
 /**
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
@@ -57,6 +58,11 @@ export async function processDocument(params: {
         return [];
       });
       for (const f of figures) chunks.push({ position: chunks.length, page: f.page, content: figureChunk(f) });
+      // Las imágenes se guardan para las preguntas con imágenes.
+      if (figures.length > 0)
+        await saveFigures(documentId, userId, figures).catch((err) =>
+          console.error(`Error al guardar las figuras de ${documentId}:`, err),
+        );
     }
 
     for (let i = 0; i < chunks.length; i += 200) {

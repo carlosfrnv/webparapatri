@@ -28,6 +28,8 @@ export interface Figure {
   page: number | null;
   label: string;
   description: string;
+  /** Imagen (JPEG en base64) que vio la IA: se guarda para las preguntas con imágenes. */
+  image?: string;
 }
 
 export interface Candidate {
@@ -191,7 +193,8 @@ async function askInBatches(candidates: Candidate[], prompt: (labels: string) =>
     });
     for (const f of result.figures) {
       const c = batch.find((x) => x.ref === f.ref);
-      if (c && f.description.trim()) figures.push({ page: c.page, label: c.label, description: f.description.trim() });
+      if (c && f.description.trim())
+        figures.push({ page: c.page, label: c.label, description: f.description.trim(), image: c.image.data });
     }
   }
   return figures;

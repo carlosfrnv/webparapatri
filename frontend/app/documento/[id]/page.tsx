@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useDocError } from "@/components/DocumentList";
+import { FigureQuiz } from "@/components/FigureQuiz";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { Quiz } from "@/components/Quiz";
 import { ReadAloud } from "@/components/ReadAloud";
@@ -115,6 +116,36 @@ function FlashcardsTab({ doc, materials }: { doc: DocumentItem; materials: Study
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Test normal o con imágenes de sus apuntes. */
+function TestTab({ doc, materials }: { doc: DocumentItem; materials: StudyMaterials }) {
+  const t = useT();
+  const [mode, setMode] = useState<"normal" | "images">("normal");
+  return (
+    <>
+      <div className="bg-surface-2 mx-auto mb-4 flex w-fit gap-1 rounded-xl p-1" role="group">
+        {(["normal", "images"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            aria-pressed={mode === m}
+            className={`min-h-10 rounded-lg px-4 text-sm font-semibold ${mode === m ? "bg-surface text-accent shadow-sm" : "text-muted"}`}
+          >
+            {m === "normal" ? t.quiz.normal : t.quiz.withImages}
+          </button>
+        ))}
+      </div>
+      {mode === "normal" ? (
+        <Quiz
+          documentId={doc.id}
+          questions={materials.quiz.map((q, i) => ({ ...q, document_id: doc.id, question_index: i }))}
+        />
+      ) : (
+        <FigureQuiz documentId={doc.id} />
+      )}
+    </>
   );
 }
 
@@ -358,13 +389,7 @@ export default function DocumentPage() {
 
           {tab === "flashcards" && <FlashcardsTab key={materials.generated_at} doc={doc} materials={materials} />}
 
-          {tab === "test" && (
-            <Quiz
-              key={materials.generated_at}
-              documentId={doc.id}
-              questions={materials.quiz.map((q, i) => ({ ...q, document_id: doc.id, question_index: i }))}
-            />
-          )}
+          {tab === "test" && <TestTab key={materials.generated_at} doc={doc} materials={materials} />}
 
           <div className="border-border text-muted mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
             <span>{t.document.disclaimer}</span>

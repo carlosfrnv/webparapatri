@@ -16,15 +16,19 @@ export function saveAnswers(answers: { document_id: string; question_index: numb
 /**
  * Test de opción múltiple con corrección inmediata y explicación.
  * Con `documentId` es el test de un archivo (se guarda la nota); sin él, un repaso de preguntas sueltas.
+ * Con `images` son preguntas sobre las figuras de sus apuntes: no van al repaso de fallos ni a la nota
+ * (no son las preguntas guardadas del test).
  */
 export function Quiz({
   documentId,
   questions,
   onDone,
+  images = false,
 }: {
   documentId?: string;
   questions: QuizItem[];
   onDone?: () => void;
+  images?: boolean;
 }) {
   const t = useT();
   const [index, setIndex] = useState(0);
@@ -40,6 +44,7 @@ export function Quiz({
   function choose(option: number) {
     if (chosen !== null) return;
     setAnswers((a) => a.map((v, i) => (i === index ? option : v)));
+    if (images) return;
     saveAnswers([
       { document_id: q.document_id, question_index: q.question_index, correct: option === q.correct_index },
     ]);
@@ -50,7 +55,7 @@ export function Quiz({
       setIndex(index + 1);
     } else {
       setFinished(true);
-      if (documentId)
+      if (documentId && !images)
         api.post("/quiz/attempts", { document_id: documentId, score, total: questions.length }).catch(() => undefined);
     }
   }
@@ -113,6 +118,22 @@ export function Quiz({
         {!documentId && q.document_title && (
           <p className="text-accent mb-2 text-xs font-semibold">{q.document_title}</p>
         )}
+        {q.image_url && (
+          <figure className="mb-4">
+            <a href={q.image_url} target="_blank" rel="noreferrer" aria-label={t.quiz.zoom}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- figura privada con enlace temporal */}
+              <img
+                src={q.image_url}
+                alt={q.figure_label ?? ""}
+                className="border-border mx-auto max-h-[22rem] w-auto rounded-xl border bg-white object-contain"
+              />
+            </a>
+            <figcaption className="text-muted mt-1 text-center text-xs">
+              {q.figure_label ? `${t.quiz.figureFrom(q.figure_label, q.figure_page ?? null)} · ` : ""}
+              {t.quiz.zoom}
+            </figcaption>
+          </figure>
+        )}
         <p className="text-lg font-medium">{q.question}</p>
         <ul className="mt-4 space-y-2">
           {q.options.map((opt, i) => {
@@ -144,7 +165,7 @@ export function Quiz({
               {chosen === q.correct_index ? t.quiz.right : t.quiz.wrong(LETTERS[q.correct_index])}
             </p>
             <p className="mt-2">{q.explanation}</p>
-            {extra[index] ? (
+            {images ? null : extra[index] ? (
               <div className="border-border mt-3 border-t pt-3">
                 <Markdown>{extra[index]}</Markdown>
               </div>

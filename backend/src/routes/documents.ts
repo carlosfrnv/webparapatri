@@ -11,6 +11,7 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { detectKind } from "../extract";
+import { generateFigureQuiz, getExtras, removeFigureFiles, saveExtras, saveFigures } from "../figures";
 import { getOrGenerateStudy } from "../study";
 import { describeFigures, figureChunk, FIGURE_PREFIX } from "../vision";
 import { supabase } from "../supabase";
@@ -216,6 +217,7 @@ documentsRouter.delete(
     const userId = userIdOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
     await supabase.storage.from(STORAGE_BUCKET).remove([doc.storage_path]);
+    await removeFigureFiles(doc.id, userId).catch(() => undefined);
     // Los fragmentos, materiales y repasos se borran en cascada.
     const { error } = await supabase.from("documents").delete().eq("id", doc.id).eq("user_id", userId);
     if (error) throw error;
@@ -310,6 +312,9 @@ async function analyseFigures(doc: { id: string; storage_path: string; mime_type
     );
     if (insertError) throw insertError;
   }
+  await saveFigures(doc.id, userId, figures).catch((err) =>
+    console.error(`Error al guardar las figuras de ${doc.id}:`, err),
+  );
 }
 
 documentsRouter.get(
@@ -340,5 +345,60 @@ documentsRouter.post(
         });
     }
     res.status(202).json({ running: true });
+  }),
+);
+
+// ---------- Test con imágenes (figuras de sus apuntes) ----------
+
+const figureQuizJobs = new Map<string, Promise<unknown>>();
+
+documentsRouter.get(
+  "/:id/figure-quiz",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const lang = langOf(req);
+    const doc = await ownedDocument(String(req.params.id), userId);
+    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
+    const extras = await getExtras(doc.id, userId);
+    if (extras.missing) throw new HttpError(409, "needsUpdate");
+    if (extras.figures.length === 0) {
+      res.json({ needsFigures: true, questions: [] });
+      return;
+    }
+    let questions = extras.figure_quiz[lang];
+    if (!questions?.length) {
+      // Si pulsa dos veces, se espera a la misma generación en vez de hacer otra.
+      const key = `${doc.id}:${lang}`;
+      let job = figureQuizJobs.get(key);
+      if (!job) {
+        job = generateFigureQuiz(doc.id, userId, lang, extras.figures)
+          .then(async (qs) => {
+            await saveExtras(doc.id, userId, { figure_quiz: { ...extras.figure_quiz, [lang]: qs } });
+            return qs;
+          })
+          .finally(() => figureQuizJobs.delete(key));
+        figureQuizJobs.set(key, job);
+      }
+      questions = (await job) as typeof questions;
+    }
+    const byN = new Map(extras.figures.map((f) => [f.n, f]));
+    const paths = [...new Set((questions ?? []).map((q) => byN.get(q.figure)?.path).filter(Boolean))] as string[];
+    const urls = new Map<string, string>();
+    if (paths.length) {
+      const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 3600);
+      for (const s of signed ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+    }
+    res.json({
+      needsFigures: false,
+      questions: (questions ?? [])
+        .map((q) => {
+          const f = byN.get(q.figure);
+          const image_url = f ? urls.get(f.path) : undefined;
+          return image_url ? { ...q, image_url, figure_page: f!.page, figure_label: f!.label } : null;
+        })
+        .filter(Boolean),
+    });
   }),
 );
