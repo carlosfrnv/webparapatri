@@ -68,11 +68,31 @@ interface StudyRow {
 }
 
 /** El material en el idioma pedido: el original o su traducción guardada. Null si aún no está traducido. */
+// Etiquetas de origen entre corchetes ("[Tus apuntes]", "[Biblioteca de referencia – IAEA]"…). En el resumen
+// la web las convierte en sellos, pero en conceptos, glosario, flashcards y tests saldrían como texto: se quitan.
+const ORIGIN_LABEL =
+  /\[(?:Os teus apontamentos|Tus apuntes|Biblioteca de refer[eê]ncia[^\]]*|Radiopaedia|IAEA|EFRS)\]\s*/g;
+const clean = (v: unknown): unknown =>
+  typeof v === "string"
+    ? v.replace(ORIGIN_LABEL, "").trim()
+    : Array.isArray(v)
+      ? v.map(clean)
+      : v && typeof v === "object"
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)]))
+        : v;
+const PLAIN_FIELDS = ["key_concepts", "glossary", "flashcards", "quiz"] as const;
+
+function withoutLabels<T extends Record<string, unknown>>(m: T): T {
+  const out: Record<string, unknown> = { ...m };
+  for (const f of PLAIN_FIELDS) if (f in out) out[f] = clean(out[f]);
+  return out as T;
+}
+
 export function materialInLang<T extends StudyRow>(row: T, lang: Lang): Omit<T, "translations"> | null {
   const { translations, ...rest } = row;
-  if ((row.lang ?? "es") === lang) return rest;
+  if ((row.lang ?? "es") === lang) return withoutLabels(rest);
   const tr = translations?.[lang];
-  return tr ? { ...rest, ...tr, lang } : null;
+  return tr ? withoutLabels({ ...rest, ...tr, lang }) : null;
 }
 
 /**

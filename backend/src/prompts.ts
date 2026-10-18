@@ -62,6 +62,7 @@ ${texto}`
 - "O que não podes esquecer para o exame" (5-8 pontos)
 Mantém a terminologia técnica e explica-a quando aparece pela primeira vez.
 IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
+SEM ETIQUETAS: neste JSON não ponhas etiquetas de origem entre parêntesis retos ([Os teus apontamentos], [Biblioteca de referência – IAEA]…). Só o texto.
 TEXTO:
 ${texto}`;
 
@@ -113,6 +114,7 @@ export const studyPackPrompt = (lang: Lang, texto: string) =>
   distractores plausibles. La explicación indica por qué la correcta es correcta y las otras no.
 IDIOMA: escribe TODO en español de España, aunque el texto esté en portugués. Traduce también los términos técnicos (si ayuda, pon el término portugués entre paréntesis la primera vez).
 Cada campo de texto (conceptos, definiciones, flashcards, preguntas, opciones y explicaciones) va en español.
+SIN ETIQUETAS: en este JSON no pongas etiquetas de origen entre corchetes ([Tus apuntes], [Biblioteca de referencia – IAEA]…). Solo el texto.
 TEXTO:
 ${texto}`
     : `Devolve APENAS JSON válido, sem texto adicional, com esta forma:
@@ -127,6 +129,7 @@ ${texto}`
 - quiz: 10 perguntas de escolha múltipla, dificuldade de exame, uma só resposta certa (correct_index de 0 a 3),
   distratores plausíveis. A explicação indica porque a certa é certa e as outras não.
 IDIOMA: escreve TUDO em português de Portugal, mesmo que o texto esteja noutra língua.
+SEM ETIQUETAS: neste JSON não ponhas etiquetas de origem entre parêntesis retos ([Os teus apontamentos], [Biblioteca de referência – IAEA]…). Só o texto.
 TEXTO:
 ${texto}`;
 
