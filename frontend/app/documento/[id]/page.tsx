@@ -111,6 +111,83 @@ function FlashcardsTab({ doc, materials }: { doc: DocumentItem; materials: Study
   );
 }
 
+/** Leer las figuras de un archivo subido antes de que la IA mirase las imágenes. */
+function FiguresPanel({ doc, onRegenerate, busy }: { doc: DocumentItem; onRegenerate: () => void; busy: boolean }) {
+  const t = useT();
+  const tf = t.document.figures;
+  const [state, setState] = useState<{ count: number; running: boolean; failed: boolean } | null>(null);
+  // Veces que ha pulsado "leer" en esta visita (para volver a consultar el estado y mostrar el aviso).
+  const [runs, setRuns] = useState(0);
+  const justRead = runs > 0;
+
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const s = await api.get<{ count: number; running: boolean; failed: boolean }>(`/documents/${doc.id}/figures`);
+        if (!alive) return;
+        setState(s);
+        if (s.running) timer = setTimeout(poll, 5000);
+      } catch {
+        /* si falla, simplemente no se muestra */
+      }
+    };
+    poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [doc.id, runs]);
+
+  if (!state) return null;
+
+  async function start() {
+    setState((s) => (s ? { ...s, running: true, failed: false } : s));
+    try {
+      await api.post(`/documents/${doc.id}/figures`);
+      setRuns((n) => n + 1);
+    } catch {
+      setState((s) => (s ? { ...s, running: false, failed: true } : s));
+    }
+  }
+
+  return (
+    <div className="card mt-6 p-4 text-sm sm:p-5">
+      <p className="font-semibold">{tf.title}</p>
+      {state.running ? (
+        <p className="text-muted mt-2 flex items-center gap-2" role="status">
+          <span
+            className="border-border border-t-accent h-4 w-4 animate-spin rounded-full border-2"
+            aria-hidden="true"
+          />
+          {tf.reading}
+        </p>
+      ) : (
+        <>
+          <p className="text-muted mt-1">
+            {state.failed ? tf.failed : state.count > 0 ? tf.done(state.count) : justRead ? tf.none : tf.intro}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {justRead && state.count > 0 && !state.failed ? (
+              <>
+                <p className="bg-accent-soft w-full rounded-xl p-3">{tf.redoHint}</p>
+                <button className="btn-primary" disabled={busy} onClick={onRegenerate}>
+                  {busy ? t.document.regenerating : t.document.regenerate}
+                </button>
+              </>
+            ) : (
+              <button className="btn-secondary" onClick={start}>
+                {state.count > 0 ? tf.reread : tf.read}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function DocumentPage() {
   const t = useT();
   const lang = useLang();
@@ -281,6 +358,13 @@ export default function DocumentPage() {
             </button>
           </div>
           {studyError && <p className="text-danger mt-2 text-sm">{studyError}</p>}
+          <FiguresPanel
+            doc={doc}
+            busy={generating}
+            onRegenerate={() => {
+              if (confirm(t.document.confirmRegenerate)) loadStudy(true);
+            }}
+          />
         </div>
       ) : null}
     </>

@@ -20,6 +20,7 @@ REGLAS:
 - Lo que sale de sus apuntes no lleva etiqueta. Pon la etiqueta de origen solo al principio de las partes (párrafo, punto o fila) que vengan de otra fuente.
 - Si dos fuentes se contradicen, prevalecen sus apuntes y lo señalas: "En tus apuntes dice X; según la IAEA, Y. Confírmalo con tu profesor."
 - Explica con tus propias palabras. Nunca copies párrafos enteros de ninguna fuente; como mucho, una frase corta entre comillas.
+- Los fragmentos que empiezan por "[Figura – …]" describen imágenes de sus apuntes (esquemas, figuras, radiografías). Son parte de sus apuntes: úsalos donde encajen (también en flashcards y preguntas) y menciona la figura si ayuda ("en el esquema de la página 5…").
 - Nunca inventes valores de dosis, parámetros técnicos, protocolos ni datos clínicos. Si un valor no aparece
   en ninguna fuente, no lo des. Si no lo sabes, di que no lo sabes.`,
   pt: `És um tutor especializado na Licenciatura em Imagem Médica e Radioterapia
@@ -36,6 +37,7 @@ REGRAS:
 - O que vem dos apontamentos não leva etiqueta. Põe a etiqueta de origem só no início das partes (parágrafo, ponto ou linha de tabela) que venham de outra fonte.
 - Se duas fontes se contradisserem, prevalecem os apontamentos dela e assinalas: "Nos teus apontamentos diz X; segundo a IAEA, Y. Confirma com o teu professor."
 - Explica com as tuas próprias palavras. Nunca copies parágrafos inteiros de nenhuma fonte; no máximo, uma frase curta entre aspas.
+- Os excertos que começam por "[Figura – …]" descrevem imagens dos apontamentos (esquemas, figuras, radiografias). Fazem parte dos apontamentos: usa-os onde encaixarem (também nas flashcards e perguntas) e menciona a figura se ajudar ("no esquema da página 5…").
 - Nunca inventes valores de dose, parâmetros técnicos, protocolos ou dados clínicos. Se um valor não aparecer
   em nenhuma fonte, não o dês. Se não souberes, diz que não sabes.`,
 };
@@ -279,3 +281,30 @@ Explica de forma curta e didática porque a resposta certa é a certa${correcta 
 Usa os apontamentos se ajudarem.
 APONTAMENTOS:
 ${contexto || "(sem fragmentos)"}`;
+
+// ---------- Figuras de los apuntes (visión) ----------
+// Se guardan en portugués, como los apuntes; el resumen y el chat ya las traducen si hace falta.
+
+export const figuresPrompt = (labels: string) =>
+  `As imagens anexas são páginas, diapositivos ou figuras dos apontamentos de uma estudante de Imagem Médica e Radioterapia.
+O texto já foi extraído à parte: aqui interessa só o que se vê nas imagens.
+Ordem das imagens:
+${labels}
+
+Para cada imagem com conteúdo visual útil para estudar (esquemas anatómicos, figuras legendadas, imagens radiológicas,
+gráficos, tabelas em imagem, fluxogramas…), descreve em português europeu o que mostra e o que pretende ensinar:
+estruturas, legendas e setas, posições e relações entre elas. Inclui todos os rótulos que se consigam ler.
+Ignora logótipos, fotografias decorativas, fundos e páginas que só têm texto.
+Não inventes: se algo não se lê ou não se percebe, não o descrevas. Máximo de 150 palavras por imagem.
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"..."}]}
+Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
+
+export const transcribePrompt = (labels: string) =>
+  `As imagens anexas são páginas digitalizadas dos apontamentos de uma estudante de Imagem Médica e Radioterapia.
+Ordem das imagens:
+${labels}
+
+Para cada página, transcreve todo o texto tal como está (mantém a língua original) e, no fim, descreve em português
+europeu as figuras que tiver (estruturas, legendas, setas). Não inventes nada que não se leia.
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"<texto transcrito e figuras>"}]}
+Omite as páginas em branco.`;

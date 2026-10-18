@@ -5,6 +5,7 @@ import { ExtractionError, extractText } from "./extract";
 import { PROCESSING_ERRORS } from "./i18n";
 import { classifyPrompt } from "./prompts";
 import { supabase } from "./supabase";
+import { describeFigures, figureChunk, transcribePdf } from "./vision";
 
 /**
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
@@ -21,8 +22,33 @@ export async function processDocument(params: {
 }) {
   const { documentId, userId } = params;
   try {
-    const pages = await extractText(params.buffer, params.kind);
+    const isNotes = params.sourceType === "apuntes";
+    let pages;
+    let scanned = false;
+    try {
+      pages = await extractText(params.buffer, params.kind);
+    } catch (err) {
+      // PDF escaneado (solo imágenes): en sus apuntes, la IA lee las páginas.
+      if (!(isNotes && params.kind === "pdf" && err instanceof ExtractionError && err.message === PROCESSING_ERRORS.scanned))
+        throw err;
+      pages = await transcribePdf(params.buffer).catch((e) => {
+        console.error("Error al leer el PDF escaneado:", e);
+        return [];
+      });
+      if (pages.length === 0) throw err;
+      scanned = true;
+    }
     const chunks = chunkPages(pages);
+
+    // Figuras (esquemas, radiografías…): la IA las describe y se guardan como fragmentos más.
+    // Si falla, el documento se queda solo con el texto.
+    if (isNotes && !scanned) {
+      const figures = await describeFigures(params.buffer, params.kind).catch((err) => {
+        console.error(`Error al leer las figuras de ${documentId}:`, err);
+        return [];
+      });
+      for (const f of figures) chunks.push({ position: chunks.length, page: f.page, content: figureChunk(f) });
+    }
 
     for (let i = 0; i < chunks.length; i += 200) {
       const batch = chunks.slice(i, i + 200).map((c) => ({

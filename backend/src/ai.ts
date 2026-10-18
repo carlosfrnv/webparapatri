@@ -163,7 +163,7 @@ function stripCodeFences(text: string): string {
 export async function completeJson<T extends z.ZodType>(
   prompt: string,
   schema: T,
-  opts: AiOptions,
+  opts: AiOptions & { images?: LlmImage[] },
 ): Promise<z.infer<T>> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {

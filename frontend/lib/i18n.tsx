@@ -248,6 +248,17 @@ const es = {
       "La IA está leyendo los apuntes y creando el resumen, los conceptos, las flashcards y el test. La primera vez puede tardar uno o dos minutos. Después queda guardado.",
     whyItMatters: "Por qué importa:",
     disclaimer: "Generado por la IA a partir de tus apuntes. Confirma siempre valores y protocolos con el profesorado.",
+    figures: {
+      title: "Imágenes del archivo",
+      intro: "La IA puede mirar los esquemas, figuras y radiografías de este archivo y añadirlos al resumen, las flashcards y el test.",
+      read: "🖼️ Leer las imágenes",
+      reread: "Volver a leer",
+      reading: "Leyendo las imágenes… Puede tardar un par de minutos.",
+      done: (n: number) => `He leído ${n} ${n === 1 ? "figura" : "figuras"} de este archivo ✓`,
+      redoHint: "Genera de nuevo el material para que las incluya.",
+      none: "No he encontrado figuras útiles en este archivo (solo texto o adornos).",
+      failed: "No he podido leer las imágenes. Inténtalo otra vez en un rato.",
+    },
     regenerate: "🔄 Generar de nuevo",
     regenerating: "Generando…",
     confirmRegenerate:
@@ -664,6 +675,17 @@ const pt: Dictionary = {
     whyItMatters: "Porque importa:",
     disclaimer:
       "Gerado pela IA a partir dos teus apontamentos. Confirma sempre valores e protocolos com os professores.",
+    figures: {
+      title: "Imagens do ficheiro",
+      intro: "A IA pode ver os esquemas, figuras e radiografias deste ficheiro e acrescentá-los ao resumo, às flashcards e ao teste.",
+      read: "🖼️ Ler as imagens",
+      reread: "Ler de novo",
+      reading: "A ler as imagens… Pode demorar um par de minutos.",
+      done: (n: number) => `Li ${n} ${n === 1 ? "figura" : "figuras"} deste ficheiro ✓`,
+      redoHint: "Gera de novo o material para as incluir.",
+      none: "Não encontrei figuras úteis neste ficheiro (só texto ou decorações).",
+      failed: "Não consegui ler as imagens. Tenta outra vez daqui a pouco.",
+    },
     regenerate: "🔄 Gerar de novo",
     regenerating: "A gerar…",
     confirmRegenerate:

@@ -7,7 +7,9 @@ import { DOC_FIELDS, ingestDocument } from "../ingest";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
+import { detectKind } from "../extract";
 import { getOrGenerateStudy } from "../study";
+import { describeFigures, figureChunk, FIGURE_PREFIX } from "../vision";
 import { supabase } from "../supabase";
 
 export const documentsRouter = Router();
@@ -199,5 +201,89 @@ documentsRouter.post(
   aiLimiter,
   asyncHandler(async (req, res) => {
     res.json(await studyHandler(req, true));
+  }),
+);
+
+// ---------- Figuras de los archivos ya subidos ----------
+// Los archivos subidos antes de que la IA leyera imágenes se pueden analizar a mano.
+// El estado se guarda en memoria: si el servidor se reinicia, basta con volver a pulsar.
+
+const figureJobs = new Map<string, { running: boolean; error?: boolean }>();
+
+async function figureCount(documentId: string, userId: string) {
+  const { count } = await supabase
+    .from("chunks")
+    .select("id", { count: "exact", head: true })
+    .eq("document_id", documentId)
+    .eq("user_id", userId)
+    .like("content", `${FIGURE_PREFIX}%`);
+  return count ?? 0;
+}
+
+async function analyseFigures(doc: { id: string; storage_path: string; mime_type: string | null }, userId: string) {
+  const { data: file, error } = await supabase.storage.from(STORAGE_BUCKET).download(doc.storage_path);
+  if (error || !file) throw error ?? new Error("Archivo no encontrado");
+  const kind = detectKind(doc.mime_type ?? "", doc.storage_path);
+  const figures = kind ? await describeFigures(Buffer.from(await file.arrayBuffer()), kind) : [];
+
+  // Se sustituyen las figuras anteriores (si se analiza dos veces) y las nuevas van al final.
+  await supabase
+    .from("chunks")
+    .delete()
+    .eq("document_id", doc.id)
+    .eq("user_id", userId)
+    .like("content", `${FIGURE_PREFIX}%`);
+  const { data: last } = await supabase
+    .from("chunks")
+    .select("position")
+    .eq("document_id", doc.id)
+    .eq("user_id", userId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const start = (last?.position ?? -1) + 1;
+  if (figures.length > 0) {
+    const { error: insertError } = await supabase.from("chunks").insert(
+      figures.map((f, i) => ({
+        document_id: doc.id,
+        user_id: userId,
+        position: start + i,
+        page: f.page,
+        content: figureChunk(f),
+        source_type: "apuntes",
+      })),
+    );
+    if (insertError) throw insertError;
+  }
+}
+
+documentsRouter.get(
+  "/:id/figures",
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const doc = await ownedDocument(String(req.params.id), userId);
+    const job = figureJobs.get(doc.id);
+    res.json({ count: await figureCount(doc.id, userId), running: !!job?.running, failed: !!job?.error });
+  }),
+);
+
+documentsRouter.post(
+  "/:id/figures",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const doc = await ownedDocument(String(req.params.id), userId);
+    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
+    if (!figureJobs.get(doc.id)?.running) {
+      figureJobs.set(doc.id, { running: true });
+      analyseFigures(doc, userId)
+        .then(() => figureJobs.set(doc.id, { running: false }))
+        .catch((err) => {
+          console.error(`Error al leer las figuras de ${doc.id}:`, err);
+          figureJobs.set(doc.id, { running: false, error: true });
+        });
+    }
+    res.status(202).json({ running: true });
   }),
 );
