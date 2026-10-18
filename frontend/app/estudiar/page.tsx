@@ -179,7 +179,7 @@ function StudyPageContent() {
           </button>
         </section>
       )}
-      {error && (
+      {error && !offline?.length && (
         <ErrorBox
           message={error}
           onRetry={() => {
