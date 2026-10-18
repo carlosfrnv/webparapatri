@@ -154,7 +154,10 @@ export default function Atlas3D() {
             while (node && !node.userData.n) node = node.parent;
             const id = (node?.userData.n as string) ?? mesh.name;
             mesh.geometry.computeVertexNormals();
-            mesh.material = s.materials[layer];
+            // Cada músculo con su propio tono (los vecinos se distinguen); los huesos, todos color hueso.
+            const base = layer === "muscles" ? muscleMaterial(parsePart(id, layer).en) : s.materials.bones;
+            mesh.material = base;
+            mesh.userData.base = base;
             mesh.userData.layer = layer;
             mesh.userData.id = id;
             s.meshes.set(id, [...(s.meshes.get(id) ?? []), mesh]);
@@ -198,14 +201,15 @@ export default function Atlas3D() {
     const s = three.current;
     if (!s) return;
     for (const layer of ["bones", "muscles"] as Layer[]) if (s.groups[layer]) s.groups[layer]!.visible = visible[layer];
-    s.materials.muscles.opacity = seeThrough ? 0.3 : 1;
-    s.materials.muscles.depthWrite = !seeThrough;
+    for (const m of muscleMaterials.values()) {
+      m.opacity = seeThrough ? 0.3 : 1;
+      m.depthWrite = !seeThrough;
+    }
     for (const [id, meshes] of s.meshes)
       for (const mesh of meshes) {
         mesh.visible = !hidden.has(id);
-        const layer = mesh.userData.layer as Layer;
-        mesh.material =
-          s.flash.get(id) ?? (id === selected ? selectedMaterial(s.materials[layer]) : s.materials[layer]);
+        const base = mesh.userData.base as THREE.MeshStandardMaterial;
+        mesh.material = s.flash.get(id) ?? (id === selected ? selectedMaterial(base) : base);
       }
     s.render();
   }, [visible, seeThrough, hidden, selected, loaded, quiz]);
@@ -580,6 +584,42 @@ export default function Atlas3D() {
       <p className="text-muted text-xs">{ta.credits}</p>
     </div>
   );
+}
+
+// Gama de rojos de los músculos (de más claro a más oscuro y algún tono más anaranjado o granate).
+const MUSCLE_TONES = [
+  "#d9534f",
+  "#b83b3b",
+  "#e06c5a",
+  "#9e2f35",
+  "#c9473f",
+  "#e5826e",
+  "#a8323a",
+  "#cf5a4a",
+  "#8f2a30",
+  "#d4664f",
+  "#bb4a44",
+  "#e07a64",
+];
+// Tendones, ligamentos y similares: color blanco nacarado, como en los atlas.
+const CONNECTIVE = /tendon|ligament|tract|linea alba|arch|ring|tarsus|trochlea/i;
+const CONNECTIVE_COLOR = "#ece4d4";
+
+const muscleMaterials = new Map<string, THREE.MeshStandardMaterial>();
+function muscleMaterial(en: string) {
+  let color = CONNECTIVE_COLOR;
+  if (!CONNECTIVE.test(en)) {
+    // El mismo músculo siempre con el mismo tono (también el izquierdo y el derecho).
+    let h = 0;
+    for (const ch of en) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    color = MUSCLE_TONES[h % MUSCLE_TONES.length];
+  }
+  let m = muscleMaterials.get(color);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ color, roughness: 0.55, transparent: true });
+    muscleMaterials.set(color, m);
+  }
+  return m;
 }
 
 const highlightCache = new WeakMap<THREE.Material, THREE.MeshStandardMaterial>();
