@@ -20,6 +20,7 @@ import { subjectLook } from "@/components/subjectLook";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
+import { offlineCards, saveOfflineCards, syncReviews } from "@/lib/offline";
 import type { DocumentItem, DueCard, Subject } from "@/lib/types";
 
 interface DueResponse {
@@ -42,6 +43,9 @@ function StudyPageContent() {
   const [session, setSession] = useState(false);
   const [mistakes, setMistakes] = useState(0);
   const [error, setError] = useState("");
+  const [offline, setOffline] = useState<DueCard[] | null>(null);
+  const [offlineSession, setOfflineSession] = useState(false);
+  const [synced, setSynced] = useState(0);
 
   // Al cambiar de idioma se vuelven a pedir los datos (tarjetas y nombres de asignaturas en ese idioma).
   const lang = useLang();
@@ -52,6 +56,9 @@ function StudyPageContent() {
         : subjectId
           ? `&subject_id=${encodeURIComponent(subjectId)}`
           : "";
+      // Primero se envían los repasos hechos sin conexión (así las tarjetas pendientes ya los tienen en cuenta).
+      const sent = await syncReviews();
+      if (sent) setSynced(sent);
       const [d, list, subs, m] = await Promise.all([
         api.get<DueResponse>(`/flashcards/due?limit=40${filter}`),
         api.get<DocumentItem[]>("/documents"),
@@ -60,18 +67,40 @@ function StudyPageContent() {
       ]);
       setMistakes(m.items.filter((q) => !subjectId || q.subject_id === subjectId).length);
       setDue(d);
+      setOffline(null);
+      // Copia en el dispositivo para poder repasar sin internet (solo el repaso de todo).
+      if (!subjectId && !documentId) saveOfflineCards(d.cards, lang);
       setDocs(list.filter((x) => x.status === "ready"));
       setSubjects(subs);
     } catch (err) {
+      if ((err as { status?: number }).status === 0) setOffline(offlineCards()?.cards ?? null);
       setError(errorMessage(err));
     }
-  }, [subjectId, documentId]);
+  }, [subjectId, documentId, lang]);
 
   useEffect(() => {
     // El estado solo cambia después de la petición (tras el await), no de forma síncrona.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load, lang]);
+
+  if (offlineSession && offline) {
+    return (
+      <>
+        <button className="btn-ghost mb-4 px-0" onClick={() => setOfflineSession(false)}>
+          {t.studyPage.exit}
+        </button>
+        <FlashcardSession
+          cards={offline}
+          onFinish={() => {
+            setOfflineSession(false);
+            setOffline(offlineCards()?.cards ?? null);
+            load();
+          }}
+        />
+      </>
+    );
+  }
 
   if (session && due) {
     return (
@@ -137,6 +166,19 @@ function StudyPageContent() {
         </p>
       )}
 
+      {synced > 0 && <p className="bg-success-soft mb-4 rounded-xl p-3 text-sm">{t.studyPage.synced(synced)}</p>}
+      {error && offline && offline.length > 0 && (
+        <section className="card border-accent mb-4 flex flex-col items-start gap-4 border-2 p-5 sm:flex-row sm:items-center">
+          <GradientIcon icon={Cards} tone="violet" size={52} />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold">📴 {t.studyPage.offlineTitle}</h2>
+            <p className="text-muted mt-0.5 text-sm">{t.studyPage.offlineText(offline.length)}</p>
+          </div>
+          <button className="btn-primary" onClick={() => setOfflineSession(true)}>
+            {t.studyPage.offlineStart}
+          </button>
+        </section>
+      )}
       {error && (
         <ErrorBox
           message={error}

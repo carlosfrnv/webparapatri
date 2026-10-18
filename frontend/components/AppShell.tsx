@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { onServerWaking } from "@/lib/api";
+import { syncReviews } from "@/lib/offline";
 import { type Dictionary, useT } from "@/lib/i18n";
 import { formatClock, PomodoroProvider, usePomodoro } from "@/lib/pomodoro";
 import { supabase } from "@/lib/supabase";
@@ -109,6 +110,14 @@ function Shell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const dedicatoria = useDedicatoria();
   useEffect(() => onServerWaking(setWaking), []);
+  // El service worker guarda la web para abrirla sin internet; al volver la conexión se envían los repasos pendientes.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator)
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+    const online = () => syncReviews().catch(() => undefined);
+    window.addEventListener("online", online);
+    return () => window.removeEventListener("online", online);
+  }, []);
 
   return (
     <div className="min-h-dvh md:flex">

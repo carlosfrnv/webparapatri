@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { queueReview } from "@/lib/offline";
 import { useT } from "@/lib/i18n";
 import type { DueCard } from "@/lib/types";
 
@@ -38,7 +39,14 @@ export function FlashcardSession({
     setSaving(true);
     setError("");
     try {
-      await api.post("/flashcards/review", { document_id: card.document_id, card_index: card.card_index, quality });
+      const review = { document_id: card.document_id, card_index: card.card_index, quality };
+      try {
+        await api.post("/flashcards/review", review);
+      } catch (err) {
+        // Sin conexión: el repaso se guarda y se envía cuando vuelva internet.
+        if ((err as { status?: number }).status !== 0) throw err;
+        queueReview(review);
+      }
       setFlipped(false);
       // "No lo sabía": vuelve al final de la cola de esta sesión.
       setQueue((q) => (quality < 3 ? [...q.slice(1), q[0]] : q.slice(1)));

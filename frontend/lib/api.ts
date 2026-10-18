@@ -38,6 +38,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** fetch con sesión y reintentos automáticos mientras el servidor se despierta. */
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  // Sin conexión no tiene sentido esperar a que "despierte" el servidor.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) throw new ApiError(0, dict().common.networkError);
   const maxAttempts = 8;
   let waking = false;
   try {

@@ -573,6 +573,12 @@ const es = {
     title: "Estudiar",
     subtitle: "Flashcards con repaso espaciado y tests de autoevaluación.",
     exit: "← Salir del repaso",
+    offlineTitle: "Sin conexión",
+    offlineText: (n: number) =>
+      `Tienes ${n} ${n === 1 ? "tarjeta guardada" : "tarjetas guardadas"} en este dispositivo. Repásalas y, cuando vuelva internet, se guardará tu progreso.`,
+    offlineStart: "Repasar sin conexión",
+    synced: (n: number) =>
+      `✓ Se ${n === 1 ? "ha guardado 1 repaso hecho" : `han guardado ${n} repasos hechos`} sin conexión.`,
     reviewTitle: "Repaso de flashcards",
     generalTitle: "Repaso de todo",
     generalText: (n: number) =>
@@ -1278,6 +1284,12 @@ const pt: Dictionary = {
     title: "Estudar",
     subtitle: "Flashcards com repetição espaçada e testes de autoavaliação.",
     exit: "← Sair da revisão",
+    offlineTitle: "Sem ligação",
+    offlineText: (n: number) =>
+      `Tens ${n} ${n === 1 ? "cartão guardado" : "cartões guardados"} neste dispositivo. Revê-os e, quando voltar a internet, o teu progresso fica guardado.`,
+    offlineStart: "Rever sem ligação",
+    synced: (n: number) =>
+      `✓ ${n === 1 ? "Foi guardada 1 revisão feita" : `Foram guardadas ${n} revisões feitas`} sem ligação.`,
     reviewTitle: "Revisão de flashcards",
     generalTitle: "Revisão de tudo",
     generalText: (n: number) => `${n} ${n === 1 ? "cartão" : "cartões"} por rever, misturando todas as disciplinas.`,
