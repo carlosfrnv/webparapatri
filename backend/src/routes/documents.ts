@@ -487,6 +487,8 @@ documentsRouter.get(
           label: f.label,
           // Las descripciones se escriben en portugués (como sus apuntes); con la web en español, su versión corta.
           description: lang === "es" ? (f.description_es ?? "") : f.description,
+          // Para colocar cada figura en su apartado del resumen: todo lo que se sabe de ella, en los dos idiomas.
+          match: [f.label, f.description, f.description_es].filter(Boolean).join(" "),
           url: urls.get(f.path),
         })),
     });

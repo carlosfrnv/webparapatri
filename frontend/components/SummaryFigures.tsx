@@ -16,6 +16,8 @@ export interface FigureImage {
   page: number | null;
   label: string;
   description: string;
+  /** Texto para colocarla en su apartado (descripción completa, en los dos idiomas). */
+  match?: string;
   url: string;
 }
 
@@ -25,7 +27,7 @@ const STOP = new Set(
   ),
 );
 
-/** Palabras con significado (sin tildes, sin plural sencillo y sin palabras vacías). */
+/** Palabras con significado (sin tildes ni palabras vacías), reducidas a su raíz. */
 function words(text: string) {
   return new Set(
     text
@@ -34,7 +36,8 @@ function words(text: string) {
       .replace(/[̀-ͯ]/g, "")
       .split(/[^a-z0-9]+/)
       .filter((w) => w.length >= 4 && !STOP.has(w))
-      .map((w) => (w.length > 5 && w.endsWith("s") ? w.slice(0, -1) : w)),
+      // Raíz de 4 letras: así coinciden el portugués y el español (costelas/costillas, coluna/columna, esterno/esternón).
+      .map((w) => (w.length >= 5 ? w.slice(0, 4) : w)),
   );
 }
 
@@ -60,7 +63,7 @@ export function placeFigures(markdown: string, figures: FigureImage[]) {
   const rest: FigureImage[] = [];
   for (const f of figures) {
     const label = words(f.label);
-    const desc = words(`${f.label} ${f.description}`);
+    const desc = words(f.match ?? `${f.label} ${f.description}`);
     let best = -1;
     let bestScore = 0;
     info.forEach((sec, i) => {
