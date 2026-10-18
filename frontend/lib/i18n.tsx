@@ -354,6 +354,16 @@ const es = {
     notHeard: "No te he entendido bien. Toca el micrófono y vuelve a intentarlo.",
     failed: "No he podido responder. Toca el micrófono para intentarlo otra vez.",
   },
+  print: {
+    button: "📄 PDF / Imprimir",
+    choose: "¿Qué quieres incluir?",
+    parts: { summary: "Resumen", concepts: "Conceptos clave", glossary: "Glosario", flashcards: "Flashcards (pregunta y respuesta)" },
+    print: "Guardar PDF / Imprimir",
+    howTo:
+      "En el iPad o el móvil se abre el menú de imprimir: puedes imprimirlo o, con el botón de compartir, guardarlo como PDF en Archivos. En el ordenador elige «Guardar como PDF».",
+    preview: "Así quedará:",
+    footer: (date: string) => `Estudio IMR · Generado por IA a partir de tus apuntes · ${date}`,
+  },
   readAloud: {
     listen: "Escuchar",
     pause: "Pausa",
@@ -957,6 +967,16 @@ const pt: Dictionary = {
       "Não tenho permissão para usar o microfone. Ativa-a nas definições do navegador (no iPad: Definições → Safari → Microfone).",
     notHeard: "Não percebi bem. Toca no microfone e tenta outra vez.",
     failed: "Não consegui responder. Toca no microfone para tentar outra vez.",
+  },
+  print: {
+    button: "📄 PDF / Imprimir",
+    choose: "O que queres incluir?",
+    parts: { summary: "Resumo", concepts: "Conceitos-chave", glossary: "Glossário", flashcards: "Flashcards (pergunta e resposta)" },
+    print: "Guardar PDF / Imprimir",
+    howTo:
+      "No iPad ou no telemóvel abre-se o menu de imprimir: podes imprimir ou, com o botão de partilhar, guardar como PDF em Ficheiros. No computador escolhe «Guardar como PDF».",
+    preview: "Vai ficar assim:",
+    footer: (date: string) => `Estudo IMR · Gerado pela IA a partir dos teus apontamentos · ${date}`,
   },
   readAloud: {
     listen: "Ouvir",

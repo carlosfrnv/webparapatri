@@ -48,7 +48,7 @@ function PomodoroPill() {
   return (
     <Link
       href="/pomodoro"
-      className={`fixed right-4 bottom-20 z-30 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white shadow-lg md:bottom-6 ${
+      className={`no-print fixed right-4 bottom-20 z-30 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white shadow-lg md:bottom-6 ${
         state.phase === "break" ? "bg-[#14b8a6]" : "bg-[var(--accent)]"
       }`}
       aria-label={t.pomodoro.pill}
@@ -113,7 +113,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh md:flex">
       {/* Barra lateral (ordenador) */}
-      <aside className="sidebar sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-r-[color:var(--sidebar-border)] p-4 md:flex">
+      <aside className="no-print sidebar sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-r-[color:var(--sidebar-border)] p-4 md:flex">
         <Link href="/" className="mb-8 flex items-center gap-3 px-2 pt-1">
           <Logo size={40} />
           <div className="leading-tight">
@@ -170,7 +170,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Cabecera (móvil) */}
-        <header className="sidebar sticky top-0 z-20 flex items-center justify-between border-b border-[color:var(--sidebar-border)] px-4 py-2 md:hidden">
+        <header className="no-print sidebar sticky top-0 z-20 flex items-center justify-between border-b border-[color:var(--sidebar-border)] px-4 py-2 md:hidden">
           <Link href="/" className="flex items-center gap-2">
             <Logo size={32} />
             <span className="font-display font-extrabold">{t.appName}</span>
@@ -186,7 +186,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
         {waking && (
           <div
-            className="bg-warning-soft sticky top-0 z-30 flex items-center justify-center gap-2 px-4 py-2 text-sm"
+            className="no-print bg-warning-soft sticky top-0 z-30 flex items-center justify-center gap-2 px-4 py-2 text-sm"
             role="status"
           >
             <span
@@ -197,14 +197,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="fade-up mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 sm:px-8 md:pt-10 md:pb-12">
+        <main className="fade-up mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 sm:px-8 md:pt-10 md:pb-12 print:max-w-none print:p-0">
           {children}
         </main>
       </div>
 
       {/* Barra inferior (móvil) */}
       <nav
-        className="border-border bg-surface/95 fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="no-print border-border bg-surface/95 fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
         aria-label={t.nav.mainNav}
       >
         {NAV.map((item) => {

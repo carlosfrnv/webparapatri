@@ -305,3 +305,37 @@ h3 {
 .side-muted {
   color: var(--sidebar-muted);
 }
+
+/* ---------- Impresión / PDF ---------- */
+/* Siempre en claro, sin menús ni fondos (también si se imprime con el modo oscuro puesto). */
+@media print {
+  :root,
+  .dark {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f6f1f4;
+    --border: #e4d6de;
+    --text: #1c1219;
+    --muted: #5d4a56;
+    --accent: #9b2562;
+    --accent-soft: #fbe7f1;
+    --success: #12805c;
+    --success-soft: #d9f6e9;
+    --danger: #c2410c;
+    --danger-soft: #ffedd5;
+    --warning-soft: #fef3c7;
+  }
+  @page {
+    margin: 16mm 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+}

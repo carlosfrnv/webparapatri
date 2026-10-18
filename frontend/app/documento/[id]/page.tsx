@@ -254,9 +254,16 @@ export default function DocumentPage() {
           </div>
         </div>
         {!isRef && (
-          <Link href={`/chat#doc=${doc.id}`} className="btn-secondary">
-            {t.document.ask}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {materials && (
+              <Link href={`/documento/${doc.id}/imprimir`} className="btn-secondary">
+                {t.print.button}
+              </Link>
+            )}
+            <Link href={`/chat#doc=${doc.id}`} className="btn-secondary">
+              {t.document.ask}
+            </Link>
+          </div>
         )}
       </div>
 
