@@ -6,8 +6,8 @@ import { pushToStudent } from "../push";
 import { supabase } from "../supabase";
 
 /**
- * Lo que comparten las dos cuentas: el buzón (Carlos le escribe notas que ella ve al entrar)
- * y la cuenta atrás para la próxima vez que se ven. No van por usuario: son de los dos.
+ * Lo que comparten las dos cuentas: el buzón (Carlos le escribe notas que ella ve al entrar).
+ * No va por usuario: es de los dos.
  */
 export const coupleRouter = Router();
 
@@ -90,40 +90,5 @@ coupleRouter.delete(
     const { error } = await supabase.from("love_notes").delete().eq("id", Number(req.params.id));
     check(error);
     res.status(204).end();
-  }),
-);
-
-// ---------- Cuenta atrás ----------
-
-const VISIT_KEY = "next_visit";
-
-coupleRouter.get(
-  "/visit",
-  asyncHandler(async (_req, res) => {
-    const { data, error } = await supabase.from("couple_settings").select("value").eq("key", VISIT_KEY).maybeSingle();
-    if (missingTable(error?.code)) {
-      res.json(null);
-      return;
-    }
-    check(error);
-    res.json(data?.value ?? null);
-  }),
-);
-
-coupleRouter.put(
-  "/visit",
-  asyncHandler(async (req, res) => {
-    const value = z
-      .object({
-        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        label: z.string().trim().max(80).nullable().optional(),
-      })
-      .nullable()
-      .parse(req.body?.date ? req.body : null);
-    const { error } = await supabase
-      .from("couple_settings")
-      .upsert({ key: VISIT_KEY, value, updated_at: new Date().toISOString() });
-    check(error);
-    res.json(value);
   }),
 );

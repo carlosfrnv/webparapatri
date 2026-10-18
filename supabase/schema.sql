@@ -145,7 +145,7 @@ create table if not exists love_notes (
   read_at timestamptz
 );
 
--- Ajustes compartidos de la pareja (p. ej., la fecha de la próxima vez que se ven).
+-- Ajustes compartidos del servidor (p. ej., las claves de los avisos y el día del último recordatorio).
 create table if not exists couple_settings (
   key text primary key,
   value jsonb,

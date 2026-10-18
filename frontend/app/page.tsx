@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
-import { NewNotes, useRole, VisitCountdown } from "@/components/Couple";
+import { NewNotes, useRole } from "@/components/Couple";
 import { PushCard } from "@/components/PushCard";
 import { SpecialDay } from "@/components/SpecialDay";
 import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Timetable";
@@ -225,9 +225,8 @@ export default function HomePage() {
       {/* El 21 de cada mes, el aniversario y el 8 de octubre (después de la bienvenida, si coincide). */}
       <SpecialDay suppressModal={showWelcome} />
 
-      {/* Notas nuevas de Carlos (solo las ve ella) y la cuenta atrás para verse */}
+      {/* Notas nuevas de Carlos (solo las ve ella) */}
       {role === "student" && <NewNotes />}
-      {role && <VisitCountdown role={role} />}
       {!pushHidden && (
         <PushCard
           compact

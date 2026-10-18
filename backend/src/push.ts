@@ -141,8 +141,6 @@ const TEXT = {
     dueToday: (s: string) => `Hoy se entrega: ${s}.`,
     dueTomorrow: (s: string) => `Mañana se entrega: ${s}.`,
     cards: (n: number) => `Tienes ${n} flashcards por repasar.`,
-    visitToday: (who: string) => `¡Hoy ves a ${who}! 🖤`,
-    visitTomorrow: (who: string) => `¡Mañana ves a ${who}! 🖤`,
   },
   pt: {
     title: "O teu dia de estudo 🖤",
@@ -152,16 +150,13 @@ const TEXT = {
     dueToday: (s: string) => `Hoje entrega-se: ${s}.`,
     dueTomorrow: (s: string) => `Amanhã entrega-se: ${s}.`,
     cards: (n: number) => `Tens ${n} flashcards para rever.`,
-    visitToday: (who: string) => `Hoje vês o ${who}! 🖤`,
-    visitTomorrow: (who: string) => `Amanhã vês o ${who}! 🖤`,
   },
 };
 
-const PARTNER_NAME = "Carlos";
 const MIN_CARDS = 10;
 
 /** Las líneas del aviso de hoy para un usuario (vacío si no hay nada que recordar). */
-async function remindersFor(userId: string, today: string, lang: Lang, isStudent: boolean): Promise<string[]> {
+async function remindersFor(userId: string, today: string, lang: Lang): Promise<string[]> {
   const tx = TEXT[lang];
   const lines: string[] = [];
 
@@ -197,13 +192,6 @@ async function remindersFor(userId: string, today: string, lang: Lang, isStudent
   const due = total - (notDue ?? 0);
   if (due >= MIN_CARDS) lines.push(tx.cards(due));
 
-  // Solo para ella: si mañana u hoy se ven.
-  if (!isStudent) return lines;
-  const { data: visit } = await supabase.from("couple_settings").select("value").eq("key", "next_visit").maybeSingle();
-  const date = (visit?.value as { date?: string } | null)?.date;
-  if (date === today) lines.push(tx.visitToday(PARTNER_NAME));
-  else if (date === addDays(today, 1)) lines.push(tx.visitTomorrow(PARTNER_NAME));
-
   return lines;
 }
 
@@ -235,8 +223,7 @@ export async function maybeSendDailyReminders() {
     for (const userId of new Set(subs.map((s) => s.user_id))) {
       const mine = subs.filter((s) => s.user_id === userId);
       const lang = mine[0].lang ?? "es";
-      const isStudent = !config.ALLOWED_EMAIL || mine[0].email === config.ALLOWED_EMAIL;
-      const lines = await remindersFor(userId, today, lang, isStudent);
+      const lines = await remindersFor(userId, today, lang);
       if (lines.length > 0) await sendTo(mine, (l) => ({ title: TEXT[l].title, body: lines.join("\n"), url: "/" }));
     }
   } catch (err) {
