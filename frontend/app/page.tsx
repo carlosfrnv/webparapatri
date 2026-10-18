@@ -43,33 +43,6 @@ function greeting(t: Dictionary) {
   return t.home.greetingNight;
 }
 
-function WelcomeModal({ onClose }: { onClose: () => void }) {
-  const t = useT();
-  const dedicatoria = useDedicatoria();
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="welcome-title"
-    >
-      <div className="card max-w-lg p-8 text-center shadow-xl">
-        <div className="text-5xl" aria-hidden="true">
-          🎁
-        </div>
-        <h2 id="welcome-title" className="mt-3 text-2xl font-bold">
-          {dedicatoria.titulo}
-        </h2>
-        <p className="text-muted mt-4 whitespace-pre-line">{dedicatoria.mensaje}</p>
-        <p className="mt-4 font-medium">{dedicatoria.firma}</p>
-        <button className="btn-primary mt-6 w-full" onClick={onClose} autoFocus>
-          {t.home.start}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function HomePage() {
   const t = useT();
   const lang = useLang();
@@ -90,14 +63,6 @@ export default function HomePage() {
   const [schedule, setSchedule] = useState<ScheduleBlock[] | null>(null);
   const [studyToday, setStudyToday] = useState(0);
   const [error, setError] = useState("");
-  // Esta página solo se pinta en el navegador (después del login), así que podemos leer el localStorage.
-  const [showWelcome, setShowWelcome] = useState(() => {
-    try {
-      return typeof window !== "undefined" && !localStorage.getItem("welcome-seen");
-    } catch {
-      return false;
-    }
-  });
 
   const load = useCallback(async () => {
     try {
@@ -135,15 +100,6 @@ export default function HomePage() {
 
   // El examen más cercano de los que tienen plan (próximas semanas).
   const nextExam = exams?.exams.find((e) => exams.plan.some((p) => p.exam_id === e.id));
-
-  function closeWelcome() {
-    setShowWelcome(false);
-    try {
-      localStorage.setItem("welcome-seen", "1");
-    } catch {
-      /* se ignora */
-    }
-  }
 
   const week = stats?.week ?? [];
   const todayBlocks = (schedule ?? []).filter((b) => blockOnDate(b, localToday()));
@@ -192,8 +148,6 @@ export default function HomePage() {
 
   return (
     <>
-      {showWelcome && <WelcomeModal onClose={closeWelcome} />}
-
       {/* Cabecera con degradado */}
       <section className="hero hero-glow mb-6 px-6 py-7 sm:px-10 sm:py-9">
         <div className="relative z-10 grid items-center gap-6 lg:grid-cols-[1fr_auto]">
@@ -222,8 +176,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* El 21 de cada mes, el aniversario y el 8 de octubre (después de la bienvenida, si coincide). */}
-      <SpecialDay suppressModal={showWelcome} />
+      {/* El 21 de cada mes, el aniversario y el 8 de octubre. */}
+      <SpecialDay />
 
       {/* Notas nuevas de Carlos (solo las ve ella) */}
       {role === "student" && <NewNotes />}
