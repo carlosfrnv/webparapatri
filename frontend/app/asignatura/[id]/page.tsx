@@ -1,6 +1,6 @@
 "use client";
 
-import { Microphone, PencilSimple, Trash } from "@phosphor-icons/react";
+import { Calculator, Microphone, PencilSimple, Trash } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -115,6 +115,11 @@ export default function SubjectPage() {
               {/anatom/i.test(subject.name) && (
                 <Link href={`/asignatura/${subject.id}/atlas`} className="btn-primary">
                   {t.atlas.button}
+                </Link>
+              )}
+              {/matem|estat[ií]st|c[aá]lculo|[aá]lgebra/i.test(subject.name) && (
+                <Link href={`/asignatura/${subject.id}/ejercicios`} className="btn-primary">
+                  <Calculator size={18} weight="duotone" aria-hidden="true" /> {t.exercises.button}
                 </Link>
               )}
               <Link href={`/oral?asignatura=${subject.id}`} className="btn-secondary">

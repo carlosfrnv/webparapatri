@@ -32,6 +32,10 @@ const messages = {
   },
   invalidSubject: { es: "Asignatura no válida.", pt: "Disciplina inválida." },
   subjectNotFound: { es: "Asignatura no encontrada.", pt: "Disciplina não encontrada." },
+  noMaterial: {
+    es: "Esta asignatura aún no tiene temas con resumen. Abre algún archivo para que se prepare y vuelve aquí.",
+    pt: "Esta disciplina ainda não tem temas com resumo. Abre algum ficheiro para se preparar e volta aqui.",
+  },
   needsUpdate: {
     es: "Falta actualizar la base de datos: ejecuta el último SQL en Supabase.",
     pt: "Falta atualizar a base de dados: executa o último SQL no Supabase.",
