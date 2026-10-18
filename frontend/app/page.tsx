@@ -24,6 +24,7 @@ import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
 import { NewNotes, useRole, VisitCountdown } from "@/components/Couple";
+import { PushCard } from "@/components/PushCard";
 import { SpecialDay } from "@/components/SpecialDay";
 import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Timetable";
 import { WeekChart } from "@/components/WeekChart";
@@ -75,6 +76,14 @@ export default function HomePage() {
   const dedicatoria = useDedicatoria();
   const frase = useFraseDelDia();
   const role = useRole();
+  // Se puede ocultar la tarjeta de los avisos (sigue en el Calendario).
+  const [pushHidden, setPushHidden] = useState(() => {
+    try {
+      return typeof window === "undefined" || localStorage.getItem("push-hidden") === "1";
+    } catch {
+      return true;
+    }
+  });
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [exams, setExams] = useState<ExamsResponse | null>(null);
@@ -219,6 +228,19 @@ export default function HomePage() {
       {/* Notas nuevas de Carlos (solo las ve ella) y la cuenta atrás para verse */}
       {role === "student" && <NewNotes />}
       {role && <VisitCountdown role={role} />}
+      {!pushHidden && (
+        <PushCard
+          compact
+          onHide={() => {
+            setPushHidden(true);
+            try {
+              localStorage.setItem("push-hidden", "1");
+            } catch {
+              /* se ignora */
+            }
+          }}
+        />
+      )}
 
       {error && (
         <ErrorBox

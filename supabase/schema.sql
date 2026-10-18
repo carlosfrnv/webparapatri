@@ -152,6 +152,16 @@ create table if not exists couple_settings (
   updated_at timestamptz default now()
 );
 
+-- Navegadores con los recordatorios activados (Web Push).
+create table if not exists push_subscriptions (
+  endpoint text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text,
+  lang text,
+  subscription jsonb not null,
+  created_at timestamptz default now()
+);
+
 -- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
@@ -279,6 +289,7 @@ alter table study_sessions enable row level security;
 -- Sin políticas: solo el servidor (service_role) puede leerlas y escribirlas.
 alter table love_notes enable row level security;
 alter table couple_settings enable row level security;
+alter table push_subscriptions enable row level security;
 
 do $$
 declare t text;

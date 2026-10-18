@@ -23,6 +23,12 @@ const envSchema = z.object({
     ),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
   PORT: z.coerce.number().default(10000),
+  // Claves de los recordatorios en el móvil (Web Push). Opcionales: si faltan, se generan solas
+  // y se guardan en Supabase (ver push.ts).
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  // Hora (en Portugal) a la que se mandan los recordatorios del día.
+  REMINDER_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   // Búsquedas web como máximo por pregunta (Radiopaedia, IAEA, EFRS). 0 = sin consulta online.
   WEB_MAX_SEARCHES: z.coerce.number().int().min(0).max(5).default(3),
 });

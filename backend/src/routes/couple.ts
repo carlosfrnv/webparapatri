@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { roleOf, userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
+import { pushToStudent } from "../push";
 import { supabase } from "../supabase";
 
 /**
@@ -54,6 +55,12 @@ coupleRouter.post(
       .select("id, body, created_at, read_at")
       .single();
     check(error);
+    // Aviso en su móvil o iPad (si tiene los recordatorios activados).
+    pushToStudent((lang) => ({
+      title: lang === "pt" ? "💌 O Carlos deixou-te uma nota" : "💌 Carlos te ha dejado una nota",
+      body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
+      url: "/",
+    })).catch((err) => console.error("Error al avisar de la nota:", err));
     res.status(201).json(data);
   }),
 );

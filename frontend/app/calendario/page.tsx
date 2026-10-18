@@ -3,6 +3,7 @@
 import { CalendarBlank, ClipboardText, Clock, Exam as ExamIcon, PencilSimple, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CountdownBadge, examLabels, ExamPlanCard, formatExamDate, localToday, toIsoDate } from "@/components/ExamPlan";
+import { PushCard } from "@/components/PushCard";
 import { Timetable } from "@/components/Timetable";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -395,6 +396,10 @@ export default function CalendarPage() {
         ))}
       </div>
       {tab === "schedule" && <Timetable subjects={subjects} />}
+
+      <div className="mt-8">
+        <PushCard />
+      </div>
       {error && (
         <ErrorBox
           message={error}

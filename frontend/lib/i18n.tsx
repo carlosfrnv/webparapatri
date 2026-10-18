@@ -337,6 +337,19 @@ const es = {
     again: "Otro simulacro",
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
+  push: {
+    title: "Recordatorios",
+    intro: "Te aviso en este dispositivo de los exámenes y entregas, de las flashcards pendientes y de las notas de Carlos.",
+    on: "Activados en este dispositivo ✓ Cada mañana te llega un resumen si hay algo que recordar.",
+    needsInstall:
+      "En el iPad y el iPhone, los avisos solo funcionan con la web en la pantalla de inicio:\n1. Pulsa el botón Compartir (el cuadrado con la flecha).\n2. «Añadir a pantalla de inicio».\n3. Abre Estudio IMR desde ese icono y vuelve aquí.",
+    denied: "Los avisos están bloqueados. Actívalos en los ajustes del navegador para esta web.",
+    serverOff: "Los avisos aún no están configurados en el servidor.",
+    enable: "🔔 Activar avisos",
+    disable: "Desactivar",
+    later: "Ahora no",
+    testSent: "¡Listo! Te acabo de mandar un aviso de prueba.",
+  },
   couple: {
     mailbox: "Buzón",
     mailboxTitle: "Buzón 💌",
@@ -885,6 +898,19 @@ const pt: Dictionary = {
     studyTopic: "Rever o tema →",
     again: "Outra simulação",
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
+  },
+  push: {
+    title: "Lembretes",
+    intro: "Aviso-te neste dispositivo dos exames e entregas, das flashcards pendentes e das notas do Carlos.",
+    on: "Ativados neste dispositivo ✓ Todas as manhãs recebes um resumo se houver algo para lembrar.",
+    needsInstall:
+      "No iPad e no iPhone, os avisos só funcionam com a web no ecrã principal:\n1. Carrega no botão Partilhar (o quadrado com a seta).\n2. «Adicionar ao ecrã principal».\n3. Abre o Estudo IMR a partir desse ícone e volta aqui.",
+    denied: "Os avisos estão bloqueados. Ativa-os nas definições do navegador para esta web.",
+    serverOff: "Os avisos ainda não estão configurados no servidor.",
+    enable: "🔔 Ativar avisos",
+    disable: "Desativar",
+    later: "Agora não",
+    testSent: "Pronto! Acabei de te mandar um aviso de teste.",
   },
   couple: {
     mailbox: "Caixa",
