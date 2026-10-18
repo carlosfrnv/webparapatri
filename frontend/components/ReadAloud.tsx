@@ -9,7 +9,10 @@ import { useLang, useT } from "@/lib/i18n";
  * Se lee frase a frase: el iPad corta los textos largos si se le pasan de una vez.
  */
 
-const RATES = [0.85, 1, 1.2];
+// Por defecto, algo más despacio que la voz normal (para estudiar). Se recuerda la última elegida.
+const RATES = [0.7, 0.85, 1, 1.2];
+const DEFAULT_RATE = 0.85;
+const RATE_KEY = "voz-velocidad";
 
 /** Markdown → frases para leer (sin símbolos, etiquetas de origen ni citas [1]). */
 export function speechChunks(markdown: string): string[] {
@@ -66,7 +69,14 @@ export function ReadAloud({ text }: { text: string }) {
   const lang = useLang();
   const [state, setState] = useState<"idle" | "playing" | "paused">("idle");
   const [index, setIndex] = useState(0);
-  const [rate, setRate] = useState(1);
+  const [rate, setRate] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(RATE_KEY));
+      return RATES.includes(saved) ? saved : DEFAULT_RATE;
+    } catch {
+      return DEFAULT_RATE;
+    }
+  });
   const chunks = useMemo(() => speechChunks(text), [text]);
   const run = useRef(0);
   const supported = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -133,6 +143,11 @@ export function ReadAloud({ text }: { text: string }) {
 
   function changeRate(r: number) {
     setRate(r);
+    try {
+      localStorage.setItem(RATE_KEY, String(r));
+    } catch {
+      /* se ignora */
+    }
     // Se aplica desde la frase en curso.
     if (state === "playing") speakFrom(index, r);
   }
