@@ -116,15 +116,31 @@ export async function uploadFile<T>(
   /** "/documents/audio" para las clases grabadas. */
   path = "/documents",
 ): Promise<T> {
-  // Primero despierta el servidor, para que la subida no falle a medias.
-  await apiFetch("/health").catch(() => undefined);
-  const headers = await authHeader();
   const form = new FormData();
   form.append("file", file);
   if (fields.subjectId) form.append("subject_id", fields.subjectId);
   if (fields.sourceType) form.append("source_type", fields.sourceType);
   if (fields.referenceOrg) form.append("reference_org", fields.referenceOrg);
+  return sendForm<T>(form, onProgress, path);
+}
 
+/** Varias fotos de apuntes a la vez: el servidor las junta en un PDF y la IA las pasa a texto. */
+export async function uploadPhotos<T>(
+  photos: Blob[],
+  fields: { subjectId: string | null; title: string },
+  onProgress: (fraction: number) => void,
+): Promise<T> {
+  const form = new FormData();
+  photos.forEach((p, i) => form.append("files", p, `foto-${i + 1}.jpg`));
+  if (fields.subjectId) form.append("subject_id", fields.subjectId);
+  form.append("title", fields.title);
+  return sendForm<T>(form, onProgress, "/documents/photos");
+}
+
+async function sendForm<T>(form: FormData, onProgress: (fraction: number) => void, path: string): Promise<T> {
+  // Primero despierta el servidor, para que la subida no falle a medias.
+  await apiFetch("/health").catch(() => undefined);
+  const headers = await authHeader();
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}${path}`);

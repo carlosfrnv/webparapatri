@@ -412,11 +412,14 @@ Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","
 Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
 
 export const transcribePrompt = (labels: string) =>
-  `As imagens anexas são páginas digitalizadas dos apontamentos de uma estudante de Imagem Médica e Radioterapia.
+  `As imagens anexas são páginas digitalizadas ou fotografias dos apontamentos de uma estudante de Imagem Médica e Radioterapia
+(podem ser apontamentos escritos à mão ou fotografias do quadro da aula).
 Ordem das imagens:
 ${labels}
 
-Para cada página, transcreve todo o texto tal como está (mantém a língua original) e, no fim, descreve em português
-europeu as figuras que tiver (estruturas, legendas, setas). Não inventes nada que não se leia.
+Para cada página, transcreve todo o texto tal como está (mantém a língua original), também a letra manuscrita, pela ordem
+em que se lê (setas, caixas e esquemas incluídos, indicando o que liga a quê). As fórmulas, em LaTeX entre $...$.
+No fim, descreve em português europeu as figuras que tiver (estruturas, legendas, setas).
+Se uma palavra manuscrita não se perceber bem, escreve a tua melhor leitura seguida de [?]. Não inventes nada que não se leia.
 Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"<texto transcrito e figuras>"}]}
 Omite as páginas em branco.`;

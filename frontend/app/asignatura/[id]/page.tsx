@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ClassRecorder } from "@/components/ClassRecorder";
+import { PhotoNotes } from "@/components/PhotoNotes";
 import { DocumentList } from "@/components/DocumentList";
 import { SubjectForm } from "@/components/SubjectForm";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
@@ -138,6 +139,7 @@ export default function SubjectPage() {
 
       <section className="mb-8">
         <ClassRecorder subjectId={subject.id} onUploaded={(doc) => setDocs((list) => [doc, ...(list ?? [])])} />
+        <PhotoNotes subjectId={subject.id} onUploaded={(doc) => setDocs((list) => [doc, ...(list ?? [])])} />
         <UploadZone subjectId={subject.id} onUploaded={(doc) => setDocs((list) => [doc, ...(list ?? [])])} />
       </section>
 

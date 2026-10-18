@@ -5,6 +5,7 @@ import { userIdOf } from "../auth";
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { compressAudio, isAudio } from "../audio";
+import { MAX_PHOTO_BYTES, MAX_PHOTOS, photosToPdf } from "../photos";
 import { MAX_AUDIO_BYTES, MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
 import { DOC_FIELDS, ingestDocument } from "../ingest";
 import { asyncHandler, HttpError } from "../http";
@@ -22,6 +23,10 @@ export const documentsRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
 // Clases grabadas: pueden pesar mucho, así que van a disco (no a memoria) y se comprimen antes de guardarlas.
 const audioUpload = multer({ dest: tmpdir(), limits: { fileSize: MAX_AUDIO_BYTES } });
+const photoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_PHOTO_BYTES, files: MAX_PHOTOS },
+});
 
 async function ownedDocument(id: string, userId: string) {
   const { data, error } = await supabase
@@ -82,6 +87,45 @@ documentsRouter.post(
 );
 
 /** Subir una clase grabada (o cualquier audio): se comprime, se guarda y se transcribe en segundo plano. */
+// Fotos de apuntes a mano o de la pizarra: se juntan en un PDF y la IA lo pasa a texto al procesarlo.
+documentsRouter.post(
+  "/photos",
+  photoUpload.array("files", MAX_PHOTOS),
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+    if (files.length === 0) throw new HttpError(400, "noFile");
+    const subjectId = z
+      .string()
+      .uuid()
+      .nullable()
+      .catch(null)
+      .parse(req.body?.subject_id || null);
+    if (subjectId) {
+      const { data: subject } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("id", subjectId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!subject) throw new HttpError(400, "invalidSubject");
+    }
+    const title = z.string().trim().min(1).max(120).catch("Apuntes a mano").parse(req.body?.title);
+    const pdf = await photosToPdf(files.map((f) => f.buffer));
+    if (!pdf) throw new HttpError(415, "unsupportedType");
+    const data = await ingestDocument({
+      userId,
+      buffer: pdf,
+      originalName: `${title.replace(/[\\/:*?"<>|]/g, "-")}.pdf`,
+      mimetype: "application/pdf",
+      subjectId,
+      sourceType: "apuntes",
+      referenceOrg: null,
+    });
+    res.status(201).json(data);
+  }),
+);
+
 documentsRouter.post(
   "/audio",
   audioUpload.single("file"),
