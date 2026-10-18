@@ -11,7 +11,7 @@ import { useLang, useT } from "@/lib/i18n";
  * texto del resumen; abajo hay una lista con todo lo subrayado y sus notas.
  */
 
-export type HighlightColor = "yellow" | "green" | "pink" | "blue";
+export type HighlightColor = "yellow" | "orange" | "red" | "pink" | "green" | "blue";
 export interface Highlight {
   id: string;
   document_id: string;
@@ -23,8 +23,10 @@ export interface Highlight {
 
 export const HL_COLORS: Record<HighlightColor, string> = {
   yellow: "#facc15",
-  green: "#4ade80",
+  orange: "#fb923c",
+  red: "#f87171",
   pink: "#f472b6",
+  green: "#4ade80",
   blue: "#60a5fa",
 };
 

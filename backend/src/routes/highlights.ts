@@ -9,7 +9,7 @@ import { supabase } from "../supabase";
 export const highlightsRouter = Router();
 
 const FIELDS = "id, document_id, lang, quote, color, note, created_at";
-const COLORS = ["yellow", "green", "pink", "blue"] as const;
+const COLORS = ["yellow", "orange", "red", "pink", "green", "blue"] as const;
 // Si aún no se ha creado la tabla (falta ejecutar el SQL): se ve el resumen sin subrayados y se avisa al guardar.
 const missingTable = (code?: string) => code === "42P01" || code === "PGRST205";
 

@@ -372,6 +372,8 @@ const es = {
     toolbar: "Subrayar",
     colors: {
       yellow: "Subrayar en amarillo",
+      orange: "Subrayar en naranja",
+      red: "Subrayar en rojo",
       green: "Subrayar en verde",
       pink: "Subrayar en rosa",
       blue: "Subrayar en azul",
@@ -1160,6 +1162,8 @@ const pt: Dictionary = {
     toolbar: "Sublinhar",
     colors: {
       yellow: "Sublinhar a amarelo",
+      orange: "Sublinhar a laranja",
+      red: "Sublinhar a vermelho",
       green: "Sublinhar a verde",
       pink: "Sublinhar a rosa",
       blue: "Sublinhar a azul",
