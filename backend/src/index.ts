@@ -6,6 +6,7 @@ import { config } from "./config";
 import { errorHandler } from "./http";
 import { generalLimiter } from "./limits";
 import { chatRouter } from "./routes/chat";
+import { coupleRouter } from "./routes/couple";
 import { documentsRouter } from "./routes/documents";
 import { examsRouter } from "./routes/exams";
 import { quizRouter } from "./routes/quiz";
@@ -42,6 +43,7 @@ app.use("/exams", examsRouter);
 app.use("/schedule", scheduleRouter);
 app.use("/quiz", quizRouter);
 app.use("/sessions", sessionsRouter);
+app.use("/couple", coupleRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);

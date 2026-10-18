@@ -136,6 +136,22 @@ create table if not exists study_sessions (
 );
 create index if not exists study_sessions_user_idx on study_sessions (user_id, created_at desc);
 
+-- Buzón: notas que Carlos le escribe y ella ve al entrar (compartidas entre las dos cuentas).
+create table if not exists love_notes (
+  id bigserial primary key,
+  author_id uuid references auth.users(id) on delete set null,
+  body text not null check (char_length(body) <= 1000),
+  created_at timestamptz default now(),
+  read_at timestamptz
+);
+
+-- Ajustes compartidos de la pareja (p. ej., la fecha de la próxima vez que se ven).
+create table if not exists couple_settings (
+  key text primary key,
+  value jsonb,
+  updated_at timestamptz default now()
+);
+
 -- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
@@ -260,6 +276,9 @@ alter table exams enable row level security;
 alter table schedule_blocks enable row level security;
 alter table quiz_mistakes enable row level security;
 alter table study_sessions enable row level security;
+-- Sin políticas: solo el servidor (service_role) puede leerlas y escribirlas.
+alter table love_notes enable row level security;
+alter table couple_settings enable row level security;
 
 do $$
 declare t text;

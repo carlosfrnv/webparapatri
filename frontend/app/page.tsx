@@ -9,6 +9,7 @@ import {
   ChatCircleDots,
   CheckCircle,
   Clock,
+  EnvelopeSimpleOpen,
   Exam,
   FileText,
   Fire,
@@ -22,11 +23,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ExamPlanCard, localToday } from "@/components/ExamPlan";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
+import { NewNotes, useRole, VisitCountdown } from "@/components/Couple";
 import { SpecialDay } from "@/components/SpecialDay";
 import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Timetable";
 import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
-import { useDedicatoria, useFraseDelDia } from "@/config/dedicatoria";
+import { nombres, useDedicatoria, useFraseDelDia } from "@/config/dedicatoria";
 import { formatMinutes, sessionSummaryUrl, type SessionSummary } from "@/lib/pomodoro";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT, type Dictionary } from "@/lib/i18n";
@@ -72,6 +74,7 @@ export default function HomePage() {
   const lang = useLang();
   const dedicatoria = useDedicatoria();
   const frase = useFraseDelDia();
+  const role = useRole();
   const [stats, setStats] = useState<Stats | null>(null);
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [exams, setExams] = useState<ExamsResponse | null>(null);
@@ -165,6 +168,17 @@ export default function HomePage() {
       icon: Timer,
       tone: "amber" as const,
     },
+    ...(role === "partner"
+      ? [
+          {
+            label: t.couple.writeAction(nombres.ella),
+            text: t.couple.writeActionText,
+            href: "/buzon",
+            icon: EnvelopeSimpleOpen,
+            tone: "pink" as const,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -201,6 +215,10 @@ export default function HomePage() {
 
       {/* El 21 de cada mes, el aniversario y el 8 de octubre (después de la bienvenida, si coincide). */}
       <SpecialDay suppressModal={showWelcome} />
+
+      {/* Notas nuevas de Carlos (solo las ve ella) y la cuenta atrás para verse */}
+      {role === "student" && <NewNotes />}
+      {role && <VisitCountdown role={role} />}
 
       {error && (
         <ErrorBox
@@ -418,6 +436,9 @@ export default function HomePage() {
                 <p className="text-muted text-xs font-semibold tracking-wider uppercase">{t.home.fromCarlos}</p>
                 <p className="font-display mt-1 text-lg font-bold">{frase}</p>
                 <p className="text-muted mt-1 text-sm">{dedicatoria.firma}</p>
+                <Link href="/buzon" className="text-accent mt-3 inline-block text-sm font-semibold">
+                  {t.couple.mailboxTitle} →
+                </Link>
               </div>
             </div>
           </section>

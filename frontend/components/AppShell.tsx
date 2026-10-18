@@ -5,6 +5,7 @@ import {
   Brain,
   CalendarBlank,
   ChatCircleDots,
+  EnvelopeSimpleOpen,
   House,
   Moon,
   SignOut,
@@ -35,6 +36,7 @@ const NAV: { href: string; key: keyof Dictionary["nav"]; icon: Icon }[] = [
 const NAV_DESKTOP_EXTRA: typeof NAV = [
   { href: "/pomodoro", key: "pomodoro", icon: Timer },
   { href: "/notas", key: "grades", icon: Student },
+  { href: "/buzon", key: "mailbox", icon: EnvelopeSimpleOpen },
 ];
 
 /** Aviso flotante del Pomodoro en marcha (en cualquier página salvo la suya). */

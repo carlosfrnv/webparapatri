@@ -90,6 +90,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then((r) => handle<T>(r)),
+  put: <T>(path: string, data: unknown) =>
+    apiFetch(path, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then((r) => handle<T>(r)),
   del: (path: string) => apiFetch(path, { method: "DELETE" }).then((r) => handle<void>(r)),
 };
 

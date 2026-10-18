@@ -5,6 +5,9 @@
 import { useLang } from "@/lib/i18n";
 
 // Fechas especiales (AAAA-MM-DD). El día de cada mes en que empezasteis a ser novios sale un mensaje al entrar.
+// Nombres para el buzón y la cuenta atrás ("Faltan 5 días para ver a Carlos").
+export const nombres = { ella: "Patri", el: "Carlos" };
+
 export const fechas = {
   novios: "2026-02-21",
   primerBeso: "2025-10-08",

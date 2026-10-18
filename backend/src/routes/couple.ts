@@ -1,0 +1,122 @@
+import { Router } from "express";
+import { z } from "zod";
+import { roleOf, userIdOf } from "../auth";
+import { asyncHandler, HttpError } from "../http";
+import { supabase } from "../supabase";
+
+/**
+ * Lo que comparten las dos cuentas: el buzón (Carlos le escribe notas que ella ve al entrar)
+ * y la cuenta atrás para la próxima vez que se ven. No van por usuario: son de los dos.
+ */
+export const coupleRouter = Router();
+
+// Si aún no se han creado las tablas (falta ejecutar el SQL): al leer, vacío; al escribir, aviso.
+const missingTable = (code?: string) => code === "42P01" || code === "PGRST205";
+const check = (error: { code?: string } | null) => {
+  if (missingTable(error?.code)) throw new HttpError(409, "needsUpdate");
+  if (error) throw error;
+};
+
+coupleRouter.get(
+  "/me",
+  asyncHandler(async (req, res) => {
+    res.json({ role: roleOf(req) });
+  }),
+);
+
+// ---------- Buzón ----------
+
+coupleRouter.get(
+  "/notes",
+  asyncHandler(async (req, res) => {
+    const { data, error } = await supabase
+      .from("love_notes")
+      .select("id, body, created_at, read_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (missingTable(error?.code)) {
+      res.json([]);
+      return;
+    }
+    check(error);
+    res.json(data ?? []);
+  }),
+);
+
+coupleRouter.post(
+  "/notes",
+  asyncHandler(async (req, res) => {
+    if (roleOf(req) !== "partner") throw new HttpError(403, "invalidData");
+    const { body } = z.object({ body: z.string().trim().min(1).max(1000) }).parse(req.body);
+    const { data, error } = await supabase
+      .from("love_notes")
+      .insert({ body, author_id: userIdOf(req) })
+      .select("id, body, created_at, read_at")
+      .single();
+    check(error);
+    res.status(201).json(data);
+  }),
+);
+
+coupleRouter.post(
+  "/notes/:id/read",
+  asyncHandler(async (req, res) => {
+    // Solo cuenta como leída cuando la abre ella.
+    if (roleOf(req) !== "student") {
+      res.status(204).end();
+      return;
+    }
+    const { error } = await supabase
+      .from("love_notes")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", Number(req.params.id))
+      .is("read_at", null);
+    check(error);
+    res.status(204).end();
+  }),
+);
+
+coupleRouter.delete(
+  "/notes/:id",
+  asyncHandler(async (req, res) => {
+    if (roleOf(req) !== "partner") throw new HttpError(403, "invalidData");
+    const { error } = await supabase.from("love_notes").delete().eq("id", Number(req.params.id));
+    check(error);
+    res.status(204).end();
+  }),
+);
+
+// ---------- Cuenta atrás ----------
+
+const VISIT_KEY = "next_visit";
+
+coupleRouter.get(
+  "/visit",
+  asyncHandler(async (_req, res) => {
+    const { data, error } = await supabase.from("couple_settings").select("value").eq("key", VISIT_KEY).maybeSingle();
+    if (missingTable(error?.code)) {
+      res.json(null);
+      return;
+    }
+    check(error);
+    res.json(data?.value ?? null);
+  }),
+);
+
+coupleRouter.put(
+  "/visit",
+  asyncHandler(async (req, res) => {
+    const value = z
+      .object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        label: z.string().trim().max(80).nullable().optional(),
+      })
+      .nullable()
+      .parse(req.body?.date ? req.body : null);
+    const { error } = await supabase
+      .from("couple_settings")
+      .upsert({ key: VISIT_KEY, value, updated_at: new Date().toISOString() });
+    check(error);
+    res.json(value);
+  }),
+);
