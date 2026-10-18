@@ -16,10 +16,10 @@ import { type Recognition, recognitionClass, speak } from "@/lib/speech";
 
 type State = "listening" | "thinking" | "speaking" | "waiting";
 
-// Silencio tras el que se da por terminada la pregunta.
-const SILENCE_MS = 1800;
+// Silencio tras el que se da por terminada la pregunta (generoso: se puede parar a pensar).
+const SILENCE_MS = 4000;
 // Si no dice nada en este tiempo, se deja de escuchar y se espera a que toque el micrófono.
-const NOTHING_SAID_MS = 12_000;
+const NOTHING_SAID_MS = 20_000;
 
 /** Para el reconocimiento sin que un error del navegador corte lo que viene después. */
 function safely(fn: () => void) {
@@ -46,18 +46,21 @@ export function VoiceChat({
   const rec = useRef<Recognition | null>(null);
   const stopSpeaking = useRef<(() => void) | null>(null);
   const active = useRef(true);
-  // Lo oído en la escucha en curso y si ya se ha enviado (para no enviarlo dos veces).
-  const turn = useRef<{ text: string; sent: boolean; timer: ReturnType<typeof setTimeout> | null }>({
+  // Lo oído en la pregunta en curso y si ya se ha enviado (para no enviarlo dos veces).
+  // "base" es lo que se oyó antes de que el iPad cortase el micrófono por su cuenta (se sigue añadiendo).
+  const turn = useRef<{ text: string; base: string; sent: boolean; timer: ReturnType<typeof setTimeout> | null }>({
     text: "",
+    base: "",
     sent: false,
     timer: null,
   });
 
   // Las funciones se llaman desde los avisos de la voz (asíncronos): siempre la versión más reciente.
-  const latest = useRef<{ listen: () => void; ask: (text: string) => void; finish: () => void }>({
+  const latest = useRef<{ listen: () => void; ask: (text: string) => void; finish: () => void; restart: () => void }>({
     listen: () => {},
     ask: () => {},
     finish: () => {},
+    restart: () => {},
   });
 
   function stopListening() {
@@ -83,26 +86,41 @@ export function VoiceChat({
     else setState("waiting");
   }
 
+  /** Empieza una pregunta nueva. */
   function listen() {
-    const Rec = recognitionClass();
-    if (!Rec || !active.current) return;
+    if (!recognitionClass() || !active.current) return;
     safely(() => stopSpeaking.current?.());
     stopSpeaking.current = null;
     stopListening();
+    turn.current = { text: "", base: "", sent: false, timer: null };
+    setHeard("");
+    setProblem("");
+    setState("listening");
+    armTimer(NOTHING_SAID_MS);
+    startRecognition();
+  }
+
+  function armTimer(ms: number) {
+    if (turn.current.timer) clearTimeout(turn.current.timer);
+    turn.current.timer = setTimeout(() => {
+      turn.current.timer = null;
+      latest.current.finish();
+    }, ms);
+  }
+
+  /** Abre el micrófono. Si el navegador lo cierra antes de tiempo (pausa al hablar), se vuelve a abrir. */
+  function startRecognition() {
+    const Rec = recognitionClass();
+    if (!Rec) return;
     const r = new Rec();
     r.lang = lang === "pt" ? "pt-PT" : "es-ES";
     r.continuous = true;
     r.interimResults = true;
-    turn.current = { text: "", sent: false, timer: null };
-    const armTimer = (ms: number) => {
-      if (turn.current.timer) clearTimeout(turn.current.timer);
-      turn.current.timer = setTimeout(() => latest.current.finish(), ms);
-    };
     r.onresult = (e) => {
       // Con "continuous", results trae todo lo dicho en esta escucha (frases ya cerradas y la que está diciendo).
       let text = "";
       for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
-      turn.current.text = text.trim();
+      turn.current.text = `${turn.current.base} ${text}`.trim();
       setHeard(turn.current.text);
       armTimer(SILENCE_MS);
     };
@@ -113,13 +131,17 @@ export function VoiceChat({
       setProblem(e.error === "not-allowed" || e.error === "service-not-allowed" ? tv.noPermission : tv.notHeard);
       setState("waiting");
     };
-    // Si el navegador corta la escucha por su cuenta, se envía lo que haya oído.
-    r.onend = () => latest.current.finish();
-    setHeard("");
-    setProblem("");
-    setState("listening");
+    r.onend = () => {
+      rec.current = null;
+      if (turn.current.sent || !active.current) return;
+      // El iPad corta el micrófono tras una pausa corta: si aún no ha pasado el silencio que esperamos,
+      // se vuelve a abrir y lo nuevo se añade a lo ya dicho.
+      if (turn.current.timer) {
+        turn.current.base = turn.current.text;
+        latest.current.restart();
+      } else latest.current.finish();
+    };
     rec.current = r;
-    armTimer(NOTHING_SAID_MS);
     try {
       r.start();
     } catch {
@@ -147,7 +169,7 @@ export function VoiceChat({
   }
 
   useEffect(() => {
-    latest.current = { listen, ask, finish: finishTurn };
+    latest.current = { listen, ask, finish: finishTurn, restart: startRecognition };
   });
 
   // Al abrir el modo conversación se empieza a escuchar; al cerrarlo se corta todo.
