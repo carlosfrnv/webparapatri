@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useDocError } from "@/components/DocumentList";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { Quiz } from "@/components/Quiz";
+import { ReadAloud } from "@/components/ReadAloud";
 import { SourceChips } from "@/components/Sources";
 import { ErrorBox, fileIcon, Markdown, Spinner, StatusBadge } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
@@ -305,6 +306,7 @@ export default function DocumentPage() {
         <div role="tabpanel">
           {tab === "resumen" && (
             <article className="card p-5 sm:p-8">
+              <ReadAloud key={`${materials.generated_at}-${materials.lang}`} text={materials.summary} />
               <Markdown>{materials.summary}</Markdown>
               {materials.sources && materials.sources.length > 0 && (
                 <div className="border-border mt-6 border-t pt-4">

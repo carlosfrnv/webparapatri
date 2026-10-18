@@ -337,6 +337,13 @@ const es = {
     again: "Otro simulacro",
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
+  readAloud: {
+    listen: "Escuchar",
+    pause: "Pausa",
+    resume: "Seguir",
+    stop: "Parar",
+    speed: "Velocidad",
+  },
   atlas: {
     button: "🦴 Atlas 3D",
     title: "Atlas 3D",
@@ -916,6 +923,13 @@ const pt: Dictionary = {
     studyTopic: "Rever o tema →",
     again: "Outra simulação",
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
+  },
+  readAloud: {
+    listen: "Ouvir",
+    pause: "Pausa",
+    resume: "Continuar",
+    stop: "Parar",
+    speed: "Velocidade",
   },
   atlas: {
     button: "🦴 Atlas 3D",
