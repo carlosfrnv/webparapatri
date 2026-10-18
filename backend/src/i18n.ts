@@ -74,4 +74,6 @@ export const PROCESSING_ERRORS = {
   noText: "error:no_text",
   unsupported: "error:unsupported",
   generic: "error:processing",
+  audioLimit: "error:audio_limit",
+  audioUnavailable: "error:audio_unavailable",
 } as const;

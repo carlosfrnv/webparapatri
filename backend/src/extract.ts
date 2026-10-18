@@ -21,6 +21,8 @@ export const ALLOWED_TYPES: Record<string, string> = {
 export function detectKind(mime: string, filename: string): string | null {
   if (ALLOWED_TYPES[mime]) return ALLOWED_TYPES[mime];
   const ext = filename.toLowerCase().split(".").pop() ?? "";
+  // Clases grabadas (ya convertidas a M4A al subirlas).
+  if (mime.startsWith("audio/") || ext === "m4a") return "audio";
   if (["pdf", "docx", "pptx"].includes(ext)) return ext;
   if (["txt", "md"].includes(ext)) return "txt";
   return null;

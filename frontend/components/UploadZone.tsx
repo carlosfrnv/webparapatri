@@ -8,13 +8,17 @@ import { useT } from "@/lib/i18n";
 import type { DocumentItem } from "@/lib/types";
 
 const MAX_BYTES = 25 * 1024 * 1024;
-const ACCEPT = ".pdf,.docx,.pptx,.txt,.md";
+// Clases grabadas: se comprimen en el servidor, así que pueden ser mucho más grandes.
+const MAX_AUDIO_BYTES = 300 * 1024 * 1024;
+const DOC_EXT = ["pdf", "docx", "pptx", "txt", "md"];
+export const AUDIO_EXT = ["mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "webm", "mp4", "flac", "amr", "3gp", "caf"];
+const ACCEPT = [...DOC_EXT, ...AUDIO_EXT].map((e) => `.${e}`).join(",") + ",audio/*";
 
 interface Pending {
   key: string;
   name: string;
   progress: number;
-  error?: "badType" | "tooBig" | string;
+  error?: "badType" | "tooBig" | "tooBigAudio" | string;
 }
 
 /** Zona grande de arrastrar y soltar, con progreso por archivo. */
@@ -46,17 +50,22 @@ export function UploadZone({
       const ext = file.name.toLowerCase().split(".").pop() ?? "";
       setPending((list) => [...list, { key, name: file.name, progress: 0 }]);
 
-      if (!["pdf", "docx", "pptx", "txt", "md"].includes(ext)) {
+      const audio = file.type.startsWith("audio/") || AUDIO_EXT.includes(ext);
+      // La biblioteca de referencia solo admite documentos.
+      if ((!DOC_EXT.includes(ext) && !audio) || (audio && fields?.sourceType === "referencia")) {
         update(key, { error: "badType" });
         continue;
       }
-      if (file.size > MAX_BYTES) {
-        update(key, { error: "tooBig" });
+      if (file.size > (audio ? MAX_AUDIO_BYTES : MAX_BYTES)) {
+        update(key, { error: audio ? "tooBigAudio" : "tooBig" });
         continue;
       }
       try {
-        const doc = await uploadFile<DocumentItem>(file, { ...fields, subjectId }, (progress) =>
-          update(key, { progress }),
+        const doc = await uploadFile<DocumentItem>(
+          file,
+          { ...fields, subjectId },
+          (progress) => update(key, { progress }),
+          audio ? "/documents/audio" : "/documents",
         );
         setPending((list) => list.filter((p) => p.key !== key));
         onUploaded(doc);
@@ -66,7 +75,14 @@ export function UploadZone({
     }
   }
 
-  const errorText = (e: string) => (e === "badType" ? t.upload.badType : e === "tooBig" ? t.upload.tooBig : e);
+  const errorText = (e: string) =>
+    e === "badType"
+      ? t.upload.badType
+      : e === "tooBig"
+        ? t.upload.tooBig
+        : e === "tooBigAudio"
+          ? t.upload.tooBigAudio
+          : e;
 
   return (
     <div>

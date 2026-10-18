@@ -130,6 +130,7 @@ export function fileIcon(mime: string | null): string {
   if (mime.includes("pdf")) return "📕";
   if (mime.includes("presentation")) return "📙";
   if (mime.includes("word")) return "📘";
+  if (mime.startsWith("audio/")) return "🎧";
   return "📄";
 }
 

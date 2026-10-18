@@ -2,7 +2,10 @@ import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { userIdOf } from "../auth";
-import { MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
+import { unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { compressAudio, isAudio } from "../audio";
+import { MAX_AUDIO_BYTES, MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
 import { DOC_FIELDS, ingestDocument } from "../ingest";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
@@ -15,6 +18,8 @@ import { supabase } from "../supabase";
 export const documentsRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+// Clases grabadas: pueden pesar mucho, así que van a disco (no a memoria) y se comprimen antes de guardarlas.
+const audioUpload = multer({ dest: tmpdir(), limits: { fileSize: MAX_AUDIO_BYTES } });
 
 async function ownedDocument(id: string, userId: string) {
   const { data, error } = await supabase
@@ -74,6 +79,52 @@ documentsRouter.post(
   }),
 );
 
+/** Subir una clase grabada (o cualquier audio): se comprime, se guarda y se transcribe en segundo plano. */
+documentsRouter.post(
+  "/audio",
+  audioUpload.single("file"),
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const file = req.file;
+    if (!file) throw new HttpError(400, "noFile");
+    try {
+      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+      if (!isAudio(file.mimetype, originalName)) throw new HttpError(415, "unsupportedType");
+      const subjectId = z
+        .string()
+        .uuid()
+        .nullable()
+        .catch(null)
+        .parse(req.body?.subject_id || null);
+      if (subjectId) {
+        const { data: subject } = await supabase
+          .from("subjects")
+          .select("id")
+          .eq("id", subjectId)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!subject) throw new HttpError(400, "invalidSubject");
+      }
+      const m4a = await compressAudio(file.path).catch((err) => {
+        console.error("Error al convertir el audio:", err);
+        throw new HttpError(415, "unsupportedType");
+      });
+      const data = await ingestDocument({
+        userId,
+        buffer: m4a,
+        originalName: `${originalName.replace(/\.[^.]+$/, "")}.m4a`,
+        mimetype: "audio/mp4",
+        subjectId,
+        sourceType: "apuntes",
+        referenceOrg: null,
+      });
+      res.status(201).json(data);
+    } finally {
+      await unlink(file.path).catch(() => undefined);
+    }
+  }),
+);
+
 documentsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
@@ -81,7 +132,11 @@ documentsRouter.get(
     const sourceType = req.query.source_type === "referencia" ? "referencia" : "apuntes";
     const subjectId = typeof req.query.subject_id === "string" ? req.query.subject_id : undefined;
     const list = (ordered: boolean) => {
-      let query = supabase.from("documents").select(DOC_FIELDS).eq("user_id", userIdOf(req)).eq("source_type", sourceType);
+      let query = supabase
+        .from("documents")
+        .select(DOC_FIELDS)
+        .eq("user_id", userIdOf(req))
+        .eq("source_type", sourceType);
       if (subjectId === "none") query = query.is("subject_id", null);
       else if (subjectId) query = query.eq("subject_id", subjectId);
       // Primero el orden que ella haya elegido; los que no tienen orden, al final y de más nuevo a más antiguo.

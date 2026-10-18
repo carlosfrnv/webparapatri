@@ -111,6 +111,8 @@ export async function uploadFile<T>(
   file: File,
   fields: UploadFields,
   onProgress: (fraction: number) => void,
+  /** "/documents/audio" para las clases grabadas. */
+  path = "/documents",
 ): Promise<T> {
   // Primero despierta el servidor, para que la subida no falle a medias.
   await apiFetch("/health").catch(() => undefined);
@@ -123,7 +125,7 @@ export async function uploadFile<T>(
 
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_URL}/documents`);
+    xhr.open("POST", `${API_URL}${path}`);
     Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total);

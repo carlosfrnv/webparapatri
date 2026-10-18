@@ -6,6 +6,7 @@ import { PROCESSING_ERRORS } from "./i18n";
 import { classifyPrompt } from "./prompts";
 import { supabase } from "./supabase";
 import { describeFigures, figureChunk, transcribePdf } from "./vision";
+import { transcribeAudio } from "./audio";
 
 /**
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
@@ -26,10 +27,18 @@ export async function processDocument(params: {
     let pages;
     let scanned = false;
     try {
-      pages = await extractText(params.buffer, params.kind);
+      pages =
+        params.kind === "audio" ? await transcribeAudio(params.buffer) : await extractText(params.buffer, params.kind);
     } catch (err) {
       // PDF escaneado (solo imágenes): en sus apuntes, la IA lee las páginas.
-      if (!(isNotes && params.kind === "pdf" && err instanceof ExtractionError && err.message === PROCESSING_ERRORS.scanned))
+      if (
+        !(
+          isNotes &&
+          params.kind === "pdf" &&
+          err instanceof ExtractionError &&
+          err.message === PROCESSING_ERRORS.scanned
+        )
+      )
         throw err;
       pages = await transcribePdf(params.buffer).catch((e) => {
         console.error("Error al leer el PDF escaneado:", e);
@@ -70,7 +79,12 @@ export async function processDocument(params: {
       .eq("user_id", userId);
 
     if (params.suggestSubject) {
-      const firstText = pages.map((p) => p.text).join("\n").split(/\s+/).slice(0, 2000).join(" ");
+      const firstText = pages
+        .map((p) => p.text)
+        .join("\n")
+        .split(/\s+/)
+        .slice(0, 2000)
+        .join(" ");
       await suggestSubject(documentId, userId, params.title, firstText).catch((err) =>
         console.error("Error al sugerir asignatura:", err),
       );
@@ -93,10 +107,7 @@ const classifySchema = z.object({
 });
 
 async function suggestSubject(documentId: string, userId: string, title: string, text: string) {
-  const { data: subjects } = await supabase
-    .from("subjects")
-    .select("id, name, year")
-    .eq("user_id", userId);
+  const { data: subjects } = await supabase.from("subjects").select("id, name, year").eq("user_id", userId);
   if (!subjects?.length) return;
 
   const list = subjects.map((s) => `${s.id}: ${s.name}, ${s.year ?? "?"}.º curso`).join("\n");

@@ -55,6 +55,12 @@ function OriginalFile({ doc }: { doc: DocumentItem }) {
       <a href={url} target="_blank" rel="noreferrer" className="btn-secondary">
         {fileIcon(doc.mime_type)} {isPdf ? t.document.openNewWindow : t.document.download}
       </a>
+      {/* Clase grabada: se puede volver a escuchar */}
+      {doc.mime_type?.startsWith("audio/") && (
+        <audio controls preload="metadata" src={url} className="w-full">
+          <track kind="captions" />
+        </audio>
+      )}
       {isPdf && (
         <iframe
           src={url}

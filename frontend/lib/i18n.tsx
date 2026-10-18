@@ -164,6 +164,9 @@ const es = {
     "error:no_text": "No se ha encontrado texto en este archivo.",
     "error:unsupported": "Tipo de archivo no admitido.",
     "error:processing": "No se ha podido procesar este archivo. Inténtalo de nuevo.",
+    "error:audio_limit":
+      "Se ha llegado al límite gratuito de transcripción de audio por ahora. Borra este archivo y vuelve a subirlo dentro de una hora.",
+    "error:audio_unavailable": "La transcripción de audio no está configurada en el servidor.",
   } as Record<string, string>,
   areas: {
     base: "Ciencias básicas",
@@ -214,9 +217,10 @@ const es = {
   upload: {
     label: "Subir archivos",
     title: "Arrastra aquí tus apuntes",
-    hint: "o pulsa para elegir · PDF, Word, PowerPoint o texto · hasta 25 MB",
-    badType: "Tipo no admitido. Usa PDF, Word (.docx), PowerPoint (.pptx) o texto.",
+    hint: "o pulsa para elegir · PDF, Word, PowerPoint, texto o el audio de una clase",
+    badType: "Tipo no admitido. Usa PDF, Word (.docx), PowerPoint (.pptx), texto o un audio (MP3, M4A…).",
     tooBig: "Demasiado grande (máximo 25 MB).",
+    tooBigAudio: "Audio demasiado grande (máximo 300 MB, unas 3 horas).",
     saving: "Guardando…",
   },
   docList: {
@@ -354,6 +358,21 @@ const es = {
       "No tengo permiso para usar el micrófono. Actívalo en los ajustes del navegador (en el iPad: Ajustes → Safari → Micrófono).",
     notHeard: "No te he entendido bien. Toca el micrófono y vuelve a intentarlo.",
     failed: "No he podido responder. Toca el micrófono para intentarlo otra vez.",
+  },
+  recorder: {
+    start: "🎙️ Grabar clase",
+    hint: "Graba la clase y se convierte en apuntes (resumen, flashcards, test…). También puedes subir aquí un audio grabado con el móvil. Pide permiso al profesor para grabar.",
+    recording: "Grabando",
+    paused: "En pausa",
+    pause: "Pausa",
+    resume: "Seguir",
+    save: "Terminar y guardar",
+    discard: "Descartar la grabación",
+    confirmDiscard: "¿Descartar la grabación? Se perderá.",
+    keepOpen: "Deja esta página abierta y la pantalla encendida mientras grabas: si se bloquea, el iPad corta la grabación.",
+    uploading: "Subiendo la grabación…",
+    noMic: "No se ha podido usar el micrófono. Dale permiso en los ajustes del navegador.",
+    fileName: "Clase",
   },
   print: {
     button: "📄 PDF / Imprimir",
@@ -782,6 +801,9 @@ const pt: Dictionary = {
     "error:no_text": "Não foi encontrado texto neste ficheiro.",
     "error:unsupported": "Tipo de ficheiro não suportado.",
     "error:processing": "Não foi possível processar este ficheiro. Tenta novamente.",
+    "error:audio_limit":
+      "Chegou-se ao limite gratuito de transcrição de áudio por agora. Apaga este ficheiro e volta a carregá-lo daqui a uma hora.",
+    "error:audio_unavailable": "A transcrição de áudio não está configurada no servidor.",
   },
   areas: {
     base: "Ciências básicas",
@@ -831,9 +853,10 @@ const pt: Dictionary = {
   upload: {
     label: "Carregar ficheiros",
     title: "Arrasta para aqui os teus apontamentos",
-    hint: "ou toca para escolher · PDF, Word, PowerPoint ou texto · até 25 MB",
-    badType: "Tipo não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx) ou texto.",
+    hint: "ou toca para escolher · PDF, Word, PowerPoint, texto ou o áudio de uma aula",
+    badType: "Tipo não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx), texto ou um áudio (MP3, M4A…).",
     tooBig: "Demasiado grande (máximo 25 MB).",
+    tooBigAudio: "Áudio demasiado grande (máximo 300 MB, umas 3 horas).",
     saving: "A guardar…",
   },
   docList: {
@@ -973,6 +996,21 @@ const pt: Dictionary = {
       "Não tenho permissão para usar o microfone. Ativa-a nas definições do navegador (no iPad: Definições → Safari → Microfone).",
     notHeard: "Não percebi bem. Toca no microfone e tenta outra vez.",
     failed: "Não consegui responder. Toca no microfone para tentar outra vez.",
+  },
+  recorder: {
+    start: "🎙️ Gravar aula",
+    hint: "Grava a aula e transforma-se em apontamentos (resumo, flashcards, teste…). Também podes carregar aqui um áudio gravado com o telemóvel. Pede autorização ao professor para gravar.",
+    recording: "A gravar",
+    paused: "Em pausa",
+    pause: "Pausa",
+    resume: "Continuar",
+    save: "Terminar e guardar",
+    discard: "Descartar a gravação",
+    confirmDiscard: "Descartar a gravação? Vai perder-se.",
+    keepOpen: "Deixa esta página aberta e o ecrã ligado enquanto gravas: se bloquear, o iPad corta a gravação.",
+    uploading: "A carregar a gravação…",
+    noMic: "Não foi possível usar o microfone. Dá permissão nas definições do navegador.",
+    fileName: "Aula",
   },
   print: {
     button: "📄 PDF / Imprimir",
