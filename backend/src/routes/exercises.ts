@@ -4,6 +4,7 @@ import { completeJson } from "../ai";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
 import { langOf, type Lang } from "../i18n";
+import { calc, formatNumber } from "../calc";
 import { aiLimiter } from "../limits";
 import { materialInLang } from "../study";
 import { supabase } from "../supabase";
@@ -82,12 +83,46 @@ const exerciseSchema = z.object({
         hint: z.string(),
         answer: z.string().min(1),
         explanation: z.string(),
+        calc: z.string().optional().default(""),
       }),
     )
     .min(1)
     .transform((s) => s.slice(0, 6)),
   final_answer: z.string(),
 });
+
+type Exercise = z.infer<typeof exerciseSchema>;
+
+/**
+ * Comprueba cada paso con la calculadora. Si el resultado de la IA no coincide con la cuenta, se corrige
+ * (también en la explicación y la respuesta final). Cuenta los pasos con número que no se pudieron comprobar.
+ */
+export function verify(ex: Exercise, lang: Lang) {
+  let unverified = 0;
+  let fixed = 0;
+  let finalAnswer = ex.final_answer;
+  const steps = ex.steps.map((step) => {
+    const token = step.answer.match(/-?\d+(?:[.,]\d+)?/)?.[0];
+    const given = firstNumber(step.answer);
+    const value = calc(step.calc);
+    if (given === null) return step;
+    if (value === null) {
+      unverified++;
+      return step;
+    }
+    if (sameNumber(given, value, step.answer)) return step;
+    fixed++;
+    const right = formatNumber(value, lang);
+    const swap = (text: string) => (token ? text.split(token).join(right) : text);
+    finalAnswer = swap(finalAnswer);
+    return {
+      ...step,
+      answer: token ? step.answer.replace(token, right) : right,
+      explanation: `${step.explanation} (= ${right})`,
+    };
+  });
+  return { ...ex, steps, final_answer: finalAnswer, unverified, fixed };
+}
 
 const newSchema = z.object({
   subject_id: z.string().uuid(),
@@ -119,13 +154,16 @@ ${body.avoid?.length ? `No repitas estos enunciados: ${body.avoid.join(" | ")}` 
   - "hint": una pista corta (la fórmula o la idea que necesita), sin dar el resultado.
   - "answer": el resultado de ese paso, corto: un número con sus unidades si las hay (p. ej. "16", "4 mSv", "1,63"); usa coma decimal.
   - "explanation": cómo se llega a ese resultado, en 1-2 frases con el cálculo.
+  - "calc": la operación de ese paso para una calculadora, SOLO con números (sin letras ni resultados de otros pasos
+    escritos como variables), con punto decimal: p. ej. "(2+4+4+6)/4", "sqrt(8/3)", "100*exp(-0.693*2/6)", "log10(1000)".
+    Vacío si el paso no tiene un resultado numérico.
 - "final_answer": la respuesta final completa.
 - "topic": el tipo de ejercicio en pocas palabras (p. ej. "Media aritmética").
 Comprueba tú mismo cada cálculo antes de responder: los resultados tienen que ser exactos.
 Todo en español de España.
 APUNTES (${doc.title}):
 ${doc.summary.slice(0, 14000)}
-Responde SOLO con JSON: {"topic":"","statement":"","steps":[{"instruction":"","hint":"","answer":"","explanation":""}],"final_answer":""}`
+Responde SOLO con JSON: {"topic":"","statement":"","steps":[{"instruction":"","hint":"","answer":"","explanation":"","calc":""}],"final_answer":""}`
         : `És professor de uma cadeira de fórmulas (matemática/estatística do primeiro ano de Imagem Médica e Radioterapia).
 Cria UM exercício novo para praticar, parecido com os destes apontamentos${body.topic ? `, do tipo «${body.topic}»` : ""}.
 ${body.avoid?.length ? `Não repitas estes enunciados: ${body.avoid.join(" | ")}` : ""}
@@ -136,15 +174,25 @@ ${body.avoid?.length ? `Não repitas estes enunciados: ${body.avoid.join(" | ")}
   - "hint": uma pista curta (a fórmula ou a ideia de que precisa), sem dar o resultado.
   - "answer": o resultado desse passo, curto: um número com as unidades se as houver (p. ex. "16", "4 mSv", "1,63"); usa vírgula decimal.
   - "explanation": como se chega a esse resultado, em 1-2 frases com o cálculo.
+  - "calc": a operação desse passo para uma calculadora, SÓ com números (sem letras nem resultados de outros passos
+    escritos como variáveis), com ponto decimal: p. ex. "(2+4+4+6)/4", "sqrt(8/3)", "100*exp(-0.693*2/6)", "log10(1000)".
+    Vazio se o passo não tiver um resultado numérico.
 - "final_answer": a resposta final completa.
 - "topic": o tipo de exercício em poucas palavras (p. ex. "Média aritmética").
 Confirma tu próprio cada cálculo antes de responder: os resultados têm de estar certos.
 Tudo em português de Portugal.
 APONTAMENTOS (${doc.title}):
 ${doc.summary.slice(0, 14000)}
-Responde SÓ com JSON: {"topic":"","statement":"","steps":[{"instruction":"","hint":"","answer":"","explanation":""}],"final_answer":""}`;
-    const exercise = await completeJson(prompt, exerciseSchema, { lang, effort: "medium", maxTokens: 4000 });
-    res.json({ ...exercise, document_id: doc.document_id, document_title: doc.title });
+Responde SÓ com JSON: {"topic":"","statement":"","steps":[{"instruction":"","hint":"","answer":"","explanation":"","calc":""}],"final_answer":""}`;
+    // Las cuentas se comprueban con la calculadora: si un paso no se puede comprobar, se pide otro ejercicio (una vez).
+    let exercise = verify(
+      await completeJson(prompt, exerciseSchema, { lang, effort: "medium", maxTokens: 4000 }),
+      lang,
+    );
+    if (exercise.unverified > 0)
+      exercise = verify(await completeJson(prompt, exerciseSchema, { lang, effort: "medium", maxTokens: 4000 }), lang);
+    const { unverified: _u, fixed: _f, ...out } = exercise;
+    res.json({ ...out, document_id: doc.document_id, document_title: doc.title });
   }),
 );
 
@@ -175,6 +223,7 @@ const checkSchema = z.object({
   statement: z.string().max(4000),
   instruction: z.string().max(1000),
   expected: z.string().max(300),
+  calc: z.string().max(300).optional(),
   answer: z.string().max(500),
 });
 
@@ -184,7 +233,8 @@ exercisesRouter.post(
   asyncHandler(async (req, res) => {
     const lang = langOf(req);
     const b = checkSchema.parse(req.body);
-    const expected = firstNumber(b.expected);
+    // El resultado bueno lo da la calculadora si el paso tiene su operación; si no, lo que escribió la IA.
+    const expected = calc(b.calc) ?? firstNumber(b.expected);
     const given = firstNumber(b.answer);
     const onlyNumber = /^[\s≈~=]*-?\d+(?:[.,]\d+)?\s*[a-zA-Zµ%²³/]*\s*$/.test(b.expected);
     if (expected !== null && given !== null && onlyNumber) {
@@ -246,5 +296,51 @@ Resultado certo: ${b.expected}
 O que ela escreveu: «${b.answer}»
 Responde SÓ com JSON: {"feedback":""}`;
     res.json(await completeJson(prompt, z.object({ feedback: z.string() }), { lang, effort: "low", maxTokens: 400 }));
+  }),
+);
+
+/**
+ * "Creo que mi respuesta está bien": se vuelve a comprobar con la calculadora y, si no se puede, la IA lo revisa
+ * con más cuidado. Si ella tenía razón, el paso cuenta como bien.
+ */
+exercisesRouter.post(
+  "/recheck",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const lang = langOf(req);
+    const b = checkSchema.parse(req.body);
+    const value = calc(b.calc);
+    const given = firstNumber(b.answer);
+    if (value !== null && given !== null) {
+      res.json({ correct: sameNumber(given, value, b.answer), feedback: "", calculated: formatNumber(value, lang) });
+      return;
+    }
+    const prompt =
+      lang === "es"
+        ? `Revisa con mucho cuidado si la respuesta de una estudiante a este paso de un ejercicio es correcta.
+Rehaz tú el cálculo desde cero, paso a paso, sin fiarte del "resultado esperado" (puede estar mal).
+Enunciado: ${b.statement}
+Paso: ${b.instruction}
+Resultado esperado (puede tener errores): ${b.expected}
+Respuesta de ella: «${b.answer}»
+Si su respuesta es correcta o equivalente (aunque esté redondeada), "correct": true.
+"feedback": en una o dos frases, en español de España, explica el resultado correcto y por qué.
+Responde SOLO con JSON: {"correct":true,"feedback":""}`
+        : `Revê com muito cuidado se a resposta de uma estudante a este passo de um exercício está certa.
+Refaz tu o cálculo do zero, passo a passo, sem confiar no "resultado esperado" (pode estar errado).
+Enunciado: ${b.statement}
+Passo: ${b.instruction}
+Resultado esperado (pode ter erros): ${b.expected}
+Resposta dela: «${b.answer}»
+Se a resposta dela estiver certa ou for equivalente (mesmo arredondada), "correct": true.
+"feedback": numa ou duas frases, em português de Portugal, explica o resultado certo e porquê.
+Responde SÓ com JSON: {"correct":true,"feedback":""}`;
+    res.json(
+      await completeJson(prompt, z.object({ correct: z.boolean(), feedback: z.string() }), {
+        lang,
+        effort: "high",
+        maxTokens: 3000,
+      }),
+    );
   }),
 );

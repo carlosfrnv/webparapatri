@@ -14,6 +14,8 @@ interface Step {
   hint: string;
   answer: string;
   explanation: string;
+  /** Operación del paso: el servidor la calcula para corregir sin depender de las cuentas de la IA. */
+  calc?: string;
 }
 
 interface Exercise {
@@ -140,11 +142,37 @@ export default function ExercisesPage() {
         statement: exercise.statement,
         instruction: step.instruction,
         expected: step.answer,
+        calc: step.calc,
         answer,
       });
       setResult(r);
       if (!r.correct) setFailedThis(true);
       else advance(failedThis);
+    } catch (err) {
+      setResult({ correct: false, feedback: errorMessage(err) });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  /** "Creo que mi respuesta está bien": se recalcula y, si tenía razón, el paso cuenta como bien. */
+  async function recheck() {
+    if (!exercise) return;
+    const step = exercise.steps[stepIndex];
+    setChecking(true);
+    try {
+      const r = await api.post<{ correct: boolean; feedback: string }>("/exercises/recheck", {
+        statement: exercise.statement,
+        instruction: step.instruction,
+        expected: step.answer,
+        calc: step.calc,
+        answer,
+      });
+      if (r.correct) {
+        setResult({ correct: true, feedback: te.youWereRight });
+        setFailedThis(false);
+        advance(false);
+      } else setResult({ correct: false, feedback: r.feedback || te.stillWrong });
     } catch (err) {
       setResult({ correct: false, feedback: errorMessage(err) });
     } finally {
@@ -160,6 +188,7 @@ export default function ExercisesPage() {
         statement: exercise.statement,
         instruction: step.instruction,
         expected: step.answer,
+        calc: step.calc,
         answer,
       });
       setResult({ correct: false, feedback: r.feedback });
@@ -173,13 +202,10 @@ export default function ExercisesPage() {
     if (!exercise) return;
     const last = stepIndex + 1 >= exercise.steps.length;
     if (last) record(exercise.topic, hadError || revealed);
-    setTimeout(
-      () => {
-        setStepIndex((i) => i + 1);
-        resetStep();
-      },
-      last ? 0 : 900,
-    );
+    setTimeout(() => {
+      setStepIndex((i) => i + 1);
+      resetStep();
+    }, 1200);
   }
 
   function reveal() {
@@ -304,10 +330,17 @@ export default function ExercisesPage() {
                     <div className={`rounded-lg p-3 text-sm ${result.correct ? "bg-success-soft" : "bg-danger-soft"}`}>
                       <p className="font-semibold">{result.correct ? te.right : te.wrong}</p>
                       {result.feedback && <p className="mt-1">{result.feedback}</p>}
-                      {!result.correct && !result.feedback && (
-                        <button className="btn-ghost text-accent mt-1 px-0 text-sm" onClick={why}>
-                          {te.why}
-                        </button>
+                      {!result.correct && (
+                        <div className="mt-1 flex flex-wrap gap-x-4">
+                          {!result.feedback && (
+                            <button className="btn-ghost text-accent px-0 text-sm" onClick={why}>
+                              {te.why}
+                            </button>
+                          )}
+                          <button className="btn-ghost text-accent px-0 text-sm" onClick={recheck} disabled={checking}>
+                            {te.recheck}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
