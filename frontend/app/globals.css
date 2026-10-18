@@ -212,6 +212,17 @@ h3 {
 .prose-study td {
   @apply border-border border px-3 py-2 align-top;
 }
+/* En las tablas no se parten las palabras letra a letra (la primera columna se quedaba de una letra de ancho):
+   cada columna mide al menos su palabra más larga y la primera, un mínimo razonable. */
+.prose-study th,
+.prose-study td {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.prose-study th:first-child,
+.prose-study td:first-child {
+  min-width: 7.5rem;
+}
 
 /* Tarjeta que se da la vuelta */
 .flip {
