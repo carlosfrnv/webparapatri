@@ -489,6 +489,8 @@ documentsRouter.get(
           description: lang === "es" ? (f.description_es ?? "") : f.description,
           // Para colocar cada figura en su apartado del resumen: todo lo que se sabe de ella, en los dos idiomas.
           match: [f.label, f.description, f.description_es].filter(Boolean).join(" "),
+          // Con la web en español: las etiquetas de la imagen (en portugués) traducidas.
+          labels: lang === "es" ? (f.labels_es ?? []) : [],
           url: urls.get(f.path),
         })),
     });

@@ -18,6 +18,8 @@ export interface FigureImage {
   description: string;
   /** Texto para colocarla en su apartado (descripción completa, en los dos idiomas). */
   match?: string;
+  /** Etiquetas de la imagen (en portugués) con su traducción, para la leyenda. */
+  labels?: { pt: string; es: string }[];
   url: string;
 }
 
@@ -111,6 +113,15 @@ function FigureCard({ f }: { f: FigureImage }) {
       </a>
       <figcaption className="text-muted mx-auto mt-1.5 max-w-xl text-center text-xs leading-snug">
         {caption && <span className="font-semibold">{caption}</span>}
+        {f.labels && f.labels.length > 0 && (
+          <span className="mt-2 flex flex-wrap justify-center gap-1.5">
+            {f.labels.map((l, i) => (
+              <span key={i} className="bg-surface-2 text-text rounded-full px-2.5 py-0.5">
+                <span className="text-muted">{l.pt}</span> → <strong>{l.es}</strong>
+              </span>
+            ))}
+          </span>
+        )}
         {/* La descripción que escribió la IA al mirarla: plegada para no llenar el resumen de texto. */}
         {f.description && (
           <details className="no-print mt-1">

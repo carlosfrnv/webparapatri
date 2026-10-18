@@ -32,6 +32,8 @@ export interface Figure {
   description: string;
   /** Lo que muestra, en español (la descripción va en portugués, como sus apuntes). */
   captionEs?: string;
+  /** Las etiquetas que se leen en la imagen (en portugués) con su traducción al español. */
+  labelsEs?: { pt: string; es: string }[];
   /** Imagen (JPEG en base64) que vio la IA: se guarda para las preguntas con imágenes. */
   image?: string;
   /** false si solo tenía fórmulas o texto (se usa lo transcrito, pero la imagen no se enseña en el resumen). */
@@ -52,6 +54,10 @@ const figuresSchema = z.object({
       description: z.string(),
       visual: z.boolean().optional(),
       caption_es: z.string().optional(),
+      labels_es: z
+        .array(z.object({ pt: z.string(), es: z.string() }))
+        .optional()
+        .catch(undefined),
     }),
   ),
 });
@@ -193,14 +199,37 @@ const boxArea = (b: PdfImage["box"]) => Math.max(0, b[2] - b[0]) * Math.max(0, b
 // Imágenes que ocupan menos de esto de la página: iconos, viñetas o logotipos.
 const MIN_PAGE_FRACTION = 0.015;
 
+type Box = PdfImage["box"];
+
+/** Junta las imágenes que se tocan o están casi pegadas (una figura hecha de varias piezas sale entera). */
+function clusters(boxes: Box[], gap = 0.01): Box[] {
+  let out = boxes.map((b) => [...b] as Box);
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < out.length && !merged; i++)
+      for (let j = i + 1; j < out.length && !merged; j++) {
+        const [a, c] = [out[i], out[j]];
+        const near = a[0] - gap < c[2] && c[0] - gap < a[2] && a[1] - gap < c[3] && c[1] - gap < a[3];
+        if (near) {
+          out[i] = [Math.min(a[0], c[0]), Math.min(a[1], c[1]), Math.max(a[2], c[2]), Math.max(a[3], c[3])];
+          out = out.filter((_, k) => k !== j);
+          merged = true;
+        }
+      }
+  }
+  return out;
+}
+
 async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidate[]> {
   const parser = new PDFParse({ data: buffer });
   try {
     const { total, pages: images } = await pdfImages(parser);
-    // Zona de cada página que se recorta (la que ocupan sus figuras); sin recorte en las de fórmulas.
-    const crops = new Map<number, PdfImage["box"] | null>();
+    // Zonas de cada página que se recortan: cada figura por separado (sin títulos, tablas de texto ni logotipos).
+    // En las páginas de fórmulas (y las escaneadas) se manda la página entera.
+    const crops = new Map<number, (Box | null)[]>();
     if (allPages) {
-      for (let p = 1; p <= Math.min(total, FORMULA_MAX_PAGES); p++) crops.set(p, null);
+      for (let p = 1; p <= Math.min(total, FORMULA_MAX_PAGES); p++) crops.set(p, [null]);
     } else {
       const area = (key: string) =>
         key
@@ -212,26 +241,21 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
       const skip = new Set(
         [...repeated(images.map((p) => p.map((im) => im.key)))].filter((k) => area(k) < LOGO_MAX_AREA),
       );
-      const ranked = images
-        .map((list, i) => {
-          const figures = list.filter((im) => !skip.has(im.key) && boxArea(im.box) >= MIN_PAGE_FRACTION);
-          return { page: i + 1, figures, size: figures.reduce((sum, im) => sum + boxArea(im.box), 0) };
-        })
-        .filter((p) => p.figures.length > 0)
-        // Si hay demasiadas, nos quedamos con las páginas de figuras más grandes.
-        .sort((a, b) => b.size - a.size)
-        .slice(0, MAX_FIGURES);
-      for (const p of ranked) {
-        // Todas las figuras de la página juntas, con un pequeño margen (así se ven las flechas y leyendas).
-        const pad = 0.015;
-        const box: PdfImage["box"] = [
-          Math.max(0, Math.min(...p.figures.map((f) => f.box[0])) - pad),
-          Math.max(0, Math.min(...p.figures.map((f) => f.box[1])) - pad),
-          Math.min(1, Math.max(...p.figures.map((f) => f.box[2])) + pad),
-          Math.min(1, Math.max(...p.figures.map((f) => f.box[3])) + pad),
+      const pad = 0.012;
+      const all = images.flatMap((list, i) =>
+        clusters(list.filter((im) => !skip.has(im.key) && boxArea(im.box) >= MIN_PAGE_FRACTION).map((im) => im.box))
+          .filter((box) => boxArea(box) >= MIN_PAGE_FRACTION)
+          .map((box) => ({ page: i + 1, box })),
+      );
+      // Si hay demasiadas, nos quedamos con las figuras más grandes.
+      for (const f of all.sort((x, y) => boxArea(y.box) - boxArea(x.box)).slice(0, MAX_FIGURES)) {
+        const box: Box = [
+          Math.max(0, f.box[0] - pad),
+          Math.max(0, f.box[1] - pad),
+          Math.min(1, f.box[2] + pad),
+          Math.min(1, f.box[3] + pad),
         ];
-        // Si las figuras ocupan casi toda la página, se deja la página entera.
-        crops.set(p.page, boxArea(box) > 0.8 ? null : box);
+        crops.set(f.page, [...(crops.get(f.page) ?? []), boxArea(box) > 0.85 ? null : box]);
       }
     }
     const pages = [...crops.keys()].sort((a, b) => a - b);
@@ -240,8 +264,18 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
     const shots = await parser.getScreenshot({ partial: pages, desiredWidth: WIDTH * 2, imageDataUrl: false });
     const out: Candidate[] = [];
     for (const shot of shots.pages) {
-      const image = await toJpeg(shot.data, false, crops.get(shot.pageNumber) ?? null);
-      if (image) out.push({ ref: shot.pageNumber, page: shot.pageNumber, label: `página ${shot.pageNumber}`, image });
+      const zones = (crops.get(shot.pageNumber) ?? [null]).sort((x, y) => (x?.[1] ?? 0) - (y?.[1] ?? 0));
+      for (const zone of zones) {
+        const image = await toJpeg(shot.data, false, zone);
+        // En las páginas enteras la referencia es la página (la usa la transcripción de PDF escaneados).
+        if (image)
+          out.push({
+            ref: allPages ? shot.pageNumber : out.length + 1,
+            page: shot.pageNumber,
+            label: `página ${shot.pageNumber}`,
+            image,
+          });
+      }
     }
     return out;
   } finally {
@@ -310,6 +344,7 @@ async function askInBatches(candidates: Candidate[], prompt: (labels: string) =>
           label: c.label,
           description: f.description.trim(),
           captionEs: f.caption_es?.trim() || undefined,
+          labelsEs: f.labels_es?.filter((l) => l.pt.trim() && l.es.trim()).slice(0, 20),
           image: c.image.data,
           visual: f.visual,
         });
@@ -332,7 +367,7 @@ export async function describeFigures(buffer: Buffer, kind: string, opts: Figure
   if (candidates.length === 0) return [];
   return opts.formulas
     ? askInBatches(candidates, formulasPrompt, 16000)
-    : askInBatches(candidates, figuresPrompt, 8000);
+    : askInBatches(candidates, figuresPrompt, 12000);
 }
 
 /** PDF escaneado (sin texto): la IA lee cada página. Devuelve las páginas como si fueran texto extraído. */

@@ -384,8 +384,13 @@ gráficos, tabelas em imagem, fluxogramas…), descreve em português europeu o 
 estruturas, legendas e setas, posições e relações entre elas. Inclui todos os rótulos que se consigam ler.
 Ignora logótipos, fotografias decorativas, fundos e páginas que só têm texto.
 Não inventes: se algo não se lê ou não se percebe, não o descrevas. Máximo de 150 palavras por imagem.
-"caption_es": a mesma descrição, mais curta (1-2 frases), em espanhol de Espanha (para mostrar por baixo da imagem).
-Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","caption_es":"..."}]}
+Para cada imagem que descreveres, indica também:
+- "visual": true se for um desenho, esquema, radiografia, fotografia ou gráfico que vale a pena ver; false se for sobretudo
+  uma tabela de texto, um bloco de texto, um título ou um logótipo (nesse caso descreve só o conteúdo).
+- "caption_es": o que mostra, em 1-2 frases em espanhol de Espanha (para mostrar por baixo da imagem).
+- "labels_es": as legendas/rótulos que se leem na imagem (no máximo 20), cada um com o texto original e a tradução para
+  espanhol de Espanha com a terminologia anatómica correta: [{"pt":"Crista ilíaca","es":"Cresta ilíaca"}]. Lista vazia se não tiver.
+Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"...","visual":true,"caption_es":"...","labels_es":[{"pt":"","es":""}]}]}
 Se nenhuma imagem tiver conteúdo útil: {"figures":[]}`;
 
 export const formulasPrompt = (labels: string) =>

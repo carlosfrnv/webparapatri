@@ -18,10 +18,12 @@ export interface SavedFigure {
   description: string;
   /** Lo mismo en español (para mostrarlo con la web en español). */
   description_es?: string;
+  /** Etiquetas de la imagen traducidas: [{ pt, es }]. */
+  labels_es?: { pt: string; es: string }[];
   path: string;
 }
 
-const MAX_SAVED = 20;
+const MAX_SAVED = 30;
 const missingTable = (code?: string) => code === "42P01" || code === "PGRST205";
 
 export async function getExtras(documentId: string, userId: string) {
@@ -84,6 +86,7 @@ export async function saveFigures(documentId: string, userId: string, figures: F
       label: f.label,
       description: f.description,
       description_es: f.captionEs,
+      labels_es: f.labelsEs,
       path,
     });
   }
