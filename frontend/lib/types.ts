@@ -49,6 +49,15 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+/** Pregunta de test con el archivo y el número de pregunta del que sale (simulacro y repaso de fallos). */
+export interface QuizItem extends QuizQuestion {
+  document_id: string;
+  question_index: number;
+  document_title?: string;
+  subject_id?: string | null;
+  wrong_count?: number;
+}
+
 export interface StudyMaterials {
   document_id: string;
   summary: string;

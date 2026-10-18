@@ -113,6 +113,16 @@ create table if not exists quiz_attempts (
   created_at timestamptz default now()
 );
 
+-- Preguntas de test falladas, para repasarlas (salen de la lista al acertarlas).
+create table if not exists quiz_mistakes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  document_id uuid not null references documents(id) on delete cascade,
+  question_index int not null,
+  wrong_count int not null default 1,
+  last_wrong_at timestamptz default now(),
+  primary key (user_id, document_id, question_index)
+);
+
 -- Conversaciones del chat
 create table if not exists chat_messages (
   id bigserial primary key,
@@ -235,11 +245,12 @@ alter table chat_messages enable row level security;
 alter table user_settings enable row level security;
 alter table exams enable row level security;
 alter table schedule_blocks enable row level security;
+alter table quiz_mistakes enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

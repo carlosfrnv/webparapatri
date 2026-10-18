@@ -3,13 +3,29 @@
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import type { QuizQuestion } from "@/lib/types";
+import type { QuizItem } from "@/lib/types";
 import { Markdown, Spinner } from "./ui";
 
 const LETTERS = ["A", "B", "C", "D"];
 
-/** Test de opción múltiple con corrección inmediata y explicación. */
-export function Quiz({ documentId, questions }: { documentId: string; questions: QuizQuestion[] }) {
+/** Guarda si ha acertado o fallado: los fallos van al "repaso de fallos" y los aciertos los quitan. */
+export function saveAnswers(answers: { document_id: string; question_index: number; correct: boolean }[]) {
+  if (answers.length > 0) api.post("/quiz/answers", { answers }).catch(() => undefined);
+}
+
+/**
+ * Test de opción múltiple con corrección inmediata y explicación.
+ * Con `documentId` es el test de un archivo (se guarda la nota); sin él, un repaso de preguntas sueltas.
+ */
+export function Quiz({
+  documentId,
+  questions,
+  onDone,
+}: {
+  documentId?: string;
+  questions: QuizItem[];
+  onDone?: () => void;
+}) {
   const t = useT();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
@@ -24,6 +40,9 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
   function choose(option: number) {
     if (chosen !== null) return;
     setAnswers((a) => a.map((v, i) => (i === index ? option : v)));
+    saveAnswers([
+      { document_id: q.document_id, question_index: q.question_index, correct: option === q.correct_index },
+    ]);
   }
 
   async function next() {
@@ -31,7 +50,8 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
       setIndex(index + 1);
     } else {
       setFinished(true);
-      api.post("/quiz/attempts", { document_id: documentId, score, total: questions.length }).catch(() => undefined);
+      if (documentId)
+        api.post("/quiz/attempts", { document_id: documentId, score, total: questions.length }).catch(() => undefined);
     }
   }
 
@@ -40,8 +60,8 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
     setLoadingExtra(true);
     try {
       const { explanation } = await api.post<{ explanation: string }>("/quiz/explain", {
-        document_id: documentId,
-        question_index: index,
+        document_id: q.document_id,
+        question_index: q.question_index,
         chosen_index: chosen,
       });
       setExtra((e) => ({ ...e, [index]: explanation }));
@@ -70,9 +90,15 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
           {score} / {questions.length}
         </p>
         <p className="text-muted">{t.quiz.result(pct)}</p>
-        <button className="btn-primary" onClick={restart}>
-          {t.quiz.restart}
-        </button>
+        {onDone ? (
+          <button className="btn-primary" onClick={onDone}>
+            {t.quiz.finish}
+          </button>
+        ) : (
+          <button className="btn-primary" onClick={restart}>
+            {t.quiz.restart}
+          </button>
+        )}
       </div>
     );
   }
@@ -84,6 +110,9 @@ export function Quiz({ documentId, questions }: { documentId: string; questions:
         <span>{t.quiz.correctCount(score)}</span>
       </div>
       <div className="card p-5">
+        {!documentId && q.document_title && (
+          <p className="text-accent mb-2 text-xs font-semibold">{q.document_title}</p>
+        )}
         <p className="text-lg font-medium">{q.question}</p>
         <ul className="mt-4 space-y-2">
           {q.options.map((opt, i) => {

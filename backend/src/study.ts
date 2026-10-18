@@ -185,6 +185,8 @@ export async function getOrGenerateStudy(documentId: string, userId: string, lan
     if (force) {
       // Las tarjetas han cambiado: el historial de repasos anterior deja de tener sentido.
       await supabase.from("flashcard_reviews").delete().eq("document_id", documentId).eq("user_id", userId);
+      // Y las preguntas falladas apuntaban a las preguntas del test anterior.
+      await supabase.from("quiz_mistakes").delete().eq("document_id", documentId).eq("user_id", userId);
     }
     return materialInLang(data as StudyRow, lang) ?? data;
   })();

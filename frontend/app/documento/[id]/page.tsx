@@ -343,7 +343,13 @@ export default function DocumentPage() {
 
           {tab === "flashcards" && <FlashcardsTab key={materials.generated_at} doc={doc} materials={materials} />}
 
-          {tab === "test" && <Quiz key={materials.generated_at} documentId={doc.id} questions={materials.quiz} />}
+          {tab === "test" && (
+            <Quiz
+              key={materials.generated_at}
+              documentId={doc.id}
+              questions={materials.quiz.map((q, i) => ({ ...q, document_id: doc.id, question_index: i }))}
+            />
+          )}
 
           <div className="border-border text-muted mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
             <span>{t.document.disclaimer}</span>

@@ -8,6 +8,7 @@ import { generalLimiter } from "./limits";
 import { chatRouter } from "./routes/chat";
 import { documentsRouter } from "./routes/documents";
 import { examsRouter } from "./routes/exams";
+import { quizRouter } from "./routes/quiz";
 import { scheduleRouter } from "./routes/schedule";
 import { studyRouter } from "./routes/study";
 import { subjectsRouter } from "./routes/subjects";
@@ -38,6 +39,7 @@ app.use("/documents", documentsRouter);
 app.use("/chat", chatRouter);
 app.use("/exams", examsRouter);
 app.use("/schedule", scheduleRouter);
+app.use("/quiz", quizRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);

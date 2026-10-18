@@ -1,6 +1,15 @@
 "use client";
 
-import { Brain, CaretRight, Cards, CheckCircle, Exam, Shuffle } from "@phosphor-icons/react";
+import {
+  ArrowCounterClockwise,
+  Brain,
+  CaretRight,
+  Cards,
+  CheckCircle,
+  Exam,
+  Shuffle,
+  Timer,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
@@ -30,6 +39,7 @@ function StudyPageContent() {
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [session, setSession] = useState(false);
+  const [mistakes, setMistakes] = useState(0);
   const [error, setError] = useState("");
 
   // Al cambiar de idioma se vuelven a pedir los datos (tarjetas y nombres de asignaturas en ese idioma).
@@ -41,11 +51,13 @@ function StudyPageContent() {
         : subjectId
           ? `&subject_id=${encodeURIComponent(subjectId)}`
           : "";
-      const [d, list, subs] = await Promise.all([
+      const [d, list, subs, m] = await Promise.all([
         api.get<DueResponse>(`/flashcards/due?limit=40${filter}`),
         api.get<DocumentItem[]>("/documents"),
         api.get<Subject[]>("/subjects"),
+        api.get<{ items: { subject_id?: string | null }[] }>("/quiz/mistakes").catch(() => ({ items: [] })),
       ]);
+      setMistakes(m.items.filter((q) => !subjectId || q.subject_id === subjectId).length);
       setDue(d);
       setDocs(list.filter((x) => x.status === "ready"));
       setSubjects(subs);
@@ -157,6 +169,22 @@ function StudyPageContent() {
             </button>
           </section>
 
+          {/* Repaso de fallos */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={ArrowCounterClockwise} tone="pink" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.mistakes.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.mistakes.count(mistakes)}</p>
+            </div>
+            <Link
+              href={subjectId ? `/fallos?asignatura=${subjectId}` : "/fallos"}
+              className={`btn-secondary ${mistakes === 0 ? "pointer-events-none opacity-50" : ""}`}
+              aria-disabled={mistakes === 0}
+            >
+              {t.mistakes.start}
+            </Link>
+          </section>
+
           {groups.length === 0 ? (
             <p className="card text-muted p-4">{t.studyPage.noReady}</p>
           ) : (
@@ -180,14 +208,24 @@ function StudyPageContent() {
                           {g.due > 0 ? t.studyPage.dueBadge(g.due) : t.studyPage.upToDate}
                         </p>
                       </div>
-                      {!filtered && g.subject && g.due > 0 && (
-                        <Link
-                          href={`/estudiar?asignatura=${g.subject.id}`}
-                          className="btn-secondary min-h-10 w-full text-sm sm:w-auto"
-                        >
-                          <Cards size={18} weight="duotone" aria-hidden="true" /> {t.studyPage.reviewSubject}
-                        </Link>
-                      )}
+                      <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                        {!filtered && g.subject && g.due > 0 && (
+                          <Link
+                            href={`/estudiar?asignatura=${g.subject.id}`}
+                            className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
+                          >
+                            <Cards size={18} weight="duotone" aria-hidden="true" /> {t.studyPage.reviewSubject}
+                          </Link>
+                        )}
+                        {g.subject && (
+                          <Link
+                            href={`/simulacro?asignatura=${g.subject.id}`}
+                            className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
+                          >
+                            <Timer size={18} weight="duotone" aria-hidden="true" /> {t.mock.button}
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <ul className="divide-border divide-y">
                       {g.docs.map((d) => {
