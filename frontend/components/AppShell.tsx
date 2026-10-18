@@ -9,6 +9,7 @@ import {
   Moon,
   SignOut,
   Sun,
+  Timer,
   type Icon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { useEffect, useState } from "react";
 import { useDedicatoria } from "@/config/dedicatoria";
 import { onServerWaking } from "@/lib/api";
 import { type Dictionary, useT } from "@/lib/i18n";
+import { formatClock, PomodoroProvider, usePomodoro } from "@/lib/pomodoro";
 import { supabase } from "@/lib/supabase";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./LoginScreen";
@@ -28,6 +30,29 @@ const NAV: { href: string; key: keyof Dictionary["nav"]; icon: Icon }[] = [
   { href: "/calendario", key: "calendar", icon: CalendarBlank },
   { href: "/chat", key: "chat", icon: ChatCircleDots },
 ];
+// En el ordenador hay sitio para más; en el móvil se llega desde Inicio y Estudiar.
+const NAV_DESKTOP_EXTRA: typeof NAV = [{ href: "/pomodoro", key: "pomodoro", icon: Timer }];
+
+/** Aviso flotante del Pomodoro en marcha (en cualquier página salvo la suya). */
+function PomodoroPill() {
+  const t = useT();
+  const pathname = usePathname();
+  const { state, left, running } = usePomodoro();
+  if (state.phase === "idle" || pathname.startsWith("/pomodoro")) return null;
+  return (
+    <Link
+      href="/pomodoro"
+      className={`fixed right-4 bottom-20 z-30 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white shadow-lg md:bottom-6 ${
+        state.phase === "break" ? "bg-[#14b8a6]" : "bg-[var(--accent)]"
+      }`}
+      aria-label={t.pomodoro.pill}
+    >
+      <Timer size={18} weight="bold" aria-hidden="true" />
+      <span className="tabular-nums">{formatClock(left)}</span>
+      {!running && <span className="opacity-80">· {t.pomodoro.paused}</span>}
+    </Link>
+  );
+}
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -64,6 +89,15 @@ export function ThemeToggle({ className = "", onDark = false }: { className?: st
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <PomodoroProvider>
+      <Shell>{children}</Shell>
+      <PomodoroPill />
+    </PomodoroProvider>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [waking, setWaking] = useState(false);
   const t = useT();
@@ -82,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </Link>
         <nav className="flex flex-col gap-1" aria-label={t.nav.mainNav}>
-          {NAV.map((item) => {
+          {[...NAV, ...NAV_DESKTOP_EXTRA].map((item) => {
             const active = isActive(pathname, item.href);
             const NavIcon = item.icon;
             return (

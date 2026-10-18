@@ -14,6 +14,7 @@ import {
   Fire,
   Heart,
   Target,
+  Timer,
   UploadSimple,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import { addDays, BLOCK_STYLE, blockDetails, blockOnDate } from "@/components/Ti
 import { WeekChart } from "@/components/WeekChart";
 import { ErrorBox, formatDate, Spinner, StatusBadge } from "@/components/ui";
 import { useDedicatoria, useFraseDelDia } from "@/config/dedicatoria";
+import { formatMinutes, sessionSummaryUrl, type SessionSummary } from "@/lib/pomodoro";
 import { api, errorMessage } from "@/lib/api";
 import { dateLocale, useLang, useT, type Dictionary } from "@/lib/i18n";
 import type { ExamsResponse, ScheduleBlock, Stats } from "@/lib/types";
@@ -74,6 +76,7 @@ export default function HomePage() {
   const [due, setDue] = useState<{ total_due: number; total_cards: number } | null>(null);
   const [exams, setExams] = useState<ExamsResponse | null>(null);
   const [schedule, setSchedule] = useState<ScheduleBlock[] | null>(null);
+  const [studyToday, setStudyToday] = useState(0);
   const [error, setError] = useState("");
   // Esta página solo se pinta en el navegador (después del login), así que podemos leer el localStorage.
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -97,6 +100,10 @@ export default function HomePage() {
           .catch(() => null),
       ]);
       setSchedule(sch);
+      api
+        .get<SessionSummary>(sessionSummaryUrl())
+        .then((x) => setStudyToday(x.today_minutes))
+        .catch(() => undefined);
       setStats(s);
       setDue(d);
       setExams(e);
@@ -151,6 +158,13 @@ export default function HomePage() {
     { label: t.home.actReview, text: t.home.actReviewText, href: "/estudiar", icon: Cards, tone: "violet" as const },
     { label: t.home.actTest, text: t.home.actTestText, href: "/estudiar", icon: Exam, tone: "pink" as const },
     { label: t.home.actAsk, text: t.home.actAskText, href: "/chat", icon: ChatCircleDots, tone: "teal" as const },
+    {
+      label: t.pomodoro.action,
+      text: t.pomodoro.actionText(formatMinutes(studyToday)),
+      href: "/pomodoro",
+      icon: Timer,
+      tone: "amber" as const,
+    },
   ];
 
   return (

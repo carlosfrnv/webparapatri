@@ -169,6 +169,18 @@ function StudyPageContent() {
             </button>
           </section>
 
+          {/* Pomodoro */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={Timer} tone="amber" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.pomodoro.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.pomodoro.subtitle}</p>
+            </div>
+            <Link href="/pomodoro" className="btn-secondary">
+              {t.pomodoro.start}
+            </Link>
+          </section>
+
           {/* Repaso de fallos */}
           <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
             <GradientIcon icon={ArrowCounterClockwise} tone="pink" size={52} />

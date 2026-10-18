@@ -10,6 +10,7 @@ import { documentsRouter } from "./routes/documents";
 import { examsRouter } from "./routes/exams";
 import { quizRouter } from "./routes/quiz";
 import { scheduleRouter } from "./routes/schedule";
+import { sessionsRouter } from "./routes/sessions";
 import { studyRouter } from "./routes/study";
 import { subjectsRouter } from "./routes/subjects";
 
@@ -40,6 +41,7 @@ app.use("/chat", chatRouter);
 app.use("/exams", examsRouter);
 app.use("/schedule", scheduleRouter);
 app.use("/quiz", quizRouter);
+app.use("/sessions", sessionsRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);
