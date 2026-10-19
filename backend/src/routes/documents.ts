@@ -12,17 +12,37 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
 import { detectKind } from "../extract";
-import { generateFigureQuiz, generateMindmap, getExtras, removeFigureFiles, saveExtras, saveFigures } from "../figures";
+import {
+  generateFigureQuiz,
+  generateMindmap,
+  getExtras,
+  removeFigureFiles,
+  saveExtras,
+  saveFigures,
+} from "../figures";
 import { isFormulaDocument } from "../formulas";
+import {
+  generatePodcast,
+  getSavedPodcasts,
+  HOSTS,
+  type Podcast,
+  savePodcasts,
+} from "../podcast";
 import { getOrGenerateStudy } from "../study";
 import { describeFigures, figureChunk, FIGURE_PREFIX } from "../vision";
 import { supabase } from "../supabase";
 
 export const documentsRouter = Router();
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+});
 // Clases grabadas: pueden pesar mucho, así que van a disco (no a memoria) y se comprimen antes de guardarlas.
-const audioUpload = multer({ dest: tmpdir(), limits: { fileSize: MAX_AUDIO_BYTES } });
+const audioUpload = multer({
+  dest: tmpdir(),
+  limits: { fileSize: MAX_AUDIO_BYTES },
+});
 const photoUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_PHOTO_BYTES, files: MAX_PHOTOS },
@@ -55,13 +75,16 @@ documentsRouter.post(
     if (!file) throw new HttpError(400, "noFile");
 
     // multer lee el nombre en latin1; lo convertimos para mantener las tildes.
-    const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+    const originalName = Buffer.from(file.originalname, "latin1").toString(
+      "utf8",
+    );
     const fields = uploadFieldsSchema.parse({
       subject_id: req.body?.subject_id || null,
       source_type: req.body?.source_type,
       reference_org: req.body?.reference_org || null,
     });
-    if (fields.source_type === "referencia" && !fields.reference_org) throw new HttpError(400, "invalidData");
+    if (fields.source_type === "referencia" && !fields.reference_org)
+      throw new HttpError(400, "invalidData");
 
     if (fields.subject_id) {
       const { data: subject } = await supabase
@@ -110,7 +133,13 @@ documentsRouter.post(
         .maybeSingle();
       if (!subject) throw new HttpError(400, "invalidSubject");
     }
-    const title = z.string().trim().min(1).max(120).catch("Apuntes a mano").parse(req.body?.title);
+    const title = z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .catch("Apuntes a mano")
+      .parse(req.body?.title);
     const pdf = await photosToPdf(files.map((f) => f.buffer));
     if (!pdf) throw new HttpError(415, "unsupportedType");
     const data = await ingestDocument({
@@ -134,8 +163,11 @@ documentsRouter.post(
     const file = req.file;
     if (!file) throw new HttpError(400, "noFile");
     try {
-      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-      if (!isAudio(file.mimetype, originalName)) throw new HttpError(415, "unsupportedType");
+      const originalName = Buffer.from(file.originalname, "latin1").toString(
+        "utf8",
+      );
+      if (!isAudio(file.mimetype, originalName))
+        throw new HttpError(415, "unsupportedType");
       const subjectId = z
         .string()
         .uuid()
@@ -175,8 +207,12 @@ documentsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     // Por defecto solo sus apuntes; la biblioteca de referencia se pide aparte.
-    const sourceType = req.query.source_type === "referencia" ? "referencia" : "apuntes";
-    const subjectId = typeof req.query.subject_id === "string" ? req.query.subject_id : undefined;
+    const sourceType =
+      req.query.source_type === "referencia" ? "referencia" : "apuntes";
+    const subjectId =
+      typeof req.query.subject_id === "string"
+        ? req.query.subject_id
+        : undefined;
     const list = (ordered: boolean) => {
       let query = supabase
         .from("documents")
@@ -186,7 +222,8 @@ documentsRouter.get(
       if (subjectId === "none") query = query.is("subject_id", null);
       else if (subjectId) query = query.eq("subject_id", subjectId);
       // Primero el orden que ella haya elegido; los que no tienen orden, al final y de más nuevo a más antiguo.
-      if (ordered) query = query.order("position", { ascending: true, nullsFirst: false });
+      if (ordered)
+        query = query.order("position", { ascending: true, nullsFirst: false });
       return query.order("created_at", { ascending: false });
     };
     let { data, error } = await list(true);
@@ -200,12 +237,17 @@ documentsRouter.get(
 documentsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    const { storage_path: _path, ...doc } = await ownedDocument(String(req.params.id), userIdOf(req));
+    const { storage_path: _path, ...doc } = await ownedDocument(
+      String(req.params.id),
+      userIdOf(req),
+    );
     res.json(doc);
   }),
 );
 
-const reorderSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
+const reorderSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+});
 
 /** Guarda el orden de una lista de archivos (el de la asignatura o los "sin asignatura"). */
 documentsRouter.post(
@@ -214,7 +256,13 @@ documentsRouter.post(
     const userId = userIdOf(req);
     const { ids } = reorderSchema.parse(req.body);
     const results = await Promise.all(
-      ids.map((id, position) => supabase.from("documents").update({ position }).eq("id", id).eq("user_id", userId)),
+      ids.map((id, position) =>
+        supabase
+          .from("documents")
+          .update({ position })
+          .eq("id", id)
+          .eq("user_id", userId),
+      ),
     );
     const failed = results.find((r) => r.error);
     if (failed?.error) throw failed.error;
@@ -264,7 +312,11 @@ documentsRouter.delete(
     await supabase.storage.from(STORAGE_BUCKET).remove([doc.storage_path]);
     await removeFigureFiles(doc.id, userId).catch(() => undefined);
     // Los fragmentos, materiales y repasos se borran en cascada.
-    const { error } = await supabase.from("documents").delete().eq("id", doc.id).eq("user_id", userId);
+    const { error } = await supabase
+      .from("documents")
+      .delete()
+      .eq("id", doc.id)
+      .eq("user_id", userId);
     if (error) throw error;
     res.status(204).end();
   }),
@@ -274,17 +326,23 @@ documentsRouter.get(
   "/:id/file",
   asyncHandler(async (req, res) => {
     const doc = await ownedDocument(String(req.params.id), userIdOf(req));
-    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(doc.storage_path, 60 * 10);
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(doc.storage_path, 60 * 10);
     if (error || !data) throw new HttpError(500, "openFailed");
     res.json({ url: data.signedUrl, mime_type: doc.mime_type });
   }),
 );
 
-async function studyHandler(req: Parameters<Parameters<typeof asyncHandler>[0]>[0], force: boolean) {
+async function studyHandler(
+  req: Parameters<Parameters<typeof asyncHandler>[0]>[0],
+  force: boolean,
+) {
   const userId = userIdOf(req);
   const doc = await ownedDocument(String(req.params.id), userId);
   // La biblioteca de referencia solo sirve para buscar: no genera resúmenes ni flashcards.
-  if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+  if (doc.source_type === "referencia")
+    throw new HttpError(409, "referenceNoStudy");
   if (doc.status === "processing") throw new HttpError(409, "stillProcessing");
   if (doc.status === "error") throw new HttpError(409, "documentHasError");
   return getOrGenerateStudy(doc.id, userId, langOf(req), force);
@@ -322,12 +380,21 @@ async function figureCount(documentId: string, userId: string) {
   return count ?? 0;
 }
 
-async function analyseFigures(doc: { id: string; storage_path: string; mime_type: string | null }, userId: string) {
-  const { data: file, error } = await supabase.storage.from(STORAGE_BUCKET).download(doc.storage_path);
+async function analyseFigures(
+  doc: { id: string; storage_path: string; mime_type: string | null },
+  userId: string,
+) {
+  const { data: file, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .download(doc.storage_path);
   if (error || !file) throw error ?? new Error("Archivo no encontrado");
   const kind = detectKind(doc.mime_type ?? "", doc.storage_path);
   const formulas = await isFormulaDocument(doc.id, userId).catch(() => false);
-  const figures = kind ? await describeFigures(Buffer.from(await file.arrayBuffer()), kind, { formulas }) : [];
+  const figures = kind
+    ? await describeFigures(Buffer.from(await file.arrayBuffer()), kind, {
+        formulas,
+      })
+    : [];
 
   // Se sustituyen las figuras anteriores (si se analiza dos veces) y las nuevas van al final.
   await supabase
@@ -369,7 +436,11 @@ documentsRouter.get(
     const userId = userIdOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
     const job = figureJobs.get(doc.id);
-    res.json({ count: await figureCount(doc.id, userId), running: !!job?.running, failed: !!job?.error });
+    res.json({
+      count: await figureCount(doc.id, userId),
+      running: !!job?.running,
+      failed: !!job?.error,
+    });
   }),
 );
 
@@ -379,7 +450,8 @@ documentsRouter.post(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
-    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.source_type === "referencia")
+      throw new HttpError(409, "referenceNoStudy");
     if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
     if (!figureJobs.get(doc.id)?.running) {
       figureJobs.set(doc.id, { running: true });
@@ -405,7 +477,8 @@ documentsRouter.get(
     const userId = userIdOf(req);
     const lang = langOf(req);
     const doc = await ownedDocument(String(req.params.id), userId);
-    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.source_type === "referencia")
+      throw new HttpError(409, "referenceNoStudy");
     if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
     const extras = await getExtras(doc.id, userId);
     if (extras.missing) throw new HttpError(409, "needsUpdate");
@@ -421,7 +494,9 @@ documentsRouter.get(
       if (!job) {
         job = generateFigureQuiz(doc.id, userId, lang, extras.figures)
           .then(async (qs) => {
-            await saveExtras(doc.id, userId, { figure_quiz: { ...extras.figure_quiz, [lang]: qs } });
+            await saveExtras(doc.id, userId, {
+              figure_quiz: { ...extras.figure_quiz, [lang]: qs },
+            });
             return qs;
           })
           .finally(() => figureQuizJobs.delete(key));
@@ -430,11 +505,18 @@ documentsRouter.get(
       questions = (await job) as typeof questions;
     }
     const byN = new Map(extras.figures.map((f) => [f.n, f]));
-    const paths = [...new Set((questions ?? []).map((q) => byN.get(q.figure)?.path).filter(Boolean))] as string[];
+    const paths = [
+      ...new Set(
+        (questions ?? []).map((q) => byN.get(q.figure)?.path).filter(Boolean),
+      ),
+    ] as string[];
     const urls = new Map<string, string>();
     if (paths.length) {
-      const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 3600);
-      for (const s of signed ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+      const { data: signed } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrls(paths, 3600);
+      for (const s of signed ?? [])
+        if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
     }
     res.json({
       needsFigures: false,
@@ -442,7 +524,9 @@ documentsRouter.get(
         .map((q) => {
           const f = byN.get(q.figure);
           const image_url = f ? urls.get(f.path) : undefined;
-          return image_url ? { ...q, image_url, figure_page: f!.page, figure_label: f!.label } : null;
+          return image_url
+            ? { ...q, image_url, figure_page: f!.page, figure_label: f!.label }
+            : null;
         })
         .filter(Boolean),
     });
@@ -463,7 +547,8 @@ documentsRouter.get(
     const lang = langOf(req);
     const force = req.query.force === "1";
     const doc = await ownedDocument(String(req.params.id), userId);
-    if (doc.source_type === "referencia") throw new HttpError(409, "referenceNoStudy");
+    if (doc.source_type === "referencia")
+      throw new HttpError(409, "referenceNoStudy");
     if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
     const extras = await getExtras(doc.id, userId);
     if (extras.missing) throw new HttpError(409, "needsUpdate");
@@ -487,19 +572,80 @@ documentsRouter.get(
         lang,
         doc.title,
         study.summary.slice(0, 30000),
-        study.key_concepts.map((c) => `- ${c.concept}: ${c.explanation}`).join("\n"),
-        (study.glossary ?? []).map((g) => `- ${g.term}: ${g.definition}`).join("\n"),
+        study.key_concepts
+          .map((c) => `- ${c.concept}: ${c.explanation}`)
+          .join("\n"),
+        (study.glossary ?? [])
+          .map((g) => `- ${g.term}: ${g.definition}`)
+          .join("\n"),
       )
         .then(async (tree) => {
           const latest = await getExtras(doc.id, userId);
           const mindmap = latest.missing ? {} : latest.mindmap;
-          await saveExtras(doc.id, userId, { mindmap: { ...mindmap, [lang]: { from, tree } } });
+          await saveExtras(doc.id, userId, {
+            mindmap: { ...mindmap, [lang]: { from, tree } },
+          });
           return tree;
         })
         .finally(() => mindmapJobs.delete(key));
       mindmapJobs.set(key, job);
     }
     res.json(await job);
+  }),
+);
+
+// ---------- Podcast del tema ----------
+// La IA solo escribe el guion (una vez por idioma); la voz la pone el dispositivo.
+
+const PODCAST_VERSION = 1;
+const podcastJobs = new Map<string, Promise<Podcast>>();
+
+documentsRouter.get(
+  "/:id/podcast",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const lang = langOf(req);
+    const force = req.query.force === "1";
+    const doc = await ownedDocument(String(req.params.id), userId);
+    if (doc.source_type === "referencia")
+      throw new HttpError(409, "referenceNoStudy");
+    if (doc.status !== "ready") throw new HttpError(409, "stillProcessing");
+    const study = (await getOrGenerateStudy(doc.id, userId, lang, false)) as {
+      summary: string;
+      key_concepts: { concept: string; explanation: string }[];
+      generated_at: string;
+    };
+    const from = `${study.generated_at}#${PODCAST_VERSION}`;
+    const saved = await getSavedPodcasts(doc.id, userId);
+    const cached = saved[lang];
+    if (cached && cached.from === from && !force) {
+      res.json({ ...cached.podcast, hosts: HOSTS[lang] });
+      return;
+    }
+    const key = `${doc.id}:${lang}`;
+    let job = podcastJobs.get(key);
+    if (!job) {
+      job = generatePodcast(
+        lang,
+        doc.title,
+        study.summary.slice(0, 30000),
+        study.key_concepts
+          .map((c) => `- ${c.concept}: ${c.explanation}`)
+          .join("\n"),
+      )
+        .then(async (podcast) => {
+          const latest = await getSavedPodcasts(doc.id, userId);
+          await savePodcasts(doc.id, userId, {
+            ...latest,
+            [lang]: { from, podcast },
+          });
+          return podcast;
+        })
+        .finally(() => podcastJobs.delete(key));
+      podcastJobs.set(key, job);
+    }
+    res.json({ ...(await job), hosts: HOSTS[lang] });
   }),
 );
 
@@ -517,11 +663,17 @@ documentsRouter.get(
       res.json({ figures: [] });
       return;
     }
-    const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(
-      extras.figures.map((f) => f.path),
-      3600,
+    const { data: signed } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrls(
+        extras.figures.map((f) => f.path),
+        3600,
+      );
+    const urls = new Map(
+      (signed ?? [])
+        .filter((s) => s.path && s.signedUrl)
+        .map((s) => [s.path!, s.signedUrl]),
     );
-    const urls = new Map((signed ?? []).filter((s) => s.path && s.signedUrl).map((s) => [s.path!, s.signedUrl]));
     res.json({
       figures: extras.figures
         .filter((f) => urls.has(f.path))
@@ -532,7 +684,9 @@ documentsRouter.get(
           // Las descripciones se escriben en portugués (como sus apuntes); con la web en español, su versión corta.
           description: lang === "es" ? (f.description_es ?? "") : f.description,
           // Para colocar cada figura en su apartado del resumen: todo lo que se sabe de ella, en los dos idiomas.
-          match: [f.label, f.description, f.description_es].filter(Boolean).join(" "),
+          match: [f.label, f.description, f.description_es]
+            .filter(Boolean)
+            .join(" "),
           // Con la web en español: las etiquetas de la imagen (en portugués) traducidas.
           labels: lang === "es" ? (f.labels_es ?? []) : [],
           url: urls.get(f.path),

@@ -8,6 +8,7 @@ import { FigureQuiz } from "@/components/FigureQuiz";
 import { HighlightTools, useHighlightPaint, useHighlights } from "@/components/Highlights";
 import { FlashcardSession } from "@/components/FlashcardSession";
 import { MindMapTab } from "@/components/MindMap";
+import { PodcastTab } from "@/components/Podcast";
 import { Quiz } from "@/components/Quiz";
 import { ReadAloud } from "@/components/ReadAloud";
 import { SourceChips } from "@/components/Sources";
@@ -17,7 +18,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, DueCard, StudyMaterials } from "@/lib/types";
 
-const TABS = ["resumen", "conceptos", "glosario", "esquema", "flashcards", "test", "archivo"] as const;
+const TABS = ["resumen", "conceptos", "glosario", "esquema", "podcast", "flashcards", "test", "archivo"] as const;
 type TabId = (typeof TABS)[number];
 
 function useHashTab(): [TabId, (t: TabId) => void] {
@@ -418,6 +419,8 @@ export default function DocumentPage() {
           )}
 
           {tab === "esquema" && <MindMapTab key={materials.generated_at} documentId={doc.id} />}
+
+          {tab === "podcast" && <PodcastTab key={materials.generated_at} documentId={doc.id} />}
 
           {tab === "flashcards" && <FlashcardsTab key={materials.generated_at} doc={doc} materials={materials} />}
 

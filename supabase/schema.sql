@@ -171,6 +171,8 @@ create table if not exists document_extras (
   mindmap jsonb,
   updated_at timestamptz default now()
 );
+-- Guion del podcast de cada tema ({"es": {...}, "pt": {...}}); la voz la pone el dispositivo.
+alter table document_extras add column if not exists podcast jsonb;
 
 -- Subrayados y notas en los resúmenes: el trozo de texto subrayado, su color y una nota opcional.
 create table if not exists highlights (
