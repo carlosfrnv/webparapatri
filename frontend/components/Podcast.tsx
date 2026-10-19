@@ -18,6 +18,10 @@ interface PodcastData {
   hosts: [string, string];
 }
 
+// Nombres de las voces del iPad/Mac (y algunas de Chrome) para distinguir chica y chico.
+const FEMALE = /m[oó]nica|paulina|marisol|joana|catarina|luciana|helena|laura|luc[ií]a|elvira|female|mujer/i;
+const MALE = /jorge|diego|juan|enrique|pablo|carlos|joaquim|duarte|daniel|alvaro|male|hombre/i;
+
 /** Dos voces del idioma: distintas si el dispositivo tiene varias; si no, la misma con otro tono. */
 function pickVoices(lang: "es" | "pt") {
   const all = window.speechSynthesis.getVoices();
@@ -27,8 +31,11 @@ function pickVoices(lang: "es" | "pt") {
   const local = all.filter((v) => norm(v).startsWith(main));
   const others = all.filter((v) => norm(v).startsWith(prefix) && !norm(v).startsWith(main));
   const pool = [...local, ...others];
-  const a = pool[0] ?? null;
-  const b = pool.find((v) => v !== a && v.name !== a?.name) ?? null;
+  // Patricia con voz de chica y Carlos con voz de chico, si el dispositivo tiene las dos.
+  const female = pool.find((v) => FEMALE.test(v.name));
+  const male = pool.find((v) => MALE.test(v.name));
+  const a = female ?? pool[0] ?? null;
+  const b = male ?? pool.find((v) => v !== a && v.name !== a?.name) ?? null;
   return b
     ? [
         { voice: a, pitch: 1 },

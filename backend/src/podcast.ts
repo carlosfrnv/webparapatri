@@ -10,8 +10,8 @@ import { supabase } from "./supabase";
  */
 
 export const HOSTS: Record<Lang, [string, string]> = {
-  es: ["Lucía", "Dani"],
-  pt: ["Inês", "Tiago"],
+  es: ["Patricia", "Carlos"],
+  pt: ["Patricia", "Carlos"],
 };
 
 const podcastSchema = z.object({
