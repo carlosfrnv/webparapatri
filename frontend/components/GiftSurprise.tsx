@@ -182,7 +182,6 @@ export function GiftSurprise({ onOpenChange }: { onOpenChange?: (open: boolean) 
 function GiftCode() {
   const r = useDedicatoria().regalo;
   const [gift, setGift] = useState<{ code: string | null; pin: string | null } | null>(null);
-  const [failed, setFailed] = useState(false);
   const [shown, setShown] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -190,10 +189,10 @@ function GiftCode() {
     api
       .get<{ code: string | null; pin: string | null }>("/couple/gift")
       .then(setGift)
-      .catch(() => setFailed(true));
+      .catch(() => undefined);
   }, []);
 
-  if (failed || (gift && !gift.code)) return <p className="text-muted mt-4">{r.sinCodigo}</p>;
+  // Ya canjeado (o sin código en Render): no se enseña nada.
   if (!gift?.code) return null;
 
   if (!shown)

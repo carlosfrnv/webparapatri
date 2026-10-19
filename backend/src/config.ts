@@ -40,8 +40,8 @@ const envSchema = z.object({
   // Búsquedas web como máximo por pregunta (Radiopaedia, IAEA, EFRS). 0 = sin consulta online.
   WEB_MAX_SEARCHES: z.coerce.number().int().min(0).max(5).default(3),
   // Código y PIN de la tarjeta regalo de Primor (se pueden cambiar en Render). Solo se le enseña a ella al tocar "Descubrir código".
-  GIFT_CODE: z.string().trim().default("410002376193"),
-  GIFT_PIN: z.string().trim().default("4510"),
+  GIFT_CODE: z.string().trim().optional(),
+  GIFT_PIN: z.string().trim().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
