@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { roleOf, userIdOf } from "../auth";
+import { config } from "../config";
 import { asyncHandler, HttpError } from "../http";
 import { pushToStudent } from "../push";
 import { supabase } from "../supabase";
@@ -22,6 +23,16 @@ coupleRouter.get(
   "/me",
   asyncHandler(async (req, res) => {
     res.json({ role: roleOf(req) });
+  }),
+);
+
+// ---------- Tarjeta regalo ----------
+
+// El código va en Render (GIFT_CODE / GIFT_PIN), no en el código de la web. Sin él, la sorpresa sale sin código.
+coupleRouter.get(
+  "/gift",
+  asyncHandler(async (_req, res) => {
+    res.json({ code: config.GIFT_CODE || null, pin: config.GIFT_PIN || null });
   }),
 );
 
@@ -48,7 +59,9 @@ coupleRouter.post(
   "/notes",
   asyncHandler(async (req, res) => {
     if (roleOf(req) !== "partner") throw new HttpError(403, "invalidData");
-    const { body } = z.object({ body: z.string().trim().min(1).max(1000) }).parse(req.body);
+    const { body } = z
+      .object({ body: z.string().trim().min(1).max(1000) })
+      .parse(req.body);
     const { data, error } = await supabase
       .from("love_notes")
       .insert({ body, author_id: userIdOf(req) })
@@ -57,7 +70,10 @@ coupleRouter.post(
     check(error);
     // Aviso en su móvil o iPad (si tiene los recordatorios activados).
     pushToStudent((lang) => ({
-      title: lang === "pt" ? "💌 O Carlos deixou-te uma nota" : "💌 Carlos te ha dejado una nota",
+      title:
+        lang === "pt"
+          ? "💌 O Carlos deixou-te uma nota"
+          : "💌 Carlos te ha dejado una nota",
       body: body.length > 120 ? `${body.slice(0, 117)}…` : body,
       url: "/",
     })).catch((err) => console.error("Error al avisar de la nota:", err));
@@ -87,7 +103,10 @@ coupleRouter.delete(
   "/notes/:id",
   asyncHandler(async (req, res) => {
     if (roleOf(req) !== "partner") throw new HttpError(403, "invalidData");
-    const { error } = await supabase.from("love_notes").delete().eq("id", Number(req.params.id));
+    const { error } = await supabase
+      .from("love_notes")
+      .delete()
+      .eq("id", Number(req.params.id));
     check(error);
     res.status(204).end();
   }),

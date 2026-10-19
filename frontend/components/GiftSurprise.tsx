@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRole } from "@/components/Couple";
 import { useDedicatoria } from "@/config/dedicatoria";
+import { api } from "@/lib/api";
 import { localToday } from "./ExamPlan";
 
 // Fecha (AAAA-MM-DD) en que lo abrió. Mientras no esté, la caja sale al entrar.
@@ -162,6 +163,7 @@ export function GiftSurprise({ onOpenChange }: { onOpenChange?: (open: boolean) 
                 <h2 className="mt-6 text-2xl font-bold">{r.titulo}</h2>
                 <p className="text-muted mt-3 text-left whitespace-pre-line sm:text-center">{r.mensaje}</p>
                 <p className="mt-4 font-medium">{r.firma}</p>
+                <GiftCode />
                 <button className="btn-primary mt-6 w-full" onClick={close} autoFocus>
                   {r.cerrar}
                 </button>
@@ -171,5 +173,58 @@ export function GiftSurprise({ onOpenChange }: { onOpenChange?: (open: boolean) 
           document.body,
         )}
     </>
+  );
+}
+
+/** El código de la tarjeta, tapado hasta que lo descubre. Si no hay código en Render, un "pregúntame". */
+function GiftCode() {
+  const r = useDedicatoria().regalo;
+  const [gift, setGift] = useState<{ code: string | null; pin: string | null } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [shown, setShown] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api
+      .get<{ code: string | null; pin: string | null }>("/couple/gift")
+      .then(setGift)
+      .catch(() => setFailed(true));
+  }, []);
+
+  if (failed || (gift && !gift.code)) return <p className="text-muted mt-4">{r.sinCodigo}</p>;
+  if (!gift?.code) return null;
+
+  if (!shown)
+    return (
+      <button className="gift-code-cover mt-5 w-full" onClick={() => setShown(true)}>
+        {r.descubrir}
+      </button>
+    );
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(gift!.code!);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* se ignora: lo puede copiar a mano */
+    }
+  }
+
+  return (
+    <div className="gift-code-reveal mt-5 rounded-2xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] p-4">
+      <div className="text-muted text-xs font-semibold tracking-widest uppercase">{r.codigo}</div>
+      <div className="mt-1 font-mono text-xl font-bold break-all select-all sm:text-2xl">{gift.code}</div>
+      {gift.pin && (
+        <div className="mt-2 text-sm">
+          <span className="text-muted">{r.pin}: </span>
+          <span className="font-mono text-lg font-bold select-all">{gift.pin}</span>
+        </div>
+      )}
+      <button className="btn-secondary mt-3" onClick={copy}>
+        {copied ? r.copiado : r.copiar}
+      </button>
+      <p className="text-muted mt-3 text-sm">{r.comoUsar}</p>
+    </div>
   );
 }

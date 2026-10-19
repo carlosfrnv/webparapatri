@@ -2,13 +2,21 @@ import { z } from "zod";
 
 const envSchema = z.object({
   // IA: orden de proveedores y modelos. Se salta cualquiera cuya clave no esté configurada.
-  AI_CHAIN: z.string().default("gemini:gemini-flash-latest,gemini:gemini-flash-lite-latest,groq:openai/gpt-oss-120b"),
+  AI_CHAIN: z
+    .string()
+    .default(
+      "gemini:gemini-flash-latest,gemini:gemini-flash-lite-latest,groq:openai/gpt-oss-120b",
+    ),
   GEMINI_API_KEY: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
   // Opcional y de pago: solo se usa si se añade "anthropic:<modelo>" a AI_CHAIN.
   ANTHROPIC_API_KEY: z.string().optional(),
-  SUPABASE_URL: z.string({ error: "Falta esta variable" }).url("No es una URL válida"),
-  SUPABASE_SERVICE_ROLE_KEY: z.string({ error: "Falta esta variable" }).min(1, "Falta esta variable"),
+  SUPABASE_URL: z
+    .string({ error: "Falta esta variable" })
+    .url("No es una URL válida"),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string({ error: "Falta esta variable" })
+    .min(1, "Falta esta variable"),
   // Opcional. Uno o varios emails separados por comas: solo esos pueden usar la web. El primero es el de Patri
   // (los scripts usan sus datos). Si se deja vacío, puede entrar cualquier usuario creado en Supabase
   // (con el registro desactivado en Supabase, solo los que crees tú).
@@ -16,7 +24,9 @@ const envSchema = z.object({
     .string()
     .default("")
     .refine(
-      (v) => !v.trim() || v.split(",").every((e) => z.email().safeParse(e.trim()).success),
+      (v) =>
+        !v.trim() ||
+        v.split(",").every((e) => z.email().safeParse(e.trim()).success),
       "No es un email válido (si son varios, sepáralos con comas)",
     ),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
@@ -29,13 +39,23 @@ const envSchema = z.object({
   REMINDER_HOUR: z.coerce.number().int().min(0).max(23).default(9),
   // Búsquedas web como máximo por pregunta (Radiopaedia, IAEA, EFRS). 0 = sin consulta online.
   WEB_MAX_SEARCHES: z.coerce.number().int().min(0).max(5).default(3),
+  // Código (y PIN, si la tarjeta lo lleva) de la tarjeta regalo de Primor. Solo se le enseña a ella al tocar "Descubrir código".
+  GIFT_CODE: z.string().trim().optional(),
+  GIFT_PIN: z.string().trim().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
 const hasAiKey =
-  parsed.success && !!(parsed.data.GEMINI_API_KEY || parsed.data.GROQ_API_KEY || parsed.data.ANTHROPIC_API_KEY);
+  parsed.success &&
+  !!(
+    parsed.data.GEMINI_API_KEY ||
+    parsed.data.GROQ_API_KEY ||
+    parsed.data.ANTHROPIC_API_KEY
+  );
 if (parsed.success && !hasAiKey) {
-  console.error("Configuración no válida: falta la clave de la IA (GEMINI_API_KEY y/o GROQ_API_KEY).");
+  console.error(
+    "Configuración no válida: falta la clave de la IA (GEMINI_API_KEY y/o GROQ_API_KEY).",
+  );
   process.exit(1);
 }
 if (!parsed.success) {

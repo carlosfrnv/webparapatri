@@ -124,10 +124,17 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
       para: "Para Patri, con todo mi amor",
       mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Te he regalado una tarjeta de Primor para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
 
-Es un premio por lo bien que lo estás haciendo. Estoy muy orgulloso de ti 🖤
-
-Pregúntame por ella 😉`,
+Es un premio por lo bien que lo estás haciendo. Estoy muy orgulloso de ti 🖤`,
       firma: "— Tu nene",
+      // Botón para ver el código (el código se pone en Render: GIFT_CODE y GIFT_PIN).
+      descubrir: "🔓 Descubrir el código",
+      codigo: "Código",
+      pin: "PIN",
+      copiar: "Copiar",
+      copiado: "¡Copiado!",
+      comoUsar: "Guárdalo bien: es lo que necesitas para gastar la tarjeta en Primor 💄",
+      // Si no hay código puesto en Render.
+      sinCodigo: "Pregúntame por ella 😉",
       cerrar: "¡Gracias, nene! 🖤",
       volver: "Tu regalo de Primor 🎁",
       volverTexto: "Toca para volver a verlo",
@@ -238,10 +245,15 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
       para: "Para a Patri, com todo o meu amor",
       mensaje: `Com tudo o que estás a estudar, mereces um miminho. Ofereci-te um cartão da Primor para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
 
-É um prémio por estares a fazer tudo tão bem. Tenho muito orgulho em ti 🖤
-
-Pergunta-me por ele 😉`,
+É um prémio por estares a fazer tudo tão bem. Tenho muito orgulho em ti 🖤`,
       firma: "— O teu nene",
+      descubrir: "🔓 Descobrir o código",
+      codigo: "Código",
+      pin: "PIN",
+      copiar: "Copiar",
+      copiado: "Copiado!",
+      comoUsar: "Guarda-o bem: é o que precisas para gastar o cartão na Primor 💄",
+      sinCodigo: "Pergunta-me por ele 😉",
       cerrar: "Obrigada, nene! 🖤",
       volver: "O teu presente da Primor 🎁",
       volverTexto: "Toca para o voltar a ver",
