@@ -115,6 +115,23 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
       firma: "— Tu nene",
       cerrar: "Te quiero 🖤",
     },
+    // Sorpresa de la tarjeta regalo: sale una vez al entrar (primero una caja que tiene que abrir).
+    regalo: {
+      aviso: "Tienes un regalo 🎁",
+      tocar: "Toca la caja para abrirlo",
+      titulo: "¡Sorpresa, nena! 🖤",
+      tarjeta: "Tarjeta regalo",
+      para: "Para Patri, con todo mi amor",
+      mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Te he regalado una tarjeta de Primor para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
+
+Es un premio por lo bien que lo estás haciendo. Estoy muy orgulloso de ti 🖤
+
+Pregúntame por ella 😉`,
+      firma: "— Tu nene",
+      cerrar: "¡Gracias, nene! 🖤",
+      volver: "Tu regalo de Primor 🎁",
+      volverTexto: "Toca para volver a verlo",
+    },
     // Respuestas del chat cuando pregunta algo que no tiene que ver con sus estudios (sale una u otra).
     fueraDeTema: [
       "Tu novio me ha configurado únicamente para que hablemos de tus estudios. Dice que te centres en estudiar y que te ama mucho 🖤. Eso pregúntaselo a ChatGPT 😉",
@@ -212,6 +229,22 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
         `Hoje faz ${anosPt(n)} do nosso primeiro beijo. Voltava a vivê-lo mil vezes. Amo-te, nena 🖤.`,
       firma: "— O teu nene",
       cerrar: "Amo-te 🖤",
+    },
+    regalo: {
+      aviso: "Tens um presente 🎁",
+      tocar: "Toca na caixa para o abrir",
+      titulo: "Surpresa, nena! 🖤",
+      tarjeta: "Cartão presente",
+      para: "Para a Patri, com todo o meu amor",
+      mensaje: `Com tudo o que estás a estudar, mereces um miminho. Ofereci-te um cartão da Primor para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
+
+É um prémio por estares a fazer tudo tão bem. Tenho muito orgulho em ti 🖤
+
+Pergunta-me por ele 😉`,
+      firma: "— O teu nene",
+      cerrar: "Obrigada, nene! 🖤",
+      volver: "O teu presente da Primor 🎁",
+      volverTexto: "Toca para o voltar a ver",
     },
     fueraDeTema: [
       "O teu namorado configurou-me só para falarmos dos teus estudos. Diz que te concentres a estudar e que te ama muito 🖤. Isso pergunta ao ChatGPT 😉",
