@@ -158,7 +158,6 @@ export function GiftSurprise({ onOpenChange }: { onOpenChange?: (open: boolean) 
                     <span aria-hidden="true">🖤</span>
                   </div>
                   <div className="gift-card-brand">PRIMOR</div>
-                  <div className="text-sm text-white/80">{r.para}</div>
                 </div>
                 <h2 className="mt-6 text-2xl font-bold">{r.titulo}</h2>
                 <p className="text-muted mt-3 text-left whitespace-pre-line sm:text-center">{r.mensaje}</p>

@@ -121,8 +121,7 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
       tocar: "Toca la caja para abrirlo",
       titulo: "¡Sorpresa, nena! 🖤",
       tarjeta: "Tarjeta regalo",
-      para: "Para Patri, con todo mi amor",
-      mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Te he regalado una tarjeta de Primor para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
+      mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Esta tarjeta de Primor es para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
 
 El esfuerzo tiene recompensa, y tú te has esforzado muchísimo. Disfrútalo, nena 🖤`,
       firma: "— Tu nene",
@@ -242,8 +241,7 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
       tocar: "Toca na caixa para o abrir",
       titulo: "Surpresa, nena! 🖤",
       tarjeta: "Cartão presente",
-      para: "Para a Patri, com todo o meu amor",
-      mensaje: `Com tudo o que estás a estudar, mereces um miminho. Ofereci-te um cartão da Primor para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
+      mensaje: `Com tudo o que estás a estudar, mereces um miminho. Este cartão da Primor é para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
 
 O esforço tem recompensa, e tu esforçaste-te imenso. Aproveita, nena 🖤`,
       firma: "— O teu nene",
