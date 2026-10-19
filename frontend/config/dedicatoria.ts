@@ -124,7 +124,7 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
       para: "Para Patri, con todo mi amor",
       mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Te he regalado una tarjeta de Primor para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
 
-Es un premio por lo bien que lo estás haciendo. Estoy muy orgulloso de ti 🖤`,
+El esfuerzo tiene recompensa, y tú te has esforzado muchísimo. Disfrútalo, nena 🖤`,
       firma: "— Tu nene",
       // Botón para ver el código (el código se pone en Render: GIFT_CODE y GIFT_PIN).
       descubrir: "🔓 Descubrir el código",
@@ -245,7 +245,7 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
       para: "Para a Patri, com todo o meu amor",
       mensaje: `Com tudo o que estás a estudar, mereces um miminho. Ofereci-te um cartão da Primor para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
 
-É um prémio por estares a fazer tudo tão bem. Tenho muito orgulho em ti 🖤`,
+O esforço tem recompensa, e tu esforçaste-te imenso. Aproveita, nena 🖤`,
       firma: "— O teu nene",
       descubrir: "🔓 Descobrir o código",
       codigo: "Código",
