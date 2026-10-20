@@ -114,8 +114,31 @@ export default function SubjectPage() {
           actions={
             <>
               {/anatom/i.test(subject.name) && (
-                <Link href={`/asignatura/${subject.id}/atlas`} className="btn-primary">
-                  {t.atlas.button}
+                <>
+                  <Link href={`/asignatura/${subject.id}/atlas`} className="btn-primary">
+                    {t.atlas.button}
+                  </Link>
+                  <Link href={`/asignatura/${subject.id}/cortes`} className="btn-primary">
+                    {t.tools.slices.button}
+                  </Link>
+                  <Link href={`/asignatura/${subject.id}/celula`} className="btn-primary">
+                    {t.tools.cell.button}
+                  </Link>
+                </>
+              )}
+              {/f[ií]sica/i.test(subject.name) && (
+                <>
+                  <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
+                    {t.tools.xray.button}
+                  </Link>
+                  <Link href={`/asignatura/${subject.id}/espectro`} className="btn-primary">
+                    {t.tools.spectrum.button}
+                  </Link>
+                </>
+              )}
+              {/bioqu[ií]m/i.test(subject.name) && (
+                <Link href={`/asignatura/${subject.id}/moleculas`} className="btn-primary">
+                  {t.tools.molecules.button}
                 </Link>
               )}
               {/matem|estat[ií]st|c[aá]lculo|[aá]lgebra/i.test(subject.name) && (

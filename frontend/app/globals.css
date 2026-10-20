@@ -564,3 +564,11 @@ mark {
     animation: none;
   }
 }
+
+/* Deslizadores de las herramientas interactivas (grandes para el dedo). */
+.slider {
+  width: 100%;
+  height: 2rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

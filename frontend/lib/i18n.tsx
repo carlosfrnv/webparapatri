@@ -363,6 +363,25 @@ const es = {
     again: "Otro simulacro",
     savedMistakes: "Las que has fallado ya están en tu repaso de fallos.",
   },
+  tools: {
+    xray: {
+      button: "☢️ Simulador de rayos X",
+      title: "Simulador de rayos X",
+      subtitle: "Mueve los mandos y mira cómo cambia la radiografía",
+    },
+    spectrum: {
+      button: "🌈 Espectro y radiación",
+      title: "Espectro y radiación",
+      subtitle: "Del radio a los rayos gamma, y la ley del inverso del cuadrado",
+    },
+    molecules: { button: "🧪 Moléculas 3D", title: "Moléculas en 3D", subtitle: "Gíralas y amplíalas con el dedo" },
+    cell: { button: "🔬 La célula", title: "La célula interactiva", subtitle: "Toca cada orgánulo para ver qué hace" },
+    slices: {
+      button: "🩻 Cortes 3D",
+      title: "Cortes del cuerpo en 3D",
+      subtitle: "Mueve el plano y mira el corte, como en una TC o una RM",
+    },
+  },
   podcast: {
     loading: "Escribiendo el guion del podcast… Puede tardar hasta un minuto (solo la primera vez).",
     with: (a: string, b: string) => `Con ${a} y ${b} · repaso del tema`,
@@ -1182,6 +1201,25 @@ const pt: Dictionary = {
     studyTopic: "Rever o tema →",
     again: "Outra simulação",
     savedMistakes: "As que erraste já estão na tua revisão de erros.",
+  },
+  tools: {
+    xray: {
+      button: "☢️ Simulador de raios X",
+      title: "Simulador de raios X",
+      subtitle: "Mexe nos comandos e vê como muda a radiografia",
+    },
+    spectrum: {
+      button: "🌈 Espetro e radiação",
+      title: "Espetro e radiação",
+      subtitle: "Das ondas de rádio aos raios gama, e a lei do inverso do quadrado",
+    },
+    molecules: { button: "🧪 Moléculas 3D", title: "Moléculas em 3D", subtitle: "Roda-as e amplia-as com o dedo" },
+    cell: { button: "🔬 A célula", title: "A célula interativa", subtitle: "Toca em cada organelo para ver o que faz" },
+    slices: {
+      button: "🩻 Cortes 3D",
+      title: "Cortes do corpo em 3D",
+      subtitle: "Mexe no plano e vê o corte, como numa TC ou numa RM",
+    },
   },
   podcast: {
     loading: "A escrever o guião do podcast… Pode demorar até um minuto (só da primeira vez).",
