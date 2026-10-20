@@ -135,10 +135,10 @@ const TEXT = {
   },
 };
 
-// Al empezar (o cambiar de exploración) los valores están algo pasados: hay que corregirlos.
+// Al empezar (o cambiar de exploración) los valores se quedan cortos: hay que corregirlos.
 const startOf = (id: PhantomId): Settings => {
   const ideal = IDEAL[id];
-  return { ...ideal, kv: ideal.kv + 6, mas: Math.round(ideal.mas * 2 * 10) / 10, grid: false };
+  return { ...ideal, kv: ideal.kv - 4, mas: Math.max(0.5, Math.round(ideal.mas * 0.15 * 10) / 10), grid: false };
 };
 
 // mAs en escala logarítmica (de 0,5 a 100) para que el deslizador sea cómodo.
@@ -306,14 +306,14 @@ export default function XRaySim() {
 
         {result && ready && (
           <div className="card grid grid-cols-2 gap-4 p-4">
-            <Meter label={tx.brightness} value={1 - result.brightness} good={[0.22, 0.64]} />
+            <Meter label={tx.brightness} value={1 - result.brightness} good={[0.38, 0.76]} />
             <Meter
               label={tx.contrast}
               value={Math.min(1, result.contrast / idealContrastOf(exam, ready) / 1.6)}
               good={[0.37, 1]}
             />
-            <Meter label={tx.noise} value={Math.min(1, result.noise / 0.12)} good={[0, 0.62]} />
-            <Meter label={tx.scatter} value={result.scatter} good={[0, 0.45]} />
+            <Meter label={tx.noise} value={Math.min(1, result.noise / 0.12)} good={[0, 0.42]} />
+            <Meter label={tx.scatter} value={result.scatter} good={[0, 0.38]} />
             <Meter
               label={tx.dose}
               value={Math.min(1, result.dose / 4)}

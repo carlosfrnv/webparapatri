@@ -15,7 +15,7 @@ OUT = os.path.join(HERE, "../../public/xray")
 BONE_SCALE = 0.05  # cm por nivel (máx. 12,75 cm)
 SOFT_SCALE = 0.2  # cm por nivel (máx. 51 cm)
 # Grosor de piel y grasa que se añade alrededor del cuerpo (cm) y cuánto se difumina (cm).
-ENVELOPE = {"mano": (1.4, 0.35), "rodilla": (3.0, 0.8), "torax": (3.0, 1.2), "pelvis": (4.0, 1.5)}
+ENVELOPE = {"mano": (1.0, 0.3), "rodilla": (1.2, 0.6), "torax": (1.0, 1.0), "pelvis": (1.5, 1.2)}
 
 
 def blur(a, sigma):
@@ -42,8 +42,8 @@ def main():
         soft = np.array(v["soft"], dtype=float).reshape(h, w)
         holes = np.array(v["holes"], dtype=bool).reshape(h, w)
         # Donde el haz pasó por huecos de las mallas queda algún punto suelto: se suaviza con una mediana.
-        bone = median3(median3(bone))
-        soft = median3(median3(soft))
+        bone = median3(bone)
+        soft = median3(soft)
         # Piel y grasa: un borde suave alrededor de todo lo que hay.
         thick, spread = ENVELOPE[exam]
         body = ((bone > 0.05) | (soft > 0.3)).astype(float)

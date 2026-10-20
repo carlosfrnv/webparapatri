@@ -40,7 +40,7 @@ export function mu(kv: number) {
   const photo = Math.pow(30 / e, 3);
   // Hueso "efectivo": los huesos del modelo son macizos, pero por dentro son sobre todo trabeculares
   // (con médula), así que su atenuación media es bastante menor que la del hueso cortical.
-  return { soft: 0.17 + 0.09 * photo, bone: 0.3 + 0.33 * photo };
+  return { soft: 0.17 + 0.09 * photo, bone: 0.45 + 0.25 * photo };
 }
 
 /** Exposición relativa que sale del tubo (∝ mAs · kV² / d²). */
@@ -219,7 +219,7 @@ function fog(src: Float32Array, w: number, h: number, block = 12) {
 }
 
 // Calibración del detector para cada exploración (como hace el equipo): con los valores ideales,
-// el tejido blando típico recibe una exposición algo por encima de la media de la curva.
+// el punto típico del paciente (hueso o tejido blando) queda algo por encima de la mitad de la curva.
 const TARGET = 1.4;
 const calibration = new Map<Phantom, number>();
 function referenceOf(id: PhantomId, p: Phantom) {
@@ -227,7 +227,7 @@ function referenceOf(id: PhantomId, p: Phantom) {
   if (ref === undefined) {
     const { signal } = detector(p, IDEAL[id]);
     const vals: number[] = [];
-    for (let i = 0; i < signal.length; i++) if (p.body[i] && !p.boneMask[i]) vals.push(signal[i]);
+    for (let i = 0; i < signal.length; i++) if (p.body[i]) vals.push(signal[i]);
     vals.sort((a, b) => a - b);
     ref = (vals[Math.floor(vals.length / 2)] ?? 1) / TARGET;
     calibration.set(p, ref);
@@ -254,8 +254,8 @@ function detector(p: Phantom, s: Settings) {
   return { signal, scatterShare: (spr * gs) / (gp + spr * gs) };
 }
 
-const QUANTA = 600; // fotones por píxel con una exposición "correcta" (ruido ≈ 3%)
-const GAMMA = 1.15; // pendiente de la curva del detector (latitud amplia, como un equipo digital)
+const QUANTA = 1400; // fotones por píxel con una exposición "correcta" (ruido ≈ 2,5 %)
+const GAMMA = 1.5; // pendiente de la curva del detector (contraste de la imagen)
 
 export interface Result {
   pixels: Uint8ClampedArray; // 0 = negro (mucha radiación), 255 = blanco
@@ -327,11 +327,11 @@ export function idealContrastOf(id: PhantomId, p: Phantom) {
 
 export function verdict(id: PhantomId, p: Phantom, r: Result, s: Settings): Verdict {
   const ref = idealContrastOf(id, p);
-  if (r.brightness > 0.78) return "under";
+  if (r.brightness > 0.62) return "under";
   // Sin rejilla en una zona gruesa, la radiación dispersa vela la imagen (la oscurece y le quita contraste).
-  if (!s.grid && r.scatter > 0.45) return "scatter";
-  if (r.brightness < 0.36) return "over";
-  if (r.noise > 0.075) return "noisy";
+  if (!s.grid && r.scatter > 0.38) return "scatter";
+  if (r.brightness < 0.24) return "over";
+  if (r.noise > 0.05) return "noisy";
   if (r.contrast < ref * 0.6) return "lowContrast";
   // La imagen es buena, pero con mucha más radiación de la necesaria (principio ALARA).
   if (r.dose > 2.5) return "highDose";
