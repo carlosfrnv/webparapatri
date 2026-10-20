@@ -136,6 +136,11 @@ export default function SubjectPage() {
                   </Link>
                 </>
               )}
+              {/integra/i.test(subject.name) && (
+                <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
+                  {t.tools.xray.button}
+                </Link>
+              )}
               {/bioqu[ií]m/i.test(subject.name) && (
                 <Link href={`/asignatura/${subject.id}/moleculas`} className="btn-primary">
                   {t.tools.molecules.button}
