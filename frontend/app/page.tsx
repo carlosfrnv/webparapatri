@@ -21,7 +21,6 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ExamPlanCard, localToday } from "@/components/ExamPlan";
-import { GiftSurprise } from "@/components/GiftSurprise";
 import { GradientIcon } from "@/components/GradientIcon";
 import { HeroArt } from "@/components/HeroArt";
 import { NewNotes, useRole } from "@/components/Couple";
@@ -50,7 +49,6 @@ export default function HomePage() {
   const dedicatoria = useDedicatoria();
   const frase = useFraseDelDia();
   const role = useRole();
-  const [giftOpen, setGiftOpen] = useState(false);
   // Se puede ocultar la tarjeta de los avisos (sigue en el Calendario).
   const [pushHidden, setPushHidden] = useState(() => {
     try {
@@ -178,11 +176,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* La sorpresa de la tarjeta regalo (sale antes que el mensaje del día especial). */}
-      <GiftSurprise onOpenChange={setGiftOpen} />
-
       {/* El 21 de cada mes, el aniversario y el 8 de octubre. */}
-      <SpecialDay suppressModal={giftOpen} />
+      <SpecialDay />
 
       {/* Notas nuevas de Carlos (solo las ve ella) */}
       {role === "student" && <NewNotes />}

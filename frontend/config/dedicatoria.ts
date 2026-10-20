@@ -115,30 +115,6 @@ Estoy muy orgulloso de ti. ¡Vas a ser una técnica increíble!`,
       firma: "— Tu nene",
       cerrar: "Te quiero 🖤",
     },
-    // Sorpresa de la tarjeta regalo: sale una vez al entrar (primero una caja que tiene que abrir).
-    regalo: {
-      aviso: "Tienes un regalo 🎁",
-      tocar: "Toca la caja para abrirlo",
-      titulo: "¡Sorpresa, nena! 🖤",
-      tarjeta: "Tarjeta regalo",
-      importe: "25 €",
-      mensaje: `Con todo lo que estás estudiando, te mereces un capricho. Esta tarjeta de Primor es para que te compres lo que más te apetezca: ese perfume, ese maquillaje o lo que tú quieras.
-
-El esfuerzo tiene recompensa, y tú te has esforzado muchísimo. Disfrútalo, nena 🖤`,
-      firma: "— Tu nene",
-      // Botón para ver el código (el código se pone en Render: GIFT_CODE y GIFT_PIN).
-      descubrir: "🔓 Descubrir el código",
-      codigo: "Código",
-      pin: "PIN",
-      copiar: "Copiar",
-      copiado: "¡Copiado!",
-      comoUsar: "📸 ¡Haz captura de pantalla! Es lo que necesitas para gastar la tarjeta en Primor 💄",
-      // Si no hay código puesto en Render.
-      sinCodigo: "Pregúntame por ella 😉",
-      cerrar: "¡Gracias, nene! 🖤",
-      volver: "Tu regalo de Primor 🎁",
-      volverTexto: "Toca para volver a verlo",
-    },
     // Respuestas del chat cuando pregunta algo que no tiene que ver con sus estudios (sale una u otra).
     fueraDeTema: [
       "Tu novio me ha configurado únicamente para que hablemos de tus estudios. Dice que te centres en estudiar y que te ama mucho 🖤. Eso pregúntaselo a ChatGPT 😉",
@@ -236,27 +212,6 @@ Tenho muito orgulho em ti. Vais ser uma técnica incrível!`,
         `Hoje faz ${anosPt(n)} do nosso primeiro beijo. Voltava a vivê-lo mil vezes. Amo-te, nena 🖤.`,
       firma: "— O teu nene",
       cerrar: "Amo-te 🖤",
-    },
-    regalo: {
-      aviso: "Tens um presente 🎁",
-      tocar: "Toca na caixa para o abrir",
-      titulo: "Surpresa, nena! 🖤",
-      tarjeta: "Cartão presente",
-      importe: "25 €",
-      mensaje: `Com tudo o que estás a estudar, mereces um miminho. Este cartão da Primor é para comprares o que mais te apetecer: aquele perfume, aquela maquilhagem ou o que tu quiseres.
-
-O esforço tem recompensa, e tu esforçaste-te imenso. Aproveita, nena 🖤`,
-      firma: "— O teu nene",
-      descubrir: "🔓 Descobrir o código",
-      codigo: "Código",
-      pin: "PIN",
-      copiar: "Copiar",
-      copiado: "Copiado!",
-      comoUsar: "📸 Faz uma captura de ecrã! É o que precisas para gastar o cartão na Primor 💄",
-      sinCodigo: "Pergunta-me por ele 😉",
-      cerrar: "Obrigada, nene! 🖤",
-      volver: "O teu presente da Primor 🎁",
-      volverTexto: "Toca para o voltar a ver",
     },
     fueraDeTema: [
       "O teu namorado configurou-me só para falarmos dos teus estudos. Diz que te concentres a estudar e que te ama muito 🖤. Isso pergunta ao ChatGPT 😉",

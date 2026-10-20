@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
 import { roleOf, userIdOf } from "../auth";
-import { config } from "../config";
 import { asyncHandler, HttpError } from "../http";
 import { pushToStudent } from "../push";
 import { supabase } from "../supabase";
@@ -23,16 +22,6 @@ coupleRouter.get(
   "/me",
   asyncHandler(async (req, res) => {
     res.json({ role: roleOf(req) });
-  }),
-);
-
-// ---------- Tarjeta regalo ----------
-
-// El código va en Render (GIFT_CODE / GIFT_PIN), no en el código de la web. Sin él, la sorpresa sale sin código.
-coupleRouter.get(
-  "/gift",
-  asyncHandler(async (_req, res) => {
-    res.json({ code: config.GIFT_CODE || null, pin: config.GIFT_PIN || null });
   }),
 );
 
