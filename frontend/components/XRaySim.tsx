@@ -38,6 +38,7 @@ const TEXT = {
     loading: "Preparando la radiografía…",
     loadError: "No se ha podido cargar la imagen. Comprueba la conexión.",
     marker: "D",
+    credits: "Anatomía calculada a partir de Z-Anatomy (CC BY-SA 4.0), basado en BodyParts3D © DBCLS.",
     brightness: "Exposición",
     contrast: "Contraste",
     noise: "Ruido",
@@ -95,6 +96,7 @@ const TEXT = {
     loading: "A preparar a radiografia…",
     loadError: "Não foi possível carregar a imagem. Verifica a ligação.",
     marker: "D",
+    credits: "Anatomia calculada a partir do Z-Anatomy (CC BY-SA 4.0), baseado no BodyParts3D © DBCLS.",
     brightness: "Exposição",
     contrast: "Contraste",
     noise: "Ruído",
@@ -241,6 +243,7 @@ export default function XRaySim() {
             </>
           )}
         </div>
+        <p className="text-muted mx-auto mt-1 max-w-[360px] text-center text-[0.7rem]">{tx.credits}</p>
         <Setup dist={s.dist} tube={tx.tube} detector={tx.detector} />
       </div>
 
