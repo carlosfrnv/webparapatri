@@ -135,7 +135,11 @@ const TEXT = {
   },
 };
 
-const START: Settings = { kv: 80, mas: 20, dist: 100, grid: false };
+// Al empezar (o cambiar de exploración) los valores están algo pasados: hay que corregirlos.
+const startOf = (id: PhantomId): Settings => {
+  const ideal = IDEAL[id];
+  return { ...ideal, kv: ideal.kv + 6, mas: Math.round(ideal.mas * 2 * 10) / 10, grid: false };
+};
 
 // mAs en escala logarítmica (de 0,5 a 100) para que el deslizador sea cómodo.
 const MAS_MIN = 0.5;
@@ -160,7 +164,7 @@ export default function XRaySim() {
   const lang = useLang();
   const tx = TEXT[lang];
   const [exam, setExam] = useState<PhantomId>("mano");
-  const [s, setS] = useState<Settings>(START);
+  const [s, setS] = useState<Settings>(() => startOf("mano"));
   const [phantom, setPhantom] = useState<{ id: PhantomId; p: Phantom } | null>(null);
   const [error, setError] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -207,7 +211,10 @@ export default function XRaySim() {
               key={id}
               role="radio"
               aria-checked={exam === id}
-              onClick={() => setExam(id)}
+              onClick={() => {
+                setExam(id);
+                setS(startOf(id));
+              }}
               className={`min-h-10 rounded-full px-4 text-sm font-semibold ${
                 exam === id ? "bg-accent text-accent-contrast" : "bg-surface-2 text-muted hover:text-text"
               }`}
@@ -320,7 +327,7 @@ export default function XRaySim() {
           <button className="btn-secondary" onClick={() => setS(IDEAL[exam])}>
             <Lightbulb size={18} weight="duotone" aria-hidden="true" /> {tx.ideal}
           </button>
-          <button className="btn-ghost" onClick={() => setS(START)}>
+          <button className="btn-ghost" onClick={() => setS(startOf(exam))}>
             <ArrowCounterClockwise size={18} weight="duotone" aria-hidden="true" /> {tx.reset}
           </button>
         </div>
