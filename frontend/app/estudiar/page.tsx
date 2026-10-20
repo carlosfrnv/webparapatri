@@ -212,6 +212,18 @@ function StudyPageContent() {
             </button>
           </section>
 
+          {/* Mazos tipo Anki (tarjetas propias, aparte de las de los apuntes) */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={Cards} tone="blue" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.decks.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.decks.subtitle}</p>
+            </div>
+            <Link href="/mazos" className="btn-secondary">
+              {t.decks.open}
+            </Link>
+          </section>
+
           {/* Pomodoro */}
           <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
             <GradientIcon icon={Timer} tone="amber" size={52} />

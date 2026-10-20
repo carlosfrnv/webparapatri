@@ -41,6 +41,7 @@ const messages = {
     pt: "Falta atualizar a base de dados: executa o último SQL no Supabase.",
   },
   examNotFound: { es: "Examen no encontrado.", pt: "Exame não encontrado." },
+  deckNotFound: { es: "Mazo o tarjeta no encontrados.", pt: "Baralho ou cartão não encontrados." },
   documentNotFound: { es: "Documento no encontrado.", pt: "Documento não encontrado." },
   questionNotFound: { es: "Pregunta no encontrada.", pt: "Pergunta não encontrada." },
   saveFailed: {

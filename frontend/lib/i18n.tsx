@@ -692,6 +692,11 @@ const es = {
     action: "Pomodoro",
     actionText: (today: string) => `Hoy llevas ${today} de estudio`,
   },
+  decks: {
+    title: "Mazos (estilo Anki)",
+    subtitle: "Tus propias tarjetas con la repetición espaciada de Anki: Otra vez · Difícil · Bien · Fácil.",
+    open: "Abrir mazos",
+  },
   mistakes: {
     title: "Repaso de fallos",
     subtitle: "Las preguntas de test que has fallado. Cuando aciertas una, sale de la lista.",
@@ -1538,6 +1543,11 @@ const pt: Dictionary = {
     pill: "Pomodoro em curso",
     action: "Pomodoro",
     actionText: (today: string) => `Hoje levas ${today} de estudo`,
+  },
+  decks: {
+    title: "Baralhos (estilo Anki)",
+    subtitle: "Os teus próprios cartões com a repetição espaçada do Anki: Outra vez · Difícil · Bom · Fácil.",
+    open: "Abrir baralhos",
   },
   mistakes: {
     title: "Revisão de erros",

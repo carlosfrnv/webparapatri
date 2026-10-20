@@ -298,6 +298,42 @@ $$;
 revoke execute on function search_chunks(uuid, text, int, uuid, text) from public, anon, authenticated;
 revoke execute on function document_keywords(uuid, int) from public, anon, authenticated;
 
+-- Mazos tipo Anki (aparte de las tarjetas de los apuntes): tarjetas propias con la programación de Anki.
+create table if not exists decks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  new_per_day int not null default 20,
+  created_at timestamptz default now()
+);
+create table if not exists deck_cards (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  deck_id uuid not null references decks(id) on delete cascade,
+  front text not null,
+  back text not null,
+  state text not null default 'new' check (state in ('new','learning','review','relearning')),
+  step int not null default 0,
+  interval_days int not null default 0,
+  ease real not null default 2.5,
+  lapses int not null default 0,
+  reps int not null default 0,
+  due_at timestamptz not null default now(),
+  last_review_at timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists deck_cards_deck_idx on deck_cards (deck_id, due_at);
+create table if not exists deck_review_log (
+  id bigserial primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  deck_id uuid not null references decks(id) on delete cascade,
+  card_id uuid references deck_cards(id) on delete set null,
+  rating int not null check (rating between 1 and 4),
+  was_new boolean not null default false,
+  reviewed_at timestamptz default now()
+);
+create index if not exists deck_review_log_user_idx on deck_review_log (user_id, reviewed_at);
+
 -- Seguridad: RLS en todas las tablas. El backend usa service_role, pero filtra siempre por user_id.
 alter table subjects enable row level security;
 alter table documents enable row level security;
@@ -317,11 +353,14 @@ alter table couple_settings enable row level security;
 alter table push_subscriptions enable row level security;
 alter table document_extras enable row level security;
 alter table highlights enable row level security;
+alter table decks enable row level security;
+alter table deck_cards enable row level security;
+alter table deck_review_log enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras','highlights']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras','highlights','decks','deck_cards','deck_review_log']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
