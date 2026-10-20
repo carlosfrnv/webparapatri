@@ -3,53 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { useLang } from "@/lib/i18n";
+import { buildCell, CELL_COLORS, CELL_PARTS, type CellPart } from "@/lib/cell3d";
 import { createViewer, type Viewer } from "@/lib/viewer3d";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
 /**
  * Célula animal en 3D, abierta por el lado que mira a la cámara para ver los orgánulos.
  * Se dibuja aquí mismo con formas sencillas (no descarga modelos) y no usa IA ni el servidor.
  */
 
-type Part =
-  | "membrana"
-  | "nucleo"
-  | "nucleolo"
-  | "rer"
-  | "rel"
-  | "ribosomas"
-  | "golgi"
-  | "mitocondria"
-  | "lisosoma"
-  | "peroxisoma"
-  | "centriolos";
-
-const PARTS: Part[] = [
-  "membrana",
-  "nucleo",
-  "nucleolo",
-  "rer",
-  "rel",
-  "ribosomas",
-  "golgi",
-  "mitocondria",
-  "lisosoma",
-  "peroxisoma",
-  "centriolos",
-];
-
-const COLORS: Record<Part, number> = {
-  membrana: 0xf6a5c8,
-  nucleo: 0x7c5cc4,
-  nucleolo: 0x3b2a6e,
-  rer: 0x4f8fd8,
-  rel: 0x5fc3c7,
-  ribosomas: 0x24357a,
-  golgi: 0xf2b134,
-  mitocondria: 0xf07a3a,
-  lisosoma: 0xb04fb8,
-  peroxisoma: 0x55b85c,
-  centriolos: 0x8a8a8a,
-};
+type Part = CellPart;
+const PARTS = CELL_PARTS;
+const COLORS = CELL_COLORS;
 
 const TEXT = {
   es: {
@@ -97,6 +62,10 @@ const TEXT = {
       centriolos: [
         "Centriolos (centrosoma)",
         "Dos cilindros de microtúbulos perpendiculares. Organizan el huso mitótico que separa los cromosomas en la división celular y forman la base de cilios y flagelos.",
+      ],
+      citoesqueleto: [
+        "Citoesqueleto",
+        "Red de filamentos proteicos (microtúbulos, filamentos intermedios y de actina) que da forma a la célula, la sostiene y sirve de 'carreteras' para mover vesículas y orgánulos. Aquí se ven los microtúbulos saliendo del centrosoma.",
       ],
     } as Record<Part, [string, string]>,
     hint: "Gira con un dedo, amplía con dos. Toca un orgánulo o elígelo abajo.",
@@ -149,165 +118,16 @@ const TEXT = {
         "Centríolos (centrossoma)",
         "Dois cilindros de microtúbulos perpendiculares. Organizam o fuso mitótico que separa os cromossomas na divisão celular e formam a base de cílios e flagelos.",
       ],
+      citoesqueleto: [
+        "Citoesqueleto",
+        "Rede de filamentos proteicos (microtúbulos, filamentos intermédios e de actina) que dá forma à célula, a sustenta e serve de 'estradas' para mover vesículas e organelos. Aqui veem-se os microtúbulos a sair do centrossoma.",
+      ],
     } as Record<Part, [string, string]>,
     hint: "Roda com um dedo, amplia com dois. Toca num organelo ou escolhe-o em baixo.",
     all: "Ver tudo",
     pick: "Toca num organelo para ver o que faz.",
   },
 };
-
-// Números "aleatorios" fijos: la célula sale siempre igual.
-function rng(seed: number) {
-  let s = seed;
-  return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
-}
-
-const CELL_R = 10;
-const NUCLEUS = new THREE.Vector3(-1.2, 0.4, -0.5);
-const NUCLEUS_R = 3.2;
-
-/** Punto al azar dentro de la célula, fuera del núcleo y lejos de la membrana. */
-function freeSpot(rand: () => number, margin = 1.2) {
-  for (let k = 0; k < 200; k++) {
-    const p = new THREE.Vector3(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1).multiplyScalar(CELL_R - margin);
-    if (p.length() > CELL_R - margin - 0.5) continue;
-    if (p.distanceTo(NUCLEUS) < NUCLEUS_R + margin + 1.5) continue;
-    return p;
-  }
-  return new THREE.Vector3(5, 0, 0);
-}
-
-function mat(color: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...extra });
-}
-
-function buildCell(): Record<Part, THREE.Group> {
-  const rand = rng(42);
-  const g = Object.fromEntries(PARTS.map((p) => [p, new THREE.Group()])) as Record<Part, THREE.Group>;
-  for (const p of PARTS) g[p].userData.part = p;
-
-  // Membrana: esfera doble cara, recortada por delante (el recorte sigue a la cámara).
-  const membrane = new THREE.Mesh(
-    new THREE.SphereGeometry(CELL_R, 64, 40),
-    mat(COLORS.membrana, { side: THREE.DoubleSide, transparent: true, opacity: 0.55, roughness: 0.8 }),
-  );
-  membrane.userData.cut = true;
-  g.membrana.add(membrane);
-
-  // Núcleo (envoltura translúcida) y nucléolo.
-  const env = new THREE.Mesh(
-    new THREE.SphereGeometry(NUCLEUS_R, 48, 32),
-    mat(COLORS.nucleo, { transparent: true, opacity: 0.7 }),
-  );
-  env.position.copy(NUCLEUS);
-  g.nucleo.add(env);
-  const nucleolus = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 20), mat(COLORS.nucleolo));
-  nucleolus.position.copy(NUCLEUS).add(new THREE.Vector3(0.6, 0.5, 1.2));
-  g.nucleolo.add(nucleolus);
-
-  // RE rugoso: arcos alrededor del núcleo, con ribosomas pegados.
-  const ribo = new THREE.SphereGeometry(0.11, 8, 6);
-  for (let k = 0; k < 5; k++) {
-    const torus = new THREE.TorusGeometry(NUCLEUS_R + 0.9 + k * 0.55, 0.16, 8, 64, 2.4);
-    const arc = new THREE.Mesh(torus, mat(COLORS.rer));
-    arc.position.copy(NUCLEUS);
-    arc.rotation.set(0.3 + k * 0.25, -0.4 + k * 0.15, 2.2 + k * 0.1);
-    g.rer.add(arc);
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * 2.4;
-      const r = NUCLEUS_R + 0.9 + k * 0.55;
-      const dot = new THREE.Mesh(ribo, mat(COLORS.ribosomas));
-      dot.position.set(Math.cos(a) * (r + 0.2), Math.sin(a) * (r + 0.2), 0);
-      arc.add(dot);
-    }
-  }
-
-  // RE liso: túbulos ramificados al otro lado.
-  for (let k = 0; k < 6; k++) {
-    const start = new THREE.Vector3(2 + rand() * 2, -3 + rand() * 6, -3 + rand() * 4);
-    const pts = [start];
-    for (let i = 0; i < 4; i++)
-      pts.push(pts[pts.length - 1].clone().add(new THREE.Vector3(rand() * 2 - 0.6, rand() * 2 - 1, rand() * 2 - 1)));
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.17, 8), mat(COLORS.rel));
-    g.rel.add(tube);
-  }
-
-  // Aparato de Golgi: pila de cisternas curvas y vesículas.
-  const golgi = new THREE.Group();
-  for (let k = 0; k < 5; k++) {
-    const c = new THREE.Mesh(new THREE.TorusGeometry(2.2 - k * 0.15, 0.2, 10, 48, 1.7), mat(COLORS.golgi));
-    c.scale.set(1, 1, 2.2);
-    c.position.set(-k * 0.42, 0, 0);
-    c.rotation.set(0, Math.PI / 2, 0);
-    golgi.add(c);
-  }
-  for (let k = 0; k < 7; k++) {
-    const v = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), mat(COLORS.golgi));
-    v.position.set(0.6 + rand() * 1.2, -1.5 + rand() * 3, -1 + rand() * 2);
-    golgi.add(v);
-  }
-  golgi.position.set(4.6, 2.4, 1.4);
-  golgi.rotation.set(0.2, 0.5, -0.6);
-  g.golgi.add(golgi);
-
-  // Mitocondrias (con crestas: anillos dentro).
-  for (let k = 0; k < 7; k++) {
-    const m = new THREE.Group();
-    m.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.9, 8, 16), mat(COLORS.mitocondria)));
-    for (let i = 0; i < 4; i++) {
-      const crest = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 16), mat(0xffc49a));
-      crest.rotation.x = Math.PI / 2;
-      crest.position.y = -0.9 + i * 0.6;
-      crest.scale.set(1, 1, 1.25);
-      m.add(crest);
-    }
-    m.position.copy(freeSpot(rand, 2));
-    m.rotation.set(rand() * Math.PI, rand() * Math.PI, 0);
-    g.mitocondria.add(m);
-  }
-
-  for (let k = 0; k < 6; k++) {
-    const l = new THREE.Mesh(new THREE.SphereGeometry(0.5, 20, 14), mat(COLORS.lisosoma));
-    l.position.copy(freeSpot(rand));
-    g.lisosoma.add(l);
-  }
-  for (let k = 0; k < 5; k++) {
-    const p = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), mat(COLORS.peroxisoma));
-    p.position.copy(freeSpot(rand));
-    g.peroxisoma.add(p);
-  }
-
-  // Ribosomas libres por el citoplasma.
-  const free = new THREE.InstancedMesh(new THREE.SphereGeometry(0.11, 8, 6), mat(COLORS.ribosomas), 160);
-  const m4 = new THREE.Matrix4();
-  for (let i = 0; i < 160; i++) {
-    m4.setPosition(freeSpot(rand, 0.6));
-    free.setMatrixAt(i, m4);
-  }
-  g.ribosomas.add(free);
-
-  // Centriolos: dos cilindros perpendiculares (9 tripletes de microtúbulos sugeridos con barras).
-  const centrioles = new THREE.Group();
-  for (const [rx, rz] of [
-    [0, 0],
-    [Math.PI / 2, 0],
-  ]) {
-    const c = new THREE.Group();
-    for (let i = 0; i < 9; i++) {
-      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.3, 6), mat(COLORS.centriolos));
-      const a = (i / 9) * Math.PI * 2;
-      bar.position.set(Math.cos(a) * 0.35, 0, Math.sin(a) * 0.35);
-      c.add(bar);
-    }
-    c.rotation.set(rx, 0, rz);
-    centrioles.add(c);
-  }
-  centrioles.children[1].position.set(0.9, 0.3, 0);
-  centrioles.position.set(2.2, -4.2, 2.5);
-  g.centriolos.add(centrioles);
-
-  return g;
-}
 
 export default function Cell3D() {
   const lang = useLang();
@@ -320,20 +140,19 @@ export default function Cell3D() {
   useEffect(() => {
     const v = createViewer(mount.current!, { distance: 30, minDistance: 8, maxDistance: 60 });
     v.camera.position.set(17, 10, 33);
-    const g = buildCell();
+    // Luz ambiental suave de "estudio" para que los materiales se vean con volumen.
+    const pmrem = new THREE.PMREMGenerator(v.renderer);
+    v.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    v.scene.environmentIntensity = 0.45;
+    pmrem.dispose();
+    const cell = buildCell();
+    const g = cell.groups;
     groups.current = g;
     const root = new THREE.Group();
     PARTS.forEach((p) => root.add(g[p]));
     v.scene.add(root);
-
-    // Recorte de la membrana: siempre se abre por el lado que mira a la cámara.
-    const plane = new THREE.Plane();
-    const membrane = g.membrana.children[0] as THREE.Mesh;
-    (membrane.material as THREE.MeshStandardMaterial).clippingPlanes = [plane];
-    membrane.onBeforeRender = (_r, _s, camera) => {
-      const dir = camera.position.clone().normalize();
-      plane.set(dir.negate(), 3.5);
-    };
+    // Los cortes (membrana, núcleo y mitocondrias) se abren siempre por el lado que mira a la cámara.
+    v.scene.onBeforeRender = (_r, _s, camera) => cell.updateCuts(camera);
 
     v.onTap(
       () => PARTS.filter((p) => p !== "membrana").map((p) => g[p]),
@@ -346,6 +165,7 @@ export default function Cell3D() {
     v.setAutoRotate(true);
     viewer.current = v;
     return () => {
+      v.scene.environment?.dispose();
       v.dispose();
       viewer.current = null;
       groups.current = null;
@@ -361,7 +181,7 @@ export default function Cell3D() {
       g[p].traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
-        const m = mesh.material as THREE.MeshStandardMaterial;
+        const m = mesh.material as THREE.MeshPhysicalMaterial;
         if (m.userData.baseOpacity === undefined) m.userData.baseOpacity = m.transparent ? m.opacity : 1;
         const base = m.userData.baseOpacity as number;
         m.transparent = dim || base < 1;
