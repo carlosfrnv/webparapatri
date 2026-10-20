@@ -423,3 +423,29 @@ No fim, descreve em português europeu as figuras que tiver (estruturas, legenda
 Se uma palavra manuscrita não se perceber bem, escreve a tua melhor leitura seguida de [?]. Não inventes nada que não se leia.
 Responde SÓ com JSON: {"figures":[{"ref":<número da ref>,"description":"<texto transcrito e figuras>"}]}
 Omite as páginas em branco.`;
+
+/** Preguntas en el simulador de posicionamiento: responde sobre su proyección y su colocación. */
+export const positioningAskPrompt = (
+  lang: Lang,
+  situacion: string,
+  historial: { role: "user" | "assistant"; text: string }[],
+  pregunta: string,
+  contexto: string,
+) => {
+  const chat = historial.map((m) => `${m.role === "user" ? (lang === "es" ? "ELLA" : "ELA") : (lang === "es" ? "TÚ" : "TU")}: ${m.text}`).join("\n");
+  return lang === "es"
+    ? `Eres una técnica de radiología con experiencia que enseña posicionamiento a una estudiante de primero de Imagen Médica y Radioterapia. Está practicando en un simulador: coloca al paciente (rotación), centra el rayo y colima, y dispara.
+SITUACIÓN EN EL SIMULADOR:
+${situacion}
+${chat ? `CONVERSACIÓN HASTA AHORA:\n${chat}\n` : ""}PREGUNTA: ${pregunta}
+Responde en español, breve (máximo unos 8–10 renglones), claro y práctico: qué tiene que hacer y por qué, con trucos de cómo se hace con un paciente real (puntos de referencia que se palpan, etc.). Si pregunta qué ha hecho mal, usa los fallos indicados. Usa sus apuntes si ayudan. Sin títulos ni markdown pesado.
+APUNTES:
+${contexto || "(sin fragmentos)"}`
+    : `És uma técnica de radiologia experiente que ensina posicionamento a uma estudante do primeiro ano de Imagem Médica e Radioterapia. Ela está a praticar num simulador: posiciona o doente (rotação), centra o raio e colima, e dispara.
+SITUAÇÃO NO SIMULADOR:
+${situacion}
+${chat ? `CONVERSA ATÉ AGORA:\n${chat}\n` : ""}PERGUNTA: ${pregunta}
+Responde em português de Portugal, curto (no máximo 8–10 linhas), claro e prático: o que tem de fazer e porquê, com truques de como se faz com um doente real (pontos de referência que se palpam, etc.). Se perguntar o que fez mal, usa os erros indicados. Usa os apontamentos dela se ajudarem. Sem títulos nem markdown pesado.
+APONTAMENTOS:
+${contexto || "(sem fragmentos)"}`;
+};

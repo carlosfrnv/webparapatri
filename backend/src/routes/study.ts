@@ -5,7 +5,7 @@ import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
-import { quizExplainPrompt } from "../prompts";
+import { positioningAskPrompt, quizExplainPrompt } from "../prompts";
 import { findSources, formatSources } from "../search";
 import { sm2 } from "../sm2";
 import { materialInLang } from "../study";
@@ -168,6 +168,33 @@ studyRouter.post(
       { lang, effort: "low", maxTokens: 4000 },
     );
     res.json({ explanation });
+  }),
+);
+
+const positioningSchema = z.object({
+  question: z.string().trim().min(1).max(600),
+  context: z.string().max(5000),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), text: z.string().max(3000) }))
+    .max(8)
+    .default([]),
+});
+
+/** Preguntas en el simulador de posicionamiento (con su proyección, su colocación y sus apuntes). */
+studyRouter.post(
+  "/positioning/ask",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const body = positioningSchema.parse(req.body);
+    const lang = langOf(req);
+    const firstLine = body.context.split("\n")[0] ?? "";
+    const sources = await findSources(userId, `${firstLine} ${body.question}`, { limit: 4 });
+    const answer = await complete(
+      positioningAskPrompt(lang, body.context, body.history, body.question, formatSources(sources, lang)),
+      { lang, effort: "low", maxTokens: 3000 },
+    );
+    res.json({ answer });
   }),
 );
 

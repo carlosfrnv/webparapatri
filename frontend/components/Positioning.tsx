@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowCounterClockwise, Check, X } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, Check, ListChecks, PaperPlaneRight, Question, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { ErrorBox, Spinner } from "@/components/ui";
+import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
 import {
   IDEAL,
@@ -714,6 +715,26 @@ const TEXT = {
     sides: { left: "izquierda", top: "arriba", right: "derecha", bottom: "abajo" },
     tooBig: "Campo demasiado abierto: colima a la zona de interés (menos dosis y menos radiación dispersa).",
     rightPoint: "Aquí era",
+    guideTab: "¿Qué tengo que hacer?",
+    askTab: "Preguntar",
+    steps: {
+      prep: "Prepara al paciente",
+      rot: (t: number) => (t === 0 ? "Paciente sin rotar (0°)" : `Gira al paciente ${t}°`),
+      center: "Centra el rayo central en:",
+      coll: "Colima a la zona que debe salir, sin abrir de más:",
+      fire: "Dispara y revisa los criterios de calidad",
+    },
+    showMe: "Muéstrame dónde",
+    hideMe: "Ocultar el punto",
+    askPlaceholder: "Pregunta lo que quieras de esta proyección…",
+    send: "Enviar",
+    suggestions: [
+      "¿Qué he hecho mal?",
+      "¿Por qué se coloca así?",
+      "¿Cómo encuentro el punto de centraje en un paciente real?",
+    ],
+    thinking: "Pensando…",
+    aiNote: "Responde la IA con tus apuntes; puede equivocarse.",
     technique: "Ficha técnica",
     detector: (w: number, h: number) => `Detector ${w} × ${h} cm`,
     stale: "Has cambiado la colocación: vuelve a disparar.",
@@ -742,6 +763,26 @@ const TEXT = {
     sides: { left: "esquerda", top: "cima", right: "direita", bottom: "baixo" },
     tooBig: "Campo demasiado aberto: colima à zona de interesse (menos dose e menos radiação dispersa).",
     rightPoint: "Era aqui",
+    guideTab: "O que tenho de fazer?",
+    askTab: "Perguntar",
+    steps: {
+      prep: "Prepara o doente",
+      rot: (t: number) => (t === 0 ? "Doente sem rodar (0°)" : `Roda o doente ${t}°`),
+      center: "Centra o raio central em:",
+      coll: "Colima à zona que deve aparecer, sem abrir demasiado:",
+      fire: "Dispara e revê os critérios de qualidade",
+    },
+    showMe: "Mostra-me onde",
+    hideMe: "Esconder o ponto",
+    askPlaceholder: "Pergunta o que quiseres sobre esta incidência…",
+    send: "Enviar",
+    suggestions: [
+      "O que fiz mal?",
+      "Porque se posiciona assim?",
+      "Como encontro o ponto de centragem num doente real?",
+    ],
+    thinking: "A pensar…",
+    aiNote: "Responde a IA com os teus apontamentos; pode enganar-se.",
     technique: "Ficha técnica",
     detector: (w: number, h: number) => `Detetor ${w} × ${h} cm`,
     stale: "Mudaste o posicionamento: volta a disparar.",
@@ -813,6 +854,69 @@ function frame(s: Three, region: PhantomId, rot: number) {
   const az = (rot * Math.PI) / 180;
   s.camera.position.set(c.x + Math.sin(az) * 3, c.y, c.z + Math.cos(az) * 3);
   s.camera.lookAt(c);
+}
+
+/** Cómo está colocada la proyección: qué criterios cumple y qué falla (con su explicación). */
+function evaluate(inc: Incidence, region: PosRegion, pose: Pose, lang: Lang) {
+  const tx = TEXT[lang];
+  const data = region.angles[String(pose.rot)];
+  const cm = region.cmPerPx;
+  const fx0 = pose.cx - pose.fw / cm / 2;
+  const fx1 = pose.cx + pose.fw / cm / 2;
+  const fy0 = pose.cy - pose.fh / cm / 2;
+  const fy1 = pose.cy + pose.fh / cm / 2;
+  const checks: Record<string, boolean> = {};
+  const errors: string[] = [];
+  const dRot = pose.rot - inc.target;
+  checks.rot = Math.abs(dRot) <= inc.tol;
+  if (!checks.rot) errors.push(`${inc.rotationError[lang]} ${tx.rotOff(dRot)}`);
+
+  const target = data.points[inc.point];
+  const ddx = (pose.cx - target[0]) * cm * (inc.flip ? -1 : 1);
+  const ddy = (pose.cy - target[1]) * cm * (inc.flip ? -1 : 1);
+  const dist = Math.hypot(ddx, ddy);
+  checks.center = dist <= inc.centerTol;
+  if (!checks.center) {
+    const dirs: string[] = [];
+    if (Math.abs(ddy) > 1) dirs.push(ddy < 0 ? tx.dirs.up : tx.dirs.down);
+    if (Math.abs(ddx) > 1) dirs.push(ddx < 0 ? tx.dirs.left : tx.dirs.right);
+    errors.push(`${tx.centerOff(dist.toFixed(1).replace(".", ","), dirs.join(tx.and))}: ${inc.landmark[lang]}.`);
+  }
+
+  const roi = data.rois[inc.roi];
+  const need: Rect = [...roi];
+  if (inc.withPoint) {
+    const p = data.points[inc.withPoint];
+    need[0] = Math.min(need[0], p[0]);
+    need[1] = Math.min(need[1], p[1]);
+    need[2] = Math.max(need[2], p[0]);
+    need[3] = Math.max(need[3], p[1]);
+  }
+  const [ml, mt, mr, mb] = inc.margins;
+  need[0] -= ml / cm;
+  need[1] -= mt / cm;
+  need[2] += mr / cm;
+  need[3] += mb / cm;
+  const tol = 1 / cm;
+  const cut: (keyof typeof tx.sides)[] = [];
+  if (need[0] < fx0 - tol) cut.push("left");
+  if (need[1] < fy0 - tol) cut.push("top");
+  if (need[2] > fx1 + tol) cut.push("right");
+  if (need[3] > fy1 + tol) cut.push("bottom");
+  const tooBig = (fx1 - fx0) * cm > (need[2] - need[0]) * cm + 8 || (fy1 - fy0) * cm > (need[3] - need[1]) * cm + 8;
+  checks.coll = !cut.length && !tooBig;
+  if (cut.length) {
+    // En la mano la imagen se ve girada: arriba y abajo, izquierda y derecha se intercambian.
+    const swap = { left: "right", right: "left", top: "bottom", bottom: "top" } as const;
+    const shown = cut.map((c) => tx.sides[inc.flip ? swap[c] : c]);
+    errors.push(`${inc.cutError[lang]} ${tx.cutSides(shown.join(", "))}`);
+  } else if (tooBig) errors.push(tx.tooBig);
+
+  for (const p of inc.prep) {
+    checks[`prep:${p.id}`] = !!pose.prep[p.id];
+    if (!pose.prep[p.id]) errors.push(p.error[lang]);
+  }
+  return { checks, errors, target };
 }
 
 export default function Positioning() {
@@ -955,7 +1059,6 @@ export default function Positioning() {
   // ---------- Disparo ----------
   const fire = () => {
     if (!pose || !region || !phantom) return;
-    const data = region.angles[String(pose.rot)];
     const cm = region.cmPerPx;
     const res = simulate(inc.region, phantom, IDEAL[inc.region]);
     // Imagen del detector, centrada en el rayo; fuera del campo de luz no llega radiación (blanco).
@@ -976,58 +1079,7 @@ export default function Positioning() {
         px[y * dw + x] = g;
       }
 
-    // Evaluación.
-    const checks: Record<string, boolean> = {};
-    const errors: string[] = [];
-    const dRot = pose.rot - inc.target;
-    checks.rot = Math.abs(dRot) <= inc.tol;
-    if (!checks.rot) errors.push(`${inc.rotationError[lang]} ${tx.rotOff(dRot)}`);
-
-    const target = data.points[inc.point];
-    const ddx = (pose.cx - target[0]) * cm * (inc.flip ? -1 : 1);
-    const ddy = (pose.cy - target[1]) * cm * (inc.flip ? -1 : 1);
-    const dist = Math.hypot(ddx, ddy);
-    checks.center = dist <= inc.centerTol;
-    if (!checks.center) {
-      const dirs: string[] = [];
-      if (Math.abs(ddy) > 1) dirs.push(ddy < 0 ? tx.dirs.up : tx.dirs.down);
-      if (Math.abs(ddx) > 1) dirs.push(ddx < 0 ? tx.dirs.left : tx.dirs.right);
-      errors.push(`${tx.centerOff(dist.toFixed(1).replace(".", ","), dirs.join(tx.and))}: ${inc.landmark[lang]}.`);
-    }
-
-    const roi = data.rois[inc.roi];
-    const need: Rect = [...roi];
-    if (inc.withPoint) {
-      const p = data.points[inc.withPoint];
-      need[0] = Math.min(need[0], p[0]);
-      need[1] = Math.min(need[1], p[1]);
-      need[2] = Math.max(need[2], p[0]);
-      need[3] = Math.max(need[3], p[1]);
-    }
-    const [ml, mt, mr, mb] = inc.margins;
-    need[0] -= ml / cm;
-    need[1] -= mt / cm;
-    need[2] += mr / cm;
-    need[3] += mb / cm;
-    const tol = 1 / cm;
-    const cut: (keyof typeof tx.sides)[] = [];
-    if (need[0] < fx0 - tol) cut.push("left");
-    if (need[1] < fy0 - tol) cut.push("top");
-    if (need[2] > fx1 + tol) cut.push("right");
-    if (need[3] > fy1 + tol) cut.push("bottom");
-    const tooBig = (fx1 - fx0) * cm > (need[2] - need[0]) * cm + 8 || (fy1 - fy0) * cm > (need[3] - need[1]) * cm + 8;
-    checks.coll = !cut.length && !tooBig;
-    if (cut.length) {
-      // En la mano la imagen se ve girada: arriba y abajo, izquierda y derecha se intercambian.
-      const swap = { left: "right", right: "left", top: "bottom", bottom: "top" } as const;
-      const shown = cut.map((c) => tx.sides[inc.flip ? swap[c] : c]);
-      errors.push(`${inc.cutError[lang]} ${tx.cutSides(shown.join(", "))}`);
-    } else if (tooBig) errors.push(tx.tooBig);
-
-    for (const p of inc.prep) {
-      checks[`prep:${p.id}`] = !!pose.prep[p.id];
-      if (!pose.prep[p.id]) errors.push(p.error[lang]);
-    }
+    const { checks, errors, target } = evaluate(inc, region, pose, lang);
     setShot({ pose, w: dw, h: dh, pixels: px, checks, errors, target });
   };
 
@@ -1050,6 +1102,12 @@ export default function Positioning() {
   const changed = !!shot && JSON.stringify(shot.pose) !== JSON.stringify(pose);
 
   const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+  // Cómo va la colocación ahora mismo (para la guía y para preguntar).
+  const live = useMemo(() => (pose && region ? evaluate(inc, region, pose, lang) : null), [inc, region, pose, lang]);
+  // Punto correcto: al pedirlo en la guía, o después de un disparo mal centrado.
+  const [showHint, setShowHint] = useState(false);
+  const showTarget = showHint || (!!shownShot && !changed && !shownShot.checks.center);
+
   const field = useMemo(() => {
     if (!pose || !region) return null;
     const fw = pose.fw / region.cmPerPx;
@@ -1060,6 +1118,7 @@ export default function Positioning() {
   const selectIncidence = (id: string) => {
     setIncId(id);
     setShot(null);
+    setShowHint(false);
   };
 
   return (
@@ -1136,10 +1195,10 @@ export default function Positioning() {
                   className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-pink-500 shadow-[0_0_0_4px_rgba(236,72,153,0.35)]"
                   style={{ left: pct(pose.cx, region.w), top: pct(pose.cy, region.h) }}
                 />
-                {shownShot && !changed && !shownShot.checks.center && (
+                {showTarget && live && (
                   <div
                     className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-500"
-                    style={{ left: pct(shownShot.target[0], region.w), top: pct(shownShot.target[1], region.h) }}
+                    style={{ left: pct(live.target[0], region.w), top: pct(live.target[1], region.h) }}
                     title={tx.rightPoint}
                   />
                 )}
@@ -1149,7 +1208,7 @@ export default function Positioning() {
           <span className="pointer-events-none absolute top-3 left-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
             {tx.lightField}
           </span>
-          {shownShot && !changed && !shownShot.checks.center && (
+          {showTarget && live && (
             <span className="pointer-events-none absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> {tx.rightPoint}
             </span>
@@ -1228,6 +1287,17 @@ export default function Positioning() {
           </div>
         )}
 
+        {pose && region && live && (
+          <Help
+            inc={inc}
+            lang={lang}
+            checks={live.checks}
+            showHint={showHint}
+            onShowHint={() => setShowHint((v) => !v)}
+            context={() => contextOf(inc, pose, lang, live.errors, shownShot && !changed ? shownShot.errors : null)}
+          />
+        )}
+
         <div className="card p-4">
           {shownShot ? (
             <>
@@ -1300,6 +1370,188 @@ export default function Positioning() {
           </dl>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Resumen de la proyección y de cómo la ha colocado, para que la IA responda sobre su caso. */
+function contextOf(inc: Incidence, pose: Pose, lang: Lang, now: string[], shot: string[] | null) {
+  const es = lang === "es";
+  const lines = [
+    `${es ? "Proyección" : "Incidência"}: ${inc.name[lang]}`,
+    ...inc.technique.map((r) => `${r.label[lang]}: ${r.value[lang]}`),
+    `${es ? "Punto de centraje" : "Ponto de centragem"}: ${inc.landmark[lang]}`,
+    `${es ? "Criterios de calidad" : "Critérios de qualidade"}: ${inc.criteria.map((c) => c.text[lang]).join("; ")}`,
+    `${es ? "Preparación" : "Preparação"}: ${inc.prep.map((p) => `${p.label[lang]} (${pose.prep[p.id] ? "✓" : "✗"})`).join("; ")}`,
+    `${es ? "Rotación actual" : "Rotação atual"}: ${pose.rot}° (${es ? "correcta" : "correta"}: ${inc.target}°)`,
+    `${es ? "Campo de luz" : "Campo luminoso"}: ${pose.fw} × ${pose.fh} cm (${es ? "detector" : "detetor"} ${inc.detector.join(" × ")} cm)`,
+    `${es ? "Fallos de la colocación actual" : "Erros do posicionamento atual"}: ${now.length ? now.join(" | ") : es ? "ninguno" : "nenhum"}`,
+  ];
+  if (shot)
+    lines.push(
+      `${es ? "Fallos del último disparo" : "Erros do último disparo"}: ${shot.length ? shot.join(" | ") : es ? "ninguno" : "nenhum"}`,
+    );
+  return lines.join("\n");
+}
+
+/** Ayuda: la guía paso a paso (sin IA, se marca sola) y preguntas a la IA sobre su colocación. */
+function Help(props: {
+  inc: Incidence;
+  lang: Lang;
+  checks: Record<string, boolean>;
+  showHint: boolean;
+  onShowHint: () => void;
+  context: () => string;
+}) {
+  const { inc, lang, checks } = props;
+  const tx = TEXT[lang];
+  const [tab, setTab] = useState<"guide" | "ask">("guide");
+  const [question, setQuestion] = useState("");
+  const [chat, setChat] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  // Al cambiar de proyección, la conversación empieza de cero.
+  const [chatFor, setChatFor] = useState(inc.id);
+  if (chatFor !== inc.id) {
+    setChatFor(inc.id);
+    setChat([]);
+  }
+
+  const ask = async (q: string) => {
+    const text = q.trim();
+    if (!text || busy) return;
+    const history = chat.slice(-6);
+    setChat((c) => [...c, { role: "user", text }]);
+    setQuestion("");
+    setBusy(true);
+    try {
+      const { answer } = await api.post<{ answer: string }>("/positioning/ask", {
+        question: text,
+        context: props.context(),
+        history,
+      });
+      setChat((c) => [...c, { role: "assistant", text: answer }]);
+    } catch (err) {
+      setChat((c) => [...c, { role: "assistant", text: errorMessage(err) }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const prepOk = inc.prep.every((p) => checks[`prep:${p.id}`]);
+  const steps: { ok: boolean; title: string; body?: string; extra?: React.ReactNode }[] = [
+    {
+      ok: prepOk,
+      title: tx.steps.prep,
+      body: inc.technique[0].value[lang] + ". " + inc.prep.map((p) => p.label[lang]).join(" · "),
+    },
+    { ok: checks.rot, title: tx.steps.rot(inc.target), body: inc.criteria.find((c) => c.key === "rot")?.text[lang] },
+    {
+      ok: checks.center,
+      title: tx.steps.center,
+      body: inc.landmark[lang],
+      extra: (
+        <button className="btn-ghost mt-1 min-h-9 px-3 text-sm" onClick={props.onShowHint}>
+          {props.showHint ? tx.hideMe : tx.showMe}
+        </button>
+      ),
+    },
+    { ok: checks.coll, title: tx.steps.coll, body: inc.criteria.find((c) => c.key === "coll")?.text[lang] },
+  ];
+
+  return (
+    <div className="card p-4">
+      <div className="bg-surface-2 mb-4 flex w-max gap-1 rounded-xl p-1" role="tablist">
+        {(["guide", "ask"] as const).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-sm font-semibold ${
+              tab === t ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
+            }`}
+          >
+            {t === "guide" ? <ListChecks size={18} aria-hidden="true" /> : <Question size={18} aria-hidden="true" />}
+            {t === "guide" ? tx.guideTab : tx.askTab}
+          </button>
+        ))}
+      </div>
+
+      {tab === "guide" ? (
+        <ol className="space-y-3">
+          {steps.map((st, i) => (
+            <li key={st.title} className="flex gap-3">
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                  st.ok ? "bg-success-soft text-success" : "bg-surface-2 text-muted"
+                }`}
+              >
+                {st.ok ? <Check size={16} weight="bold" aria-label="✓" /> : i + 1}
+              </span>
+              <div className="min-w-0">
+                <div className="font-semibold">{st.title}</div>
+                {st.body && <div className="text-muted text-sm">{st.body}</div>}
+                {st.extra}
+              </div>
+            </li>
+          ))}
+          <li className="flex gap-3">
+            <span className="bg-surface-2 text-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold">
+              5
+            </span>
+            <div className="font-semibold">{tx.steps.fire}</div>
+          </li>
+        </ol>
+      ) : (
+        <div>
+          {chat.length === 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {tx.suggestions.map((q) => (
+                <button
+                  key={q}
+                  className="bg-surface-2 text-text rounded-full px-3 py-1.5 text-left text-sm"
+                  onClick={() => ask(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="max-h-96 space-y-3 overflow-y-auto">
+            {chat.map((m, i) => (
+              <div
+                key={i}
+                className={`rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                  m.role === "user" ? "bg-accent text-accent-contrast ml-8" : "bg-surface-2 mr-4"
+                }`}
+              >
+                {m.text}
+              </div>
+            ))}
+            {busy && <Spinner label={tx.thinking} />}
+          </div>
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              ask(question);
+            }}
+          >
+            <input
+              className="input min-w-0 flex-1"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder={tx.askPlaceholder}
+              maxLength={500}
+            />
+            <button className="btn-primary px-3" disabled={busy || !question.trim()} aria-label={tx.send}>
+              <PaperPlaneRight size={18} aria-hidden="true" />
+            </button>
+          </form>
+          <p className="text-muted mt-2 text-xs">{tx.aiNote}</p>
+        </div>
+      )}
     </div>
   );
 }
