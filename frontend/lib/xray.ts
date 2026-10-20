@@ -62,7 +62,7 @@ function scatterRatio(thicknessCm: number, kv: number) {
 interface Meta {
   boneScale: number;
   softScale: number;
-  exams: Record<PhantomId, { w: number; h: number; cmPerPx: number }>;
+  exams: Record<PhantomId, { w: number; h: number; cmPerPx: number; labels: { bones: string[]; organs: string[] } }>;
 }
 
 let metaPromise: Promise<Meta> | null = null;
@@ -71,15 +71,60 @@ const cache = new Map<PhantomId, Promise<Phantom>>();
 export function loadPhantom(id: PhantomId): Promise<Phantom> {
   let p = cache.get(id);
   if (!p) {
-    metaPromise ??= fetch("/xray/meta.json").then((r) => {
-      if (!r.ok) throw new Error(`meta ${r.status}`);
-      return r.json() as Promise<Meta>;
-    });
-    p = Promise.all([metaPromise, loadImage(`/xray/${id}.png`)]).then(([meta, img]) => decode(meta, id, img));
+    p = Promise.all([loadMeta(), loadImage(`/xray/${id}.png`)]).then(([meta, img]) => decode(meta, id, img));
     p.catch(() => cache.delete(id));
     cache.set(id, p);
   }
   return p;
+}
+
+function loadMeta() {
+  metaPromise ??= fetch("/xray/meta.json").then((r) => {
+    if (!r.ok) throw new Error(`meta ${r.status}`);
+    return r.json() as Promise<Meta>;
+  });
+  return metaPromise;
+}
+
+/** Qué pieza hay en cada punto de la radiografía (hueso y órgano), con los nombres del atlas. */
+export interface Labels {
+  w: number;
+  h: number;
+  bone: Uint8Array; // número de hueso (1…; 0 = nada)
+  organ: Uint8Array; // número de órgano (1…; 0 = nada)
+  boneNames: string[];
+  organNames: string[];
+}
+
+const labelCache = new Map<PhantomId, Promise<Labels>>();
+export function loadLabels(id: PhantomId): Promise<Labels> {
+  let p = labelCache.get(id);
+  if (!p) {
+    p = Promise.all([loadMeta(), loadImage(`/xray/${id}-labels.png`)]).then(([meta, img]) => {
+      const { w, h, labels } = meta.exams[id];
+      const data = pixelsOf(img, w, h);
+      const n = w * h;
+      const bone = new Uint8Array(n);
+      const organ = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        bone[i] = data[i * 4];
+        organ[i] = data[i * 4 + 1];
+      }
+      return { w, h, bone, organ, boneNames: labels.bones, organNames: labels.organs };
+    });
+    p.catch(() => labelCache.delete(id));
+    labelCache.set(id, p);
+  }
+  return p;
+}
+
+function pixelsOf(img: HTMLImageElement, w: number, h: number) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, w, h).data;
 }
 
 function loadImage(src: string) {
@@ -93,12 +138,7 @@ function loadImage(src: string) {
 
 function decode(meta: Meta, id: PhantomId, img: HTMLImageElement): Phantom {
   const { w, h } = meta.exams[id];
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  const ctx = c.getContext("2d", { willReadFrequently: true })!;
-  ctx.drawImage(img, 0, 0);
-  const data = ctx.getImageData(0, 0, w, h).data;
+  const data = pixelsOf(img, w, h);
   const n = w * h;
   const p: Phantom = {
     w,

@@ -376,6 +376,11 @@ const es = {
     },
     molecules: { button: "🧪 Moléculas 3D", title: "Moléculas en 3D", subtitle: "Gíralas y amplíalas con el dedo" },
     cell: { button: "🔬 La célula", title: "La célula interactiva", subtitle: "Toca cada orgánulo para ver qué hace" },
+    radio: {
+      button: "🔎 Anatomía radiológica",
+      title: "Anatomía radiológica",
+      subtitle: "Reconoce cada estructura en la radiografía",
+    },
     slices: {
       button: "🩻 Cortes 3D",
       title: "Cortes del cuerpo en 3D",
@@ -1215,6 +1220,11 @@ const pt: Dictionary = {
     },
     molecules: { button: "🧪 Moléculas 3D", title: "Moléculas em 3D", subtitle: "Roda-as e amplia-as com o dedo" },
     cell: { button: "🔬 A célula", title: "A célula interativa", subtitle: "Toca em cada organelo para ver o que faz" },
+    radio: {
+      button: "🔎 Anatomia radiológica",
+      title: "Anatomia radiológica",
+      subtitle: "Reconhece cada estrutura na radiografia",
+    },
     slices: {
       button: "🩻 Cortes 3D",
       title: "Cortes do corpo em 3D",

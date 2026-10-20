@@ -121,6 +121,9 @@ export default function SubjectPage() {
                   <Link href={`/asignatura/${subject.id}/cortes`} className="btn-primary">
                     {t.tools.slices.button}
                   </Link>
+                  <Link href={`/asignatura/${subject.id}/anatomia-radiologica`} className="btn-primary">
+                    {t.tools.radio.button}
+                  </Link>
                   <Link href={`/asignatura/${subject.id}/celula`} className="btn-primary">
                     {t.tools.cell.button}
                   </Link>
@@ -132,9 +135,14 @@ export default function SubjectPage() {
                 </Link>
               )}
               {/integra/i.test(subject.name) && (
-                <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
-                  {t.tools.xray.button}
-                </Link>
+                <>
+                  <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
+                    {t.tools.xray.button}
+                  </Link>
+                  <Link href={`/asignatura/${subject.id}/anatomia-radiologica`} className="btn-primary">
+                    {t.tools.radio.button}
+                  </Link>
+                </>
               )}
               {/bioqu[ií]m/i.test(subject.name) && (
                 <Link href={`/asignatura/${subject.id}/moleculas`} className="btn-primary">

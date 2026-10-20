@@ -1,7 +1,8 @@
 """Termina los maniquíes del simulador de rayos X (después de run.mjs).
 
 Quita los puntos sueltos que dejan los huecos de las mallas, añade la piel y la grasa
-(el atlas no las tiene) y guarda public/xray/<id>.png (R = hueso, G = tejido blando) y meta.json.
+(el atlas no las tiene) y guarda public/xray/<id>.png (R = hueso, G = tejido blando), <id>-labels.png (qué pieza hay en cada
+punto) y meta.json.
 Uso (desde frontend/): python3 scripts/xray/finish.py  (necesita numpy y Pillow)
 """
 import json
@@ -55,7 +56,19 @@ def main():
         img[..., 0] = np.round(bone / BONE_SCALE)
         img[..., 1] = np.round(soft / SOFT_SCALE)
         Image.fromarray(img).save(os.path.join(OUT, f"{exam}.png"), optimize=True)
-        meta[exam] = {"w": w, "h": h, "cmPerPx": round(cm, 4)}
+        # Etiquetas ("¿Qué es esto?"): R = hueso, G = órgano (número en la lista de nombres; 0 = nada).
+        # Se quitan las piezas que ocupan muy poco (unos píxeles sueltos).
+        lab = np.zeros((h, w, 3), dtype=np.uint8)
+        names = {}
+        for ch, kind in ((0, "boneLabels"), (1, "softLabels")):
+            ids = np.array(v[kind]["ids"], dtype=int).reshape(h, w)
+            for i in np.unique(ids):
+                if i and (ids == i).sum() < 40:
+                    ids[ids == i] = 0
+            lab[..., ch] = ids
+            names["bones" if ch == 0 else "organs"] = v[kind]["names"]
+        Image.fromarray(lab).save(os.path.join(OUT, f"{exam}-labels.png"), optimize=True)
+        meta[exam] = {"w": w, "h": h, "cmPerPx": round(cm, 4), "labels": names}
         print(exam, f"{os.path.getsize(os.path.join(OUT, exam + '.png')) // 1024} KB", f"huecos {holes.mean():.1%}")
     json.dump({"boneScale": BONE_SCALE, "softScale": SOFT_SCALE, "exams": meta}, open(os.path.join(OUT, "meta.json"), "w"))
 

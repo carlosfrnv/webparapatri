@@ -196,8 +196,82 @@ window.run = async (exams) => {
         }
       return { res, holes };
     };
+    // Etiquetas: en cada punto, qué pieza atraviesa el haz con más grosor (para "¿Qué es esto?").
+    // Se codifica grosor·1024 + número de pieza y se queda el máximo.
+    const labelRT = new THREE.WebGLRenderTarget(ex.w, ex.h, { type: THREE.FloatType, format: THREE.RGBAFormat });
+    const labelMat = new THREE.ShaderMaterial({
+      uniforms: { src: { value: one.texture }, chord: { value: 0 }, idx: { value: 0 }, maxT: { value: 1 } },
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+      fragmentShader: `uniform sampler2D src; uniform float chord; uniform float idx; uniform float maxT; varying vec2 vUv;
+        void main() {
+          vec4 v = texture2D(src, vUv);
+          float t = chord > 0.5 ? (v.g > 0.0 ? v.r + v.g - 100.0 : 0.0) : (abs(v.g) < 0.5 ? v.r : 2.0 * v.r);
+          t = clamp(t, 0.0, maxT);
+          float units = floor(min(t * 10000.0, 15000.0));
+          gl_FragColor = vec4(units >= 20.0 ? units * 1024.0 + idx : 0.0, 0.0, 0.0, 1.0);
+        }`,
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.MaxEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
+    });
+    const labelScene = new THREE.Scene().add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), labelMat));
+    const labels = (pick) => {
+      renderer.setRenderTarget(labelRT);
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear();
+      const names = [];
+      for (const m of closed) {
+        if (ex.include && !new RegExp(ex.include, "i").test(m.name)) continue;
+        if (!pick(m.layer, m.name)) continue;
+        const box = new THREE.Box3();
+        for (const mesh of m.meshes) box.expandByObject(mesh);
+        const bs = box.getBoundingSphere(new THREE.Sphere());
+        if (!frustum.intersectsSphere(bs)) continue;
+        const isChord = m.layer === "vessels";
+        const mat = isChord ? chordMaterial() : thicknessMaterial(1);
+        if (!isChord) mat.uniforms.ref.value = -bs.center.clone().applyMatrix4(cam.matrixWorldInverse).z;
+        single.clear();
+        for (const mesh of m.meshes) {
+          const clone = new THREE.Mesh(mesh.geometry, mat);
+          clone.matrixAutoUpdate = false;
+          clone.matrix.copy(mesh.matrixWorld);
+          single.add(clone);
+        }
+        renderer.setRenderTarget(one);
+        renderer.clear();
+        renderer.render(single, cam);
+        mat.dispose();
+        names.push(m.name);
+        labelMat.uniforms.chord.value = isChord ? 1 : 0;
+        labelMat.uniforms.idx.value = names.length; // 0 = nada
+        labelMat.uniforms.maxT.value = 2 * bs.radius;
+        renderer.setRenderTarget(labelRT);
+        renderer.render(labelScene, quadCam);
+      }
+      const buf = new Float32Array(ex.w * ex.h * 4);
+      renderer.readRenderTargetPixels(labelRT, 0, 0, ex.w, ex.h, buf);
+      const ids = new Uint16Array(ex.w * ex.h);
+      for (let y = 0; y < ex.h; y++)
+        for (let x = 0; x < ex.w; x++) ids[y * ex.w + x] = buf[((ex.h - 1 - y) * ex.w + x) * 4] % 1024;
+      return { ids: Array.from(ids), names };
+    };
+
     const bone = pass((l, n) => (isBone(l, n) ? 1 : 0));
     const soft = pass(softWeight);
+    const boneLabels = labels((l, n) => isBone(l, n));
+    // Órganos que se reconocen en una radiografía (sin músculos ni vasos pequeños).
+    const softLabels = labels(
+      (l, n) =>
+        (l === "organs" && softWeight(l, n) > 0) ||
+        (l === "vessels" &&
+          /^(Heart|Thoracic aorta|Abdominal aorta|Ascending aorta|Arch of aorta|Pulmonary trunk|Superior vena cava|Inferior vena cava.*)$/i.test(
+            n,
+          )),
+    );
     out[ex.id] = {
       w: ex.w,
       h: ex.h,
@@ -205,6 +279,8 @@ window.run = async (exams) => {
       bone: Array.from(bone.res),
       soft: Array.from(soft.res),
       holes: Array.from(bone.holes.map((v, i) => v | soft.holes[i])),
+      boneLabels,
+      softLabels,
     };
   }
   return out;
