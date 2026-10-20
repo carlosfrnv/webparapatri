@@ -11,6 +11,12 @@ import { useLang } from "@/lib/i18n";
 import {
   IDEAL,
   loadPosMeta,
+  masToSlider,
+  type Settings,
+  sliderToMas,
+  verdict,
+  type Verdict,
+  VERDICT_TEXT,
   loadPositionView,
   type Phantom,
   type PhantomId,
@@ -691,17 +697,162 @@ const INCIDENCES: Incidence[] = [
   },
 ];
 
+/** Opciones de preparación que NO se deben marcar (para que no baste con marcarlo todo). */
+interface Wrong {
+  id: string;
+  label: L;
+  error: L;
+  spoils?: string; // criterio que estropea
+}
+const W = (id: string, es: string, pt: string, ees: string, ept: string, spoils?: string): Wrong => ({
+  id,
+  label: { es, pt },
+  error: { es: ees, pt: ept },
+  spoils,
+});
+const WRONG: Record<string, Wrong[]> = {
+  toraxPA: [
+    W(
+      "exhale",
+      "Espiración forzada antes del disparo",
+      "Expiração forçada antes do disparo",
+      "En espiración el diafragma sube: se ven menos costillas y el corazón parece más grande. Se dispara en inspiración profunda.",
+      "Em expiração o diafragma sobe: veem-se menos costelas e o coração parece maior. Dispara-se em inspiração profunda.",
+      "prep:breath",
+    ),
+    W(
+      "armsDown",
+      "Brazos colgando a los lados",
+      "Braços pendurados ao lado do corpo",
+      "Con los brazos colgando, las escápulas quedan sobre los pulmones: hay que rotar los hombros hacia delante.",
+      "Com os braços pendurados, as omoplatas ficam sobre os pulmões: é preciso rodar os ombros para a frente.",
+      "prep:shoulders",
+    ),
+  ],
+  toraxLat: [
+    W(
+      "rightSide",
+      "Lado derecho contra el detector",
+      "Lado direito contra o detetor",
+      "Se apoya el lado izquierdo: el corazón queda más cerca del detector y sale menos magnificado.",
+      "Apoia-se o lado esquerdo: o coração fica mais perto do detetor e sai menos ampliado.",
+    ),
+    W(
+      "armsCrossed",
+      "Brazos cruzados sobre el pecho",
+      "Braços cruzados sobre o peito",
+      "Los brazos cruzados se superponen al tórax: van levantados por encima de la cabeza.",
+      "Os braços cruzados sobrepõem-se ao tórax: vão levantados acima da cabeça.",
+      "prep:arms",
+    ),
+  ],
+  manoPA: [
+    W(
+      "supine",
+      "Palma hacia arriba (supinación)",
+      "Palma para cima (supinação)",
+      "La PA de mano se hace con la palma apoyada (pronación); en supinación aumenta la distancia al detector y los metacarpianos se superponen más.",
+      "A PA da mão faz-se com a palma apoiada (pronação); em supinação aumenta a distância ao detetor e os metacarpos sobrepõem-se mais.",
+    ),
+    W(
+      "fist",
+      "Puño cerrado",
+      "Punho fechado",
+      "Con el puño cerrado los dedos se superponen y las articulaciones no salen abiertas.",
+      "Com o punho fechado os dedos sobrepõem-se e as articulações não ficam abertas.",
+      "prep:flat",
+    ),
+  ],
+  manoObl: [
+    W(
+      "medial",
+      "Girar la mano hacia dentro (meñique arriba)",
+      "Rodar a mão para dentro (dedo mínimo para cima)",
+      "La oblicua se hace girando la mano hacia fuera, con el lado del pulgar arriba.",
+      "A oblíqua faz-se rodando a mão para fora, com o lado do polegar para cima.",
+    ),
+    W(
+      "fingersDown",
+      "Dedos apoyados sobre el detector",
+      "Dedos apoiados sobre o detetor",
+      "Si los dedos se apoyan en el detector quedan inclinados y las interfalángicas salen cerradas: van sobre una cuña, paralelos al detector.",
+      "Se os dedos se apoiam no detetor ficam inclinados e as interfalângicas ficam fechadas: vão sobre uma cunha, paralelos ao detetor.",
+      "prep:wedge",
+    ),
+  ],
+  rodillaAP: [
+    W(
+      "flexed",
+      "Rodilla flexionada 30°",
+      "Joelho fletido 30°",
+      "En la AP la pierna va extendida; flexionada se cierra la interlínea articular.",
+      "Na AP a perna vai estendida; fletida, a interlinha articular fecha-se.",
+      "prep:extended",
+    ),
+    W(
+      "extRot",
+      "Pie en rotación externa",
+      "Pé em rotação externa",
+      "El pie en rotación externa gira la rodilla: la rótula se va hacia medial y el peroné se superpone a la tibia.",
+      "O pé em rotação externa roda o joelho: a rótula desvia-se para medial e o perónio sobrepõe-se à tíbia.",
+    ),
+  ],
+  rodillaLat: [
+    W(
+      "straight",
+      "Pierna completamente extendida",
+      "Perna completamente estendida",
+      "Extendida, el cuádriceps tensa la rótula: se flexiona 20–30°.",
+      "Estendida, o quadricípite tensiona a rótula: flete-se 20–30°.",
+      "prep:flex",
+    ),
+    W(
+      "flex90",
+      "Rodilla flexionada 90°",
+      "Joelho fletido 90°",
+      "Con 90° la rótula se encaja en la tróclea y los tendones se tensan: la flexión correcta es de 20–30°.",
+      "Com 90° a rótula encaixa na tróclea e os tendões ficam tensos: a flexão correta é de 20–30°.",
+      "prep:flex",
+    ),
+  ],
+  pelvisAP: [
+    W(
+      "extRot",
+      "Pies en rotación externa",
+      "Pés em rotação externa",
+      "En rotación externa los cuellos femorales salen muy acortados y los trocánteres menores se ven enteros.",
+      "Em rotação externa os colos femorais ficam muito encurtados e os pequenos trocânteres veem-se inteiros.",
+      "prep:feet",
+    ),
+    W(
+      "kneesBent",
+      "Rodillas flexionadas",
+      "Joelhos fletidos",
+      "Con las rodillas flexionadas la pelvis se inclina y los fémures salen acortados: las piernas van extendidas.",
+      "Com os joelhos fletidos a bacia inclina-se e os fémures ficam encurtados: as pernas vão estendidas.",
+    ),
+  ],
+};
+
+/** Opciones de preparación mezcladas (siempre en el mismo orden para cada proyección). */
+function prepOptions(inc: Incidence) {
+  const all = [
+    ...inc.prep.map((p) => ({ ...p, wrong: false })),
+    ...(WRONG[inc.id] ?? []).map((w) => ({ ...w, wrong: true })),
+  ];
+  const key = (x: { id: string }) => [...(inc.id + x.id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9973, 7);
+  return all.sort((a, b) => key(a) - key(b));
+}
+
 const TEXT = {
   es: {
     placement: "Colocación",
-    rotation: "Rotación del paciente",
     fieldW: "Ancho del campo",
     fieldH: "Alto del campo",
     center: "Centraje",
     dragHint: "Arrastra sobre el paciente para mover el rayo central",
     lightField: "Campo de luz del colimador",
     fire: "☢️ Disparar",
-    reset: "Empezar de nuevo",
     loading: "Preparando al paciente…",
     loadError: "No se ha podido cargar el paciente. Comprueba la conexión.",
     good: "¡Bien colocado!",
@@ -715,6 +866,22 @@ const TEXT = {
     sides: { left: "izquierda", top: "arriba", right: "derecha", bottom: "abajo" },
     tooBig: "Campo demasiado abierto: colima a la zona de interés (menos dosis y menos radiación dispersa).",
     rightPoint: "Aquí era",
+    distWrong: (d: number, ideal: number) =>
+      `Distancia foco-detector de ${d} cm: en esta proyección se usan ${ideal} cm${ideal >= 150 ? " (menos magnificación del corazón)" : ""}.`,
+    rotate: "Girar al paciente",
+    rotateHelp: "No se ve el ángulo: fíjate en la anatomía para saber si está bien girado.",
+    rotLeft: "⟲ 5°",
+    rotRight: "5° ⟳",
+    exposure: "Exposición",
+    kv: "Kilovoltaje",
+    mas: "Miliamperios-segundo",
+    dist: "Distancia foco-detector",
+    grid: "Rejilla antidifusora",
+    newPatient: "Paciente nuevo",
+    critExp: "Exposición correcta (ni clara ni oscura, sin ruido ni dosis de más)",
+    critDist: (d: number) => `Distancia de ${d} cm`,
+    critWrong: "Preparación sin errores",
+    wasRotated: (r: number, t: number) => `El paciente estaba a ${r}° (lo correcto: ${t}°).`,
     guideTab: "¿Qué tengo que hacer?",
     askTab: "Preguntar",
     steps: {
@@ -722,6 +889,7 @@ const TEXT = {
       rot: (t: number) => (t === 0 ? "Paciente sin rotar (0°)" : `Gira al paciente ${t}°`),
       center: "Centra el rayo central en:",
       coll: "Colima a la zona que debe salir, sin abrir de más:",
+      exp: "Elige la técnica: kV, mAs, distancia y rejilla",
       fire: "Dispara y revisa los criterios de calidad",
     },
     showMe: "Muéstrame dónde",
@@ -742,14 +910,12 @@ const TEXT = {
   },
   pt: {
     placement: "Posicionamento",
-    rotation: "Rotação do doente",
     fieldW: "Largura do campo",
     fieldH: "Altura do campo",
     center: "Centragem",
     dragHint: "Arrasta sobre o doente para mover o raio central",
     lightField: "Campo luminoso do colimador",
     fire: "☢️ Disparar",
-    reset: "Começar de novo",
     loading: "A preparar o doente…",
     loadError: "Não foi possível carregar o doente. Verifica a ligação.",
     good: "Bem posicionado!",
@@ -763,6 +929,22 @@ const TEXT = {
     sides: { left: "esquerda", top: "cima", right: "direita", bottom: "baixo" },
     tooBig: "Campo demasiado aberto: colima à zona de interesse (menos dose e menos radiação dispersa).",
     rightPoint: "Era aqui",
+    distWrong: (d: number, ideal: number) =>
+      `Distância foco-detetor de ${d} cm: nesta incidência usam-se ${ideal} cm${ideal >= 150 ? " (menos ampliação do coração)" : ""}.`,
+    rotate: "Rodar o doente",
+    rotateHelp: "O ângulo não se vê: repara na anatomia para saber se está bem rodado.",
+    rotLeft: "⟲ 5°",
+    rotRight: "5° ⟳",
+    exposure: "Exposição",
+    kv: "Quilovoltagem",
+    mas: "Miliamperes-segundo",
+    dist: "Distância foco-detetor",
+    grid: "Grelha antidifusora",
+    newPatient: "Doente novo",
+    critExp: "Exposição correta (nem clara nem escura, sem ruído nem dose a mais)",
+    critDist: (d: number) => `Distância de ${d} cm`,
+    critWrong: "Preparação sem erros",
+    wasRotated: (r: number, t: number) => `O doente estava a ${r}° (o correto: ${t}°).`,
     guideTab: "O que tenho de fazer?",
     askTab: "Perguntar",
     steps: {
@@ -770,6 +952,7 @@ const TEXT = {
       rot: (t: number) => (t === 0 ? "Doente sem rodar (0°)" : `Roda o doente ${t}°`),
       center: "Centra o raio central em:",
       coll: "Colima à zona que deve aparecer, sem abrir demasiado:",
+      exp: "Escolhe a técnica: kV, mAs, distância e grelha",
       fire: "Dispara e revê os critérios de qualidade",
     },
     showMe: "Mostra-me onde",
@@ -797,6 +980,7 @@ interface Pose {
   fw: number; // campo de luz, en cm
   fh: number;
   prep: Record<string, boolean>;
+  exp: Settings; // técnica de exposición elegida
 }
 
 interface Shot {
@@ -809,14 +993,22 @@ interface Shot {
   target: [number, number];
 }
 
-const startPose = (inc: Incidence, r: PosRegion): Pose => ({
-  rot: inc.start,
-  cx: r.w / 2,
-  cy: r.h / 2,
-  fw: inc.detector[0],
-  fh: inc.detector[1],
-  prep: {},
-});
+/** Paciente nuevo: llega girado una cantidad al azar (que no se ve) y con el rayo descentrado. */
+function startPose(inc: Incidence, r: PosRegion): Pose {
+  const angles = Object.keys(r.angles)
+    .map(Number)
+    .filter((a) => a >= inc.range[0] && a <= inc.range[1] && Math.abs(a - inc.target) > inc.tol);
+  const off = () => ((Math.random() < 0.5 ? -1 : 1) * (2 + Math.random() * 4)) / r.cmPerPx;
+  return {
+    rot: angles[Math.floor(Math.random() * angles.length)] ?? inc.start,
+    cx: r.w / 2 + off(),
+    cy: r.h / 2 + off(),
+    fw: inc.detector[0],
+    fh: inc.detector[1],
+    prep: {},
+    exp: { kv: 70, mas: 10, dist: 100, grid: false },
+  };
+}
 
 // ---------- Esqueleto 3D (el mismo modelo del atlas) ----------
 
@@ -857,7 +1049,8 @@ function frame(s: Three, region: PhantomId, rot: number) {
 }
 
 /** Cómo está colocada la proyección: qué criterios cumple y qué falla (con su explicación). */
-function evaluate(inc: Incidence, region: PosRegion, pose: Pose, lang: Lang) {
+/** `exposure`: resultado de la exposición (solo al disparar; la colocación se evalúa también en vivo). */
+function evaluate(inc: Incidence, region: PosRegion, pose: Pose, lang: Lang, exposure?: Verdict) {
   const tx = TEXT[lang];
   const data = region.angles[String(pose.rot)];
   const cm = region.cmPerPx;
@@ -916,6 +1109,24 @@ function evaluate(inc: Incidence, region: PosRegion, pose: Pose, lang: Lang) {
     checks[`prep:${p.id}`] = !!pose.prep[p.id];
     if (!pose.prep[p.id]) errors.push(p.error[lang]);
   }
+  for (const w of WRONG[inc.id] ?? []) {
+    if (!pose.prep[w.id]) continue;
+    checks.wrong = false;
+    if (w.spoils) checks[w.spoils] = false;
+    errors.push(w.error[lang]);
+  }
+
+  // Técnica: distancia y exposición.
+  const ideal = IDEAL[inc.region];
+  checks.dist = Math.abs(pose.exp.dist - ideal.dist) <= 15;
+  if (!checks.dist) errors.push(tx.distWrong(pose.exp.dist, ideal.dist));
+  if (exposure) {
+    checks.exp = exposure === "good";
+    if (!checks.exp) {
+      const [title, why] = VERDICT_TEXT[lang][exposure];
+      errors.push(`${title}: ${why}`);
+    }
+  }
   return { checks, errors, target };
 }
 
@@ -932,13 +1143,15 @@ export default function Positioning() {
   const [skeleton, setSkeleton] = useState(false);
 
   const region = regions?.[inc.region] ?? null;
-  const pose = poses[incId] ?? (region ? startPose(inc, region) : null);
-  const setPose = (p: Partial<Pose>) =>
-    setPoses((all) => ({ ...all, [incId]: { ...(all[incId] ?? startPose(inc, region!)), ...p } }));
+  const pose = poses[incId] ?? null;
+  const setPose = (p: Partial<Pose>) => setPoses((all) => ({ ...all, [incId]: { ...all[incId], ...p } }));
 
   useEffect(() => {
     loadPosMeta()
-      .then((m) => setRegions(m.regions))
+      .then((m) => {
+        setRegions(m.regions);
+        setPoses(Object.fromEntries(INCIDENCES.map((i) => [i.id, startPose(i, m.regions[i.region])])));
+      })
       .catch(() => setError(tx.loadError));
   }, [tx.loadError]);
 
@@ -1060,7 +1273,7 @@ export default function Positioning() {
   const fire = () => {
     if (!pose || !region || !phantom) return;
     const cm = region.cmPerPx;
-    const res = simulate(inc.region, phantom, IDEAL[inc.region]);
+    const res = simulate(inc.region, phantom, pose.exp);
     // Imagen del detector, centrada en el rayo; fuera del campo de luz no llega radiación (blanco).
     const dw = Math.round(inc.detector[0] / cm);
     const dh = Math.round(inc.detector[1] / cm);
@@ -1079,7 +1292,8 @@ export default function Positioning() {
         px[y * dw + x] = g;
       }
 
-    const { checks, errors, target } = evaluate(inc, region, pose, lang);
+    const v = verdict(inc.region, phantom, res, pose.exp);
+    const { checks, errors, target } = evaluate(inc, region, pose, lang, v);
     setShot({ pose, w: dw, h: dh, pixels: px, checks, errors, target });
   };
 
@@ -1229,15 +1443,24 @@ export default function Positioning() {
         {pose && region && (
           <div className="card space-y-4 p-4">
             <div className="text-muted text-xs font-bold tracking-wider uppercase">{tx.placement}</div>
-            <Slider
-              label={tx.rotation}
-              value={`${pose.rot}°`}
-              min={inc.range[0]}
-              max={inc.range[1]}
-              step={5}
-              current={pose.rot}
-              onChange={(v) => setPose({ rot: v })}
-            />
+            <div>
+              <div className="font-semibold">{tx.rotate}</div>
+              <div className="mt-1 flex gap-2">
+                {([-5, 5] as const).map((d) => (
+                  <button
+                    key={d}
+                    className="btn-secondary min-h-11 flex-1 text-lg"
+                    disabled={
+                      !region.angles[String(pose.rot + d)] || pose.rot + d < inc.range[0] || pose.rot + d > inc.range[1]
+                    }
+                    onClick={() => setPose({ rot: pose.rot + d })}
+                  >
+                    {d < 0 ? tx.rotLeft : tx.rotRight}
+                  </button>
+                ))}
+              </div>
+              <span className="text-muted block text-sm">{tx.rotateHelp}</span>
+            </div>
             <Slider
               label={tx.fieldW}
               value={`${pose.fw} cm`}
@@ -1258,7 +1481,7 @@ export default function Positioning() {
             />
             <p className="text-muted text-sm">{tx.detector(inc.detector[0], inc.detector[1])}</p>
             <div className="space-y-2">
-              {inc.prep.map((p) => (
+              {prepOptions(inc).map((p) => (
                 <label key={p.id} className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
@@ -1269,6 +1492,45 @@ export default function Positioning() {
                   <span>{p.label[lang]}</span>
                 </label>
               ))}
+            </div>
+            <div className="border-border space-y-4 border-t pt-4">
+              <div className="text-muted text-xs font-bold tracking-wider uppercase">{tx.exposure}</div>
+              <Slider
+                label={tx.kv}
+                value={`${pose.exp.kv} kV`}
+                min={40}
+                max={150}
+                step={1}
+                current={pose.exp.kv}
+                onChange={(v) => setPose({ exp: { ...pose.exp, kv: v } })}
+              />
+              <Slider
+                label={tx.mas}
+                value={`${String(pose.exp.mas).replace(".", ",")} mAs`}
+                min={0}
+                max={100}
+                step={0.5}
+                current={masToSlider(pose.exp.mas)}
+                onChange={(v) => setPose({ exp: { ...pose.exp, mas: sliderToMas(v) } })}
+              />
+              <Slider
+                label={tx.dist}
+                value={`${pose.exp.dist} cm`}
+                min={90}
+                max={200}
+                step={5}
+                current={pose.exp.dist}
+                onChange={(v) => setPose({ exp: { ...pose.exp, dist: v } })}
+              />
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-[var(--accent)]"
+                  checked={pose.exp.grid}
+                  onChange={(e) => setPose({ exp: { ...pose.exp, grid: e.target.checked } })}
+                />
+                <span className="font-semibold">{tx.grid}</span>
+              </label>
             </div>
             <div className="flex flex-wrap gap-2">
               <button className="btn-primary flex-1 text-lg" onClick={fire} disabled={!phantom}>
@@ -1281,7 +1543,7 @@ export default function Positioning() {
                   setShot(null);
                 }}
               >
-                <ArrowCounterClockwise size={18} aria-hidden="true" /> {tx.reset}
+                <ArrowCounterClockwise size={18} aria-hidden="true" /> {tx.newPatient}
               </button>
             </div>
           </div>
@@ -1325,9 +1587,21 @@ export default function Positioning() {
                 </div>
               </div>
               {changed && <p className="text-muted mt-2 text-center text-sm">{tx.stale}</p>}
+              <p className="text-muted mt-2 text-center text-sm">{tx.wasRotated(shownShot.pose.rot, inc.target)}</p>
               <ul className="mt-4 space-y-1.5">
-                {inc.criteria.map((c) => {
-                  const ok = shownShot.checks[c.key];
+                {[
+                  ...inc.criteria,
+                  ...(WRONG[inc.id] ? [{ key: "wrong", text: { es: TEXT.es.critWrong, pt: TEXT.pt.critWrong } }] : []),
+                  {
+                    key: "dist",
+                    text: {
+                      es: TEXT.es.critDist(IDEAL[inc.region].dist),
+                      pt: TEXT.pt.critDist(IDEAL[inc.region].dist),
+                    },
+                  },
+                  { key: "exp", text: { es: TEXT.es.critExp, pt: TEXT.pt.critExp } },
+                ].map((c) => {
+                  const ok = c.key === "wrong" ? shownShot.checks.wrong !== false : shownShot.checks[c.key];
                   return (
                     <li key={c.key} className="flex items-start gap-2 text-sm">
                       {ok ? (
@@ -1384,6 +1658,7 @@ function contextOf(inc: Incidence, pose: Pose, lang: Lang, now: string[], shot: 
     `${es ? "Criterios de calidad" : "Critérios de qualidade"}: ${inc.criteria.map((c) => c.text[lang]).join("; ")}`,
     `${es ? "Preparación" : "Preparação"}: ${inc.prep.map((p) => `${p.label[lang]} (${pose.prep[p.id] ? "✓" : "✗"})`).join("; ")}`,
     `${es ? "Rotación actual" : "Rotação atual"}: ${pose.rot}° (${es ? "correcta" : "correta"}: ${inc.target}°)`,
+    `${es ? "Técnica elegida" : "Técnica escolhida"}: ${pose.exp.kv} kV · ${pose.exp.mas} mAs · ${pose.exp.dist} cm · ${pose.exp.grid ? (es ? "con rejilla" : "com grelha") : es ? "sin rejilla" : "sem grelha"}`,
     `${es ? "Campo de luz" : "Campo luminoso"}: ${pose.fw} × ${pose.fh} cm (${es ? "detector" : "detetor"} ${inc.detector.join(" × ")} cm)`,
     `${es ? "Fallos de la colocación actual" : "Erros do posicionamento atual"}: ${now.length ? now.join(" | ") : es ? "ninguno" : "nenhum"}`,
   ];
@@ -1438,7 +1713,8 @@ function Help(props: {
     }
   };
 
-  const prepOk = inc.prep.every((p) => checks[`prep:${p.id}`]);
+  const prepOk = inc.prep.every((p) => checks[`prep:${p.id}`]) && checks.wrong !== false;
+  const technique = inc.technique.filter((r) => r.label.es === "Técnica" || r.label.es === "Distancia");
   const steps: { ok: boolean; title: string; body?: string; extra?: React.ReactNode }[] = [
     {
       ok: prepOk,
@@ -1457,6 +1733,7 @@ function Help(props: {
       ),
     },
     { ok: checks.coll, title: tx.steps.coll, body: inc.criteria.find((c) => c.key === "coll")?.text[lang] },
+    { ok: checks.dist, title: tx.steps.exp, body: technique.map((r) => r.value[lang]).join(" · ") },
   ];
 
   return (
@@ -1498,7 +1775,7 @@ function Help(props: {
           ))}
           <li className="flex gap-3">
             <span className="bg-surface-2 text-muted flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-              5
+              {steps.length + 1}
             </span>
             <div className="font-semibold">{tx.steps.fire}</div>
           </li>

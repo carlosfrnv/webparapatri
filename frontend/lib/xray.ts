@@ -422,3 +422,55 @@ export function verdict(id: PhantomId, p: Phantom, r: Result, s: Settings): Verd
   if (r.dose > 2.5) return "highDose";
   return "good";
 }
+
+/** Título y explicación de cada resultado de la exposición (simulador y posicionamiento). */
+export const VERDICT_TEXT: Record<"es" | "pt", Record<Verdict, [string, string]>> = {
+  es: {
+    under: ["Subexpuesta", "Llega poca radiación: la imagen sale blanca y con grano. Sube los mAs (o un poco los kV)."],
+    over: [
+      "Sobreexpuesta",
+      "Llega demasiada radiación: la imagen sale negra y se pierden detalles. Baja los mAs o los kV.",
+    ],
+    noisy: ["Mucho ruido", "Hay pocos fotones y la imagen sale con grano (ruido cuántico). Sube los mAs."],
+    lowContrast: [
+      "Poco contraste",
+      "Con tantos kV el hueso y el tejido blando se parecen demasiado. Baja los kV y compensa con mAs.",
+    ],
+    scatter: [
+      "Imagen velada",
+      "En una zona tan gruesa se produce mucha radiación dispersa que vela la imagen y le quita contraste. Pon la rejilla antidifusora (y sube los mAs).",
+    ],
+    highDose: [
+      "Demasiada dosis",
+      "La imagen se ve bien, pero con mucha más radiación de la necesaria. Baja los mAs: principio ALARA.",
+    ],
+    good: ["¡Buena imagen!", "Bien expuesta, con buen contraste y una dosis razonable."],
+  },
+  pt: {
+    under: ["Subexposta", "Chega pouca radiação: a imagem fica branca e com grão. Sobe os mAs (ou um pouco os kV)."],
+    over: ["Sobreexposta", "Chega radiação a mais: a imagem fica negra e perdem-se detalhes. Baixa os mAs ou os kV."],
+    noisy: ["Muito ruído", "Há poucos fotões e a imagem fica com grão (ruído quântico). Sobe os mAs."],
+    lowContrast: [
+      "Pouco contraste",
+      "Com tantos kV o osso e os tecidos moles ficam parecidos. Baixa os kV e compensa com mAs.",
+    ],
+    scatter: [
+      "Imagem velada",
+      "Numa zona tão espessa produz-se muita radiação dispersa que vela a imagem e lhe tira contraste. Põe a grelha antidifusora (e sobe os mAs).",
+    ],
+    highDose: [
+      "Dose a mais",
+      "A imagem está boa, mas com muito mais radiação do que o necessário. Baixa os mAs: princípio ALARA.",
+    ],
+    good: ["Boa imagem!", "Bem exposta, com bom contraste e uma dose razoável."],
+  },
+};
+
+// mAs en escala logarítmica (de 0,5 a 100) para que el deslizador sea cómodo.
+export const MAS_MIN = 0.5;
+export const MAS_MAX = 100;
+export const masToSlider = (m: number) => (Math.log(m / MAS_MIN) / Math.log(MAS_MAX / MAS_MIN)) * 100;
+export const sliderToMas = (v: number) => {
+  const m = MAS_MIN * Math.pow(MAS_MAX / MAS_MIN, v / 100);
+  return m < 10 ? Math.round(m * 10) / 10 : Math.round(m);
+};

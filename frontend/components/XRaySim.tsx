@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/lib/i18n";
 import { ErrorBox, Spinner } from "@/components/ui";
 import {
+  masToSlider,
+  sliderToMas,
+  VERDICT_TEXT,
   IDEAL,
   idealContrastOf,
   loadPhantom,
@@ -47,30 +50,6 @@ const TEXT = {
     reset: "Empezar de nuevo",
     tube: "Tubo",
     detector: "Detector",
-    verdicts: {
-      under: [
-        "Subexpuesta",
-        "Llega poca radiación: la imagen sale blanca y con grano. Sube los mAs (o un poco los kV).",
-      ],
-      over: [
-        "Sobreexpuesta",
-        "Llega demasiada radiación: la imagen sale negra y se pierden detalles. Baja los mAs o los kV.",
-      ],
-      noisy: ["Mucho ruido", "Hay pocos fotones y la imagen sale con grano (ruido cuántico). Sube los mAs."],
-      lowContrast: [
-        "Poco contraste",
-        "Con tantos kV el hueso y el tejido blando se parecen demasiado. Baja los kV y compensa con mAs.",
-      ],
-      scatter: [
-        "Imagen velada",
-        "En una zona tan gruesa se produce mucha radiación dispersa que vela la imagen y le quita contraste. Pon la rejilla antidifusora (y sube los mAs).",
-      ],
-      highDose: [
-        "Demasiada dosis",
-        "La imagen se ve bien, pero con mucha más radiación de la necesaria. Baja los mAs: principio ALARA.",
-      ],
-      good: ["¡Buena imagen!", "Bien expuesta, con buen contraste y una dosis razonable."],
-    } as Record<Verdict, [string, string]>,
     tipsTitle: "Para el examen",
     tips: [
       "Regla del 15 %: subir los kV un 15 % equivale a doblar los mAs (misma exposición, menos contraste).",
@@ -105,24 +84,6 @@ const TEXT = {
     reset: "Começar de novo",
     tube: "Ampola",
     detector: "Detetor",
-    verdicts: {
-      under: ["Subexposta", "Chega pouca radiação: a imagem fica branca e com grão. Sobe os mAs (ou um pouco os kV)."],
-      over: ["Sobreexposta", "Chega radiação a mais: a imagem fica negra e perdem-se detalhes. Baixa os mAs ou os kV."],
-      noisy: ["Muito ruído", "Há poucos fotões e a imagem fica com grão (ruído quântico). Sobe os mAs."],
-      lowContrast: [
-        "Pouco contraste",
-        "Com tantos kV o osso e os tecidos moles ficam parecidos. Baixa os kV e compensa com mAs.",
-      ],
-      scatter: [
-        "Imagem velada",
-        "Numa zona tão espessa produz-se muita radiação dispersa que vela a imagem e lhe tira contraste. Põe a grelha antidifusora (e sobe os mAs).",
-      ],
-      highDose: [
-        "Dose a mais",
-        "A imagem está boa, mas com muito mais radiação do que o necessário. Baixa os mAs: princípio ALARA.",
-      ],
-      good: ["Boa imagem!", "Bem exposta, com bom contraste e uma dose razoável."],
-    } as Record<Verdict, [string, string]>,
     tipsTitle: "Para o exame",
     tips: [
       "Regra dos 15 %: subir os kV 15 % equivale a duplicar os mAs (mesma exposição, menos contraste).",
@@ -139,15 +100,6 @@ const TEXT = {
 const startOf = (id: PhantomId): Settings => {
   const ideal = IDEAL[id];
   return { ...ideal, kv: ideal.kv - 4, mas: Math.max(0.5, Math.round(ideal.mas * 0.15 * 10) / 10), grid: false };
-};
-
-// mAs en escala logarítmica (de 0,5 a 100) para que el deslizador sea cómodo.
-const MAS_MIN = 0.5;
-const MAS_MAX = 100;
-const masToSlider = (m: number) => (Math.log(m / MAS_MIN) / Math.log(MAS_MAX / MAS_MIN)) * 100;
-const sliderToMas = (v: number) => {
-  const m = MAS_MIN * Math.pow(MAS_MAX / MAS_MIN, v / 100);
-  return m < 10 ? Math.round(m * 10) / 10 : Math.round(m);
 };
 
 const TONE: Record<Verdict, string> = {
@@ -200,7 +152,7 @@ export default function XRaySim() {
   }, [result, ready]);
 
   const set = (patch: Partial<Settings>) => setS((old) => ({ ...old, ...patch }));
-  const [title, explanation] = tx.verdicts[v];
+  const [title, explanation] = VERDICT_TEXT[lang][v];
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
