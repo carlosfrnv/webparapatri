@@ -69,10 +69,10 @@ const TEXT = {
   },
 };
 
-// Estructuras que no tiene sentido preguntar (no se distinguen en una radiografía o no son de primero).
-const SKIP = /penis|testis|epididym|seminal|ductus|mesocolon|taenia|omentum|urethra|ureter|pancreatic duct|bile duct/i;
+// Solo se dejan fuera del examen las membranas y repliegues que no son órganos (el resto, todo).
+const SKIP = /mesocolon|taenia|omentum/i;
 // Superficie mínima (píxeles) para preguntar por una estructura: si es muy pequeña no se puede señalar.
-const MIN_AREA = { bone: 120, organ: 600 };
+const MIN_AREA = { bone: 60, organ: 250 };
 
 const same = (a: Target | null, b: Target | null) => !!a && !!b && a.kind === b.kind && a.id === b.id;
 
