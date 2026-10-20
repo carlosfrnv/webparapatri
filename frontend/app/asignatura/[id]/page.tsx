@@ -127,14 +127,9 @@ export default function SubjectPage() {
                 </>
               )}
               {/f[ií]sica/i.test(subject.name) && (
-                <>
-                  <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
-                    {t.tools.xray.button}
-                  </Link>
-                  <Link href={`/asignatura/${subject.id}/espectro`} className="btn-primary">
-                    {t.tools.spectrum.button}
-                  </Link>
-                </>
+                <Link href={`/asignatura/${subject.id}/espectro`} className="btn-primary">
+                  {t.tools.spectrum.button}
+                </Link>
               )}
               {/integra/i.test(subject.name) && (
                 <Link href={`/asignatura/${subject.id}/rayos-x`} className="btn-primary">
