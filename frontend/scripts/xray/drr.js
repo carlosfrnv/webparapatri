@@ -93,9 +93,9 @@ window.run = async (exams) => {
     parts.get(key).meshes.push(m.mesh);
   }
   const closed = [...parts.values()];
-  const box = (re) => {
+  const box = (re, layer = "bones") => {
     const b = new THREE.Box3();
-    for (const m of meshes) if (m.layer === "bones" && re.test(m.name)) b.expandByObject(m.mesh);
+    for (const m of meshes) if (m.layer === layer && re.test(m.name)) b.expandByObject(m.mesh);
     return b;
   };
 
@@ -106,13 +106,51 @@ window.run = async (exams) => {
     const b = box(new RegExp(ex.bones));
     const c = b.getCenter(new THREE.Vector3());
     const size = b.getSize(new THREE.Vector3());
-    // Encuadre: ancho y alto del campo en unidades del modelo, centrado en las piezas elegidas.
-    const fieldH = Math.max(size.y, (size.x * ex.h) / ex.w) * ex.margin;
+    // Encuadre: ancho y alto del campo en unidades del modelo, centrado en las piezas elegidas
+    // (o un campo fijo en cm, para el posicionamiento).
+    const fieldH = ex.fieldCm ? ex.fieldCm / 100 : Math.max(size.y, (size.x * ex.h) / ex.w) * ex.margin;
     const fieldW = (fieldH * ex.w) / ex.h;
     const cam = new THREE.OrthographicCamera(-fieldW / 2, fieldW / 2, fieldH / 2, -fieldH / 2, 0.01, 10);
-    cam.position.set(c.x + (ex.dx ?? 0) * fieldW, c.y + (ex.dy ?? 0) * fieldH, c.z + 3);
-    cam.lookAt(cam.position.x, cam.position.y, c.z);
+    // Azimut: desde dónde mira el haz alrededor del eje vertical (0 = de frente; 90 = desde la izquierda del paciente).
+    const az = ((ex.azimuth ?? 0) * Math.PI) / 180;
+    const target = new THREE.Vector3(c.x + (ex.dx ?? 0) * fieldW, c.y + (ex.dy ?? 0) * fieldH, c.z);
+    cam.position.set(target.x + Math.sin(az) * 3, target.y, target.z + Math.cos(az) * 3);
+    cam.lookAt(target);
     cam.updateMatrixWorld();
+    // Puntos de referencia (centraje) y zona que debe salir (colimación), en píxeles de esta imagen.
+    const toPx = (v) => {
+      const p = v.clone().project(cam);
+      return [((p.x + 1) / 2) * ex.w, ((1 - p.y) / 2) * ex.h];
+    };
+    const points = {};
+    for (const [key, spec] of Object.entries(ex.points ?? {})) {
+      const pb = box(new RegExp(spec.re), spec.layer ?? "bones");
+      const p = pb.getCenter(new THREE.Vector3());
+      if (spec.y === "min") p.y = pb.min.y;
+      if (spec.y === "max") p.y = pb.max.y;
+      if (spec.yFrom) p.y = box(new RegExp(spec.yFrom)).getCenter(new THREE.Vector3()).y;
+      p.y += (spec.dyCm ?? 0) / 100;
+      points[key] = toPx(p);
+    }
+    const rois = {};
+    for (const [key, spec] of Object.entries(ex.rois ?? {})) {
+      const rb = new THREE.Box3();
+      for (const part of spec) rb.union(box(new RegExp(part.re), part.layer ?? "bones"));
+      let x0 = Infinity,
+        y0 = Infinity,
+        x1 = -Infinity,
+        y1 = -Infinity;
+      for (const xx of [rb.min.x, rb.max.x])
+        for (const yy of [rb.min.y, rb.max.y])
+          for (const zz of [rb.min.z, rb.max.z]) {
+            const [px, py] = toPx(new THREE.Vector3(xx, yy, zz));
+            x0 = Math.min(x0, px);
+            y0 = Math.min(y0, py);
+            x1 = Math.max(x1, px);
+            y1 = Math.max(y1, py);
+          }
+      rois[key] = [x0, y0, x1, y1];
+    }
     renderer.setSize(ex.w, ex.h);
     const rt = new THREE.WebGLRenderTarget(ex.w, ex.h, { type: THREE.FloatType, format: THREE.RGBAFormat });
 
@@ -157,6 +195,7 @@ window.run = async (exams) => {
       renderer.clear();
       for (const m of closed) {
         if (ex.include && !new RegExp(ex.include, "i").test(m.name)) continue;
+        if (ex.exclude && new RegExp(ex.exclude, "i").test(m.name)) continue;
         const w = pick(m.layer, m.name);
         if (!w) continue;
         const sphere = new THREE.Box3();
@@ -226,6 +265,7 @@ window.run = async (exams) => {
       const names = [];
       for (const m of closed) {
         if (ex.include && !new RegExp(ex.include, "i").test(m.name)) continue;
+        if (ex.exclude && new RegExp(ex.exclude, "i").test(m.name)) continue;
         if (!pick(m.layer, m.name)) continue;
         const box = new THREE.Box3();
         for (const mesh of m.meshes) box.expandByObject(mesh);
@@ -262,6 +302,26 @@ window.run = async (exams) => {
 
     const bone = pass((l, n) => (isBone(l, n) ? 1 : 0));
     const soft = pass(softWeight);
+    if (ex.compact) {
+      // Posicionamiento: mapas en 8 bits (hueso cada 0,05 cm, tejido blando cada 0,2 cm) y sin etiquetas.
+      const q = (arr, step) => {
+        const u = new Uint8Array(arr.length);
+        for (let i = 0; i < arr.length; i++) u[i] = Math.max(0, Math.min(255, Math.round(arr[i] / step)));
+        let bin = "";
+        for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode(...u.subarray(i, i + 0x8000));
+        return btoa(bin);
+      };
+      out[ex.id] = {
+        w: ex.w,
+        h: ex.h,
+        cmPerPx: (fieldW * 100) / ex.w,
+        bone: q(bone.res, 0.05),
+        soft: q(soft.res, 0.2),
+        points,
+        rois,
+      };
+      continue;
+    }
     const boneLabels = labels((l, n) => isBone(l, n));
     // Órganos que se reconocen en una radiografía (sin músculos ni vasos pequeños).
     const softLabels = labels(

@@ -71,7 +71,9 @@ const cache = new Map<PhantomId, Promise<Phantom>>();
 export function loadPhantom(id: PhantomId): Promise<Phantom> {
   let p = cache.get(id);
   if (!p) {
-    p = Promise.all([loadMeta(), loadImage(`/xray/${id}.png`)]).then(([meta, img]) => decode(meta, id, img));
+    p = Promise.all([loadMeta(), loadImage(`/xray/${id}.png`)]).then(([meta, img]) =>
+      decode(meta, meta.exams[id].w, meta.exams[id].h, img),
+    );
     p.catch(() => cache.delete(id));
     cache.set(id, p);
   }
@@ -84,6 +86,50 @@ function loadMeta() {
     return r.json() as Promise<Meta>;
   });
   return metaPromise;
+}
+
+// ---------- Posicionamiento: cada región girada cada 5°, con un campo fijo en cm ----------
+
+export interface PosRegion {
+  w: number;
+  h: number;
+  cmPerPx: number;
+  /** Por ángulo: puntos de centraje [x, y] y zonas que deben salir [x0, y0, x1, y1], en píxeles. */
+  angles: Record<
+    string,
+    { points: Record<string, [number, number]>; rois: Record<string, [number, number, number, number]> }
+  >;
+}
+interface PosMeta {
+  boneScale: number;
+  softScale: number;
+  regions: Record<PhantomId, PosRegion>;
+}
+
+let posMetaPromise: Promise<PosMeta> | null = null;
+export function loadPosMeta() {
+  posMetaPromise ??= fetch("/xray/pos/meta.json").then((r) => {
+    if (!r.ok) throw new Error(`pos meta ${r.status}`);
+    return r.json() as Promise<PosMeta>;
+  });
+  posMetaPromise.catch(() => (posMetaPromise = null));
+  return posMetaPromise;
+}
+
+const posCache = new Map<string, Promise<Phantom>>();
+/** La región vista con el paciente girado `angle` grados (se usa con simulate(region, …)). */
+export function loadPositionView(region: PhantomId, angle: number): Promise<Phantom> {
+  const key = `${region}_${angle}`;
+  let p = posCache.get(key);
+  if (!p) {
+    p = Promise.all([loadPosMeta(), loadImage(`/xray/pos/${key}.png`)]).then(([meta, img]) => {
+      const { w, h } = meta.regions[region];
+      return decode(meta, w, h, img);
+    });
+    p.catch(() => posCache.delete(key));
+    posCache.set(key, p);
+  }
+  return p;
 }
 
 /** Qué pieza hay en cada punto de la radiografía (hueso y órgano), con los nombres del atlas. */
@@ -136,8 +182,7 @@ function loadImage(src: string) {
   });
 }
 
-function decode(meta: Meta, id: PhantomId, img: HTMLImageElement): Phantom {
-  const { w, h } = meta.exams[id];
+function decode(meta: { boneScale: number; softScale: number }, w: number, h: number, img: HTMLImageElement) {
   const data = pixelsOf(img, w, h);
   const n = w * h;
   const p: Phantom = {

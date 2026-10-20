@@ -139,6 +139,9 @@ export default function SubjectPage() {
                   <Link href={`/asignatura/${subject.id}/anatomia-radiologica`} className="btn-primary">
                     {t.tools.radio.button}
                   </Link>
+                  <Link href={`/asignatura/${subject.id}/posicionamiento`} className="btn-primary">
+                    {t.tools.positioning.button}
+                  </Link>
                 </>
               )}
               {/bioqu[ií]m/i.test(subject.name) && (

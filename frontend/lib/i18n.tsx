@@ -381,6 +381,11 @@ const es = {
       title: "Anatomía radiológica",
       subtitle: "Reconoce cada estructura en la radiografía",
     },
+    positioning: {
+      button: "📐 Posicionamiento",
+      title: "Posicionamiento radiológico",
+      subtitle: "Coloca al paciente, centra y colima, dispara y comprueba la radiografía",
+    },
     slices: {
       button: "🩻 Cortes 3D",
       title: "Cortes del cuerpo en 3D",
@@ -1224,6 +1229,11 @@ const pt: Dictionary = {
       button: "🔎 Anatomia radiológica",
       title: "Anatomia radiológica",
       subtitle: "Reconhece cada estrutura na radiografia",
+    },
+    positioning: {
+      button: "📐 Posicionamento",
+      title: "Posicionamento radiológico",
+      subtitle: "Posiciona o doente, centra e colima, dispara e verifica a radiografia",
     },
     slices: {
       button: "🩻 Cortes 3D",

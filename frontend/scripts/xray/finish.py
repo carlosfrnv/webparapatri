@@ -73,4 +73,5 @@ def main():
     json.dump({"boneScale": BONE_SCALE, "softScale": SOFT_SCALE, "exams": meta}, open(os.path.join(OUT, "meta.json"), "w"))
 
 
-main()
+if __name__ == "__main__":
+    main()
