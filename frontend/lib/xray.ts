@@ -1,41 +1,46 @@
 /**
  * Física simplificada de una radiografía, para el simulador (se calcula en el propio dispositivo, sin IA).
- * Cada "maniquí" es un mapa de cuánto tejido blando y cuánto hueso atraviesa el haz en cada punto.
- * La atenuación sigue la ley de Beer-Lambert con coeficientes que bajan con la energía
- * (efecto fotoeléctrico ∝ 1/E³), así que a más kV hay más penetración y menos contraste.
+ * Los "maniquíes" salen de la anatomía real del atlas 3D (scripts/xray): para cada punto, cuántos cm de
+ * hueso y de tejido blando atraviesa el haz. La atenuación sigue la ley de Beer-Lambert con coeficientes
+ * que bajan con la energía (efecto fotoeléctrico ∝ 1/E³): a más kV, más penetración y menos contraste.
+ * Además hay radiación dispersa (vela la imagen en las zonas gruesas) y una rejilla que la quita.
  */
 
-export const W = 240;
-export const H = 320;
-
-export type PhantomId = "mano" | "torax" | "rodilla";
+export type PhantomId = "mano" | "rodilla" | "torax" | "pelvis";
+export const PHANTOMS: PhantomId[] = ["mano", "rodilla", "torax", "pelvis"];
 
 export interface Phantom {
+  w: number;
+  h: number;
   soft: Float32Array; // cm de tejido blando que atraviesa el haz
   bone: Float32Array; // cm de hueso
   body: Uint8Array; // 1 donde hay paciente (para medir la imagen)
   boneMask: Uint8Array; // 1 donde hay hueso (para medir el contraste)
-  cmPerPx: number;
+  thickness: number; // grosor típico del paciente (cm), para la radiación dispersa
 }
 
 export interface Settings {
   kv: number; // 40–150
   mas: number; // 0.5–100
   dist: number; // distancia foco-detector en cm (90–200)
+  grid: boolean; // rejilla antidifusora
 }
 
 // Valores de referencia para cada exploración (los que usaría un técnico).
 export const IDEAL: Record<PhantomId, Settings> = {
-  mano: { kv: 55, mas: 4, dist: 100 },
-  rodilla: { kv: 65, mas: 8, dist: 100 },
-  torax: { kv: 120, mas: 3, dist: 180 },
+  mano: { kv: 50, mas: 2.5, dist: 100, grid: false },
+  rodilla: { kv: 70, mas: 6, dist: 100, grid: true },
+  torax: { kv: 120, mas: 3, dist: 180, grid: true },
+  pelvis: { kv: 75, mas: 25, dist: 115, grid: true },
 };
 
 /** Coeficientes de atenuación lineal (cm⁻¹) para un haz de kV dado (energía efectiva ≈ kV/2,5). */
 export function mu(kv: number) {
   const e = kv / 2.5;
   const photo = Math.pow(30 / e, 3);
-  return { soft: 0.17 + 0.09 * photo, bone: 0.36 + 1.35 * photo };
+  // Hueso "efectivo": los huesos del modelo son macizos, pero por dentro son sobre todo trabeculares
+  // (con médula), así que su atenuación media es bastante menor que la del hueso cortical.
+  return { soft: 0.17 + 0.09 * photo, bone: 0.3 + 0.33 * photo };
 }
 
 /** Exposición relativa que sale del tubo (∝ mAs · kV² / d²). */
@@ -43,246 +48,214 @@ export function tubeOutput(s: Settings) {
   return s.mas * Math.pow(s.kv / 70, 2) * Math.pow(100 / s.dist, 2);
 }
 
-// ---------- Maniquíes ----------
+// La rejilla deja pasar ~70 % de la radiación útil y solo ~12 % de la dispersa (por eso pide más mAs).
+const GRID_PRIMARY = 0.7;
+const GRID_SCATTER = 0.12;
 
-function blank(cmPerPx: number): Phantom {
-  const n = W * H;
-  return {
-    soft: new Float32Array(n),
-    bone: new Float32Array(n),
-    body: new Uint8Array(n),
-    boneMask: new Uint8Array(n),
-    cmPerPx,
-  };
+/** Proporción dispersa/útil: crece con el grosor del paciente y un poco con los kV. */
+function scatterRatio(thicknessCm: number, kv: number) {
+  return Math.min(6, 0.012 * Math.pow(thicknessCm, 1.6) * (0.75 + kv / 280));
 }
 
-/** Suma un cilindro (cápsula) entre dos puntos: la cuerda que recorre el haz en cada píxel. */
-function capsule(
-  p: Phantom,
-  map: "soft" | "bone",
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  r: number,
-  sign = 1,
-) {
-  const k = p.cmPerPx;
-  const minX = Math.max(0, Math.floor(Math.min(ax, bx) - r - 1));
-  const maxX = Math.min(W - 1, Math.ceil(Math.max(ax, bx) + r + 1));
-  const minY = Math.max(0, Math.floor(Math.min(ay, by) - r - 1));
-  const maxY = Math.min(H - 1, Math.ceil(Math.max(ay, by) + r + 1));
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len2 = dx * dx + dy * dy || 1;
-  for (let y = minY; y <= maxY; y++)
-    for (let x = minX; x <= maxX; x++) {
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
-      const ex = ax + t * dx - x;
-      const ey = ay + t * dy - y;
-      const d2 = ex * ex + ey * ey;
-      if (d2 >= r * r) continue;
-      const chord = 2 * Math.sqrt(r * r - d2) * k;
-      const i = y * W + x;
-      p[map][i] += sign * chord;
-      if (map === "soft" && sign > 0) p.body[i] = 1;
-      if (map === "bone" && sign > 0) p.boneMask[i] = 1;
-    }
+// ---------- Carga de los maniquíes (PNG: R = hueso, G = tejido blando) ----------
+
+interface Meta {
+  boneScale: number;
+  softScale: number;
+  exams: Record<PhantomId, { w: number; h: number; cmPerPx: number }>;
 }
 
-/** Hueso largo: cortical (anillo) y médula, que cuenta como tejido blando. */
-function longBone(p: Phantom, ax: number, ay: number, bx: number, by: number, r: number, wall = 0.38) {
-  capsule(p, "bone", ax, ay, bx, by, r);
-  capsule(p, "bone", ax, ay, bx, by, r * (1 - wall), -1);
-}
+let metaPromise: Promise<Meta> | null = null;
+const cache = new Map<PhantomId, Promise<Phantom>>();
 
-function ellipse(
-  p: Phantom,
-  map: "soft" | "bone",
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  depthCm: number,
-  sign = 1,
-) {
-  for (let y = Math.max(0, Math.floor(cy - ry)); y <= Math.min(H - 1, Math.ceil(cy + ry)); y++)
-    for (let x = Math.max(0, Math.floor(cx - rx)); x <= Math.min(W - 1, Math.ceil(cx + rx)); x++) {
-      const q = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
-      if (q >= 1) continue;
-      const i = y * W + x;
-      p[map][i] += sign * depthCm * Math.sqrt(1 - q);
-      if (map === "soft" && sign > 0) p.body[i] = 1;
-      if (map === "bone" && sign > 0) p.boneMask[i] = 1;
-    }
-}
-
-function hand(): Phantom {
-  const p = blank(0.085);
-  // Antebrazo y palma
-  capsule(p, "soft", 120, 330, 120, 250, 31);
-  ellipse(p, "soft", 122, 190, 58, 62, 2.6);
-  // Radio y cúbito
-  longBone(p, 100, 330, 103, 245, 10);
-  longBone(p, 142, 330, 138, 248, 8);
-  // Carpo
-  for (const [x, y] of [
-    [100, 232],
-    [116, 228],
-    [132, 228],
-    [146, 233],
-    [104, 214],
-    [120, 212],
-    [136, 213],
-    [150, 218],
-  ])
-    ellipse(p, "bone", x, y, 8, 7, 1.1);
-  // Dedos: [base x, base y, ángulo, longitudes de falanges]
-  const fingers: [number, number, number, number[]][] = [
-    [80, 205, -0.75, [34, 26, 20]], // pulgar
-    [98, 170, -0.12, [42, 30, 20, 16]],
-    [120, 166, -0.02, [44, 33, 22, 17]],
-    [141, 169, 0.08, [42, 31, 21, 16]],
-    [160, 178, 0.2, [38, 25, 17, 14]],
-  ];
-  fingers.forEach(([x0, y0, a, segs], f) => {
-    const dx = Math.sin(a);
-    const dy = -Math.cos(a);
-    const total = segs.reduce((s, v) => s + v, 0);
-    capsule(p, "soft", x0, y0 + (f === 0 ? 0 : 30), x0 + dx * total, y0 + dy * total, f === 0 ? 10.5 : 9.5);
-    let x = x0;
-    let y = y0 + (f === 0 ? 0 : 30);
-    segs.forEach((l, s) => {
-      const nx = x + dx * l;
-      const ny = y + dy * l;
-      const r = (f === 0 ? 5.6 : 5.2) - s * 0.6;
-      longBone(p, x + dx * 2, y + dy * 2, nx - dx * 2, ny - dy * 2, r, 0.45);
-      x = nx;
-      y = ny;
-    });
-  });
-  return p;
-}
-
-function knee(): Phantom {
-  const p = blank(0.08);
-  // Pierna (muslo arriba, pierna abajo)
-  capsule(p, "soft", 120, -20, 120, 340, 62);
-  // Fémur con cóndilos
-  longBone(p, 118, -20, 118, 120, 17);
-  ellipse(p, "bone", 100, 145, 24, 26, 1.5);
-  ellipse(p, "bone", 138, 145, 24, 26, 1.5);
-  // Rótula (sobrepuesta)
-  ellipse(p, "bone", 120, 128, 20, 23, 0.7);
-  // Tibia y peroné
-  ellipse(p, "bone", 120, 190, 44, 14, 1.5);
-  longBone(p, 118, 195, 116, 340, 15);
-  longBone(p, 160, 205, 158, 340, 6.5, 0.5);
-  return p;
-}
-
-function chest(): Phantom {
-  const p = blank(0.16);
-  // Tronco: elipse de 36 × 22 cm vista de frente
-  for (let y = 10; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const nx = (x - 120) / 112;
-      if (Math.abs(nx) >= 1) continue;
-      const shoulder = y < 50 ? Math.sqrt(Math.max(0, 1 - ((50 - y) / 45) ** 2)) : 1;
-      if (Math.abs(nx) > shoulder) continue;
-      const i = y * W + x;
-      p.soft[i] = 22 * Math.sqrt(1 - nx * nx);
-      p.body[i] = 1;
-    }
-  // Pulmones (aire: restan tejido) con las cúpulas del diafragma
-  for (const side of [-1, 1]) {
-    const cx = 120 + side * 50;
-    for (let y = 40; y < 270; y++)
-      for (let x = 0; x < W; x++) {
-        const nx = (x - cx) / 44;
-        const ny = (y - 160) / 120;
-        if (nx * nx + ny * ny >= 1) continue;
-        const dome = 230 + side * 8 - 26 * Math.sqrt(Math.max(0, 1 - ((x - cx) / 46) ** 2));
-        if (y > dome) continue;
-        if (side * (x - 120) < 14) continue;
-        p.soft[y * W + x] -= 13 * Math.sqrt(1 - nx * nx - ny * ny) + 2;
-      }
-  }
-  // Corazón (más hacia la izquierda del paciente = derecha de la imagen)
-  ellipse(p, "soft", 132, 200, 44, 40, 9);
-  // Costillas y clavículas: se dibujan aparte y se recortan para que sean finas y uniformes
-  const ribs = blank(p.cmPerPx);
-  for (const side of [-1, 1]) {
-    capsule(ribs, "bone", 120 + side * 14, 44, 120 + side * 88, 30, 4);
-    for (let k = 0; k < 9; k++) {
-      const y0 = 52 + k * 22;
-      let px = 120 + side * 10;
-      let py = y0;
-      for (let s = 1; s <= 12; s++) {
-        const t = s / 12;
-        const x = 120 + side * (10 + t * 98);
-        const y = y0 - 10 * Math.sin(t * Math.PI) + t * 30;
-        capsule(ribs, "bone", px, py, x, y, 3, 1);
-        px = x;
-        py = y;
-      }
-    }
-  }
-  for (let i = 0; i < p.bone.length; i++) {
-    p.bone[i] += Math.min(ribs.bone[i], 0.8);
-    if (ribs.boneMask[i]) p.boneMask[i] = 1;
-  }
-  // Columna (vértebras)
-  longBone(p, 120, 0, 120, 320, 9, 0.5);
-  return p;
-}
-
-const cache = new Map<PhantomId, Phantom>();
-export function phantom(id: PhantomId) {
+export function loadPhantom(id: PhantomId): Promise<Phantom> {
   let p = cache.get(id);
   if (!p) {
-    p = id === "mano" ? hand() : id === "rodilla" ? knee() : chest();
-    for (let i = 0; i < p.soft.length; i++) p.soft[i] = Math.max(0, p.soft[i]);
+    metaPromise ??= fetch("/xray/meta.json").then((r) => {
+      if (!r.ok) throw new Error(`meta ${r.status}`);
+      return r.json() as Promise<Meta>;
+    });
+    p = Promise.all([metaPromise, loadImage(`/xray/${id}.png`)]).then(([meta, img]) => decode(meta, id, img));
+    p.catch(() => cache.delete(id));
     cache.set(id, p);
   }
   return p;
 }
 
-// Ruido fijo (siempre el mismo dibujo) para que la imagen no "baile" al mover los mandos.
-let noise: Float32Array | null = null;
-function noiseField() {
-  if (noise) return noise;
-  noise = new Float32Array(W * H);
-  let s = 12345;
-  const rnd = () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-  for (let i = 0; i < noise.length; i++) {
-    const u = Math.max(rnd(), 1e-9);
-    noise[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((ok, ko) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = () => ko(new Error(src));
+    img.src = src;
+  });
+}
+
+function decode(meta: Meta, id: PhantomId, img: HTMLImageElement): Phantom {
+  const { w, h } = meta.exams[id];
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const n = w * h;
+  const p: Phantom = {
+    w,
+    h,
+    soft: new Float32Array(n),
+    bone: new Float32Array(n),
+    body: new Uint8Array(n),
+    boneMask: new Uint8Array(n),
+    thickness: 0,
+  };
+  const tex = texture(w, h);
+  const thick: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const bone = data[i * 4] * meta.boneScale;
+    // Textura trabecular: el hueso no es uniforme por dentro.
+    p.bone[i] = bone * (1 + 0.09 * tex[i]);
+    p.soft[i] = data[i * 4 + 1] * meta.softScale;
+    p.body[i] = p.soft[i] > 0.5 || bone > 0.05 ? 1 : 0;
+    p.boneMask[i] = bone > 0.4 ? 1 : 0;
+    if (p.body[i]) thick.push(p.soft[i] + bone);
   }
-  return noise;
+  thick.sort((a, b) => a - b);
+  p.thickness = thick[Math.floor(thick.length * 0.85)] ?? 0;
+  return p;
+}
+
+// Ruido de varias escalas, fijo (siempre el mismo dibujo): textura del hueso y ruido cuántico.
+function rng(seed: number) {
+  let s = seed;
+  return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+}
+
+function gaussianField(n: number, seed: number) {
+  const rnd = rng(seed);
+  const f = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const u = Math.max(rnd(), 1e-9);
+    f[i] = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
+  }
+  return f;
+}
+
+function texture(w: number, h: number) {
+  const out = new Float32Array(w * h);
+  for (const [scale, amp] of [
+    [1, 0.5],
+    [2, 0.35],
+    [4, 0.25],
+  ]) {
+    const gw = Math.ceil(w / scale) + 1;
+    const g = gaussianField(gw * (Math.ceil(h / scale) + 1), 7 + scale);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) out[y * w + x] += amp * g[Math.floor(y / scale) * gw + Math.floor(x / scale)];
+  }
+  return out;
+}
+
+const noiseCache = new Map<number, Float32Array>();
+function noiseField(n: number) {
+  let f = noiseCache.get(n);
+  if (!f) {
+    f = gaussianField(n, 12345);
+    noiseCache.set(n, f);
+  }
+  return f;
+}
+
+/** Desenfoque grande y barato (la radiación dispersa es una niebla suave): media de bloques + interpolación. */
+function fog(src: Float32Array, w: number, h: number, block = 12) {
+  const bw = Math.ceil(w / block);
+  const bh = Math.ceil(h / block);
+  const sum = new Float32Array(bw * bh);
+  const cnt = new Float32Array(bw * bh);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const k = Math.floor(y / block) * bw + Math.floor(x / block);
+      sum[k] += src[y * w + x];
+      cnt[k]++;
+    }
+  let avg = sum.map((s, k) => s / cnt[k]);
+  // Dos pasadas de suavizado entre bloques vecinos.
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Float32Array(avg.length);
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < bw; x++) {
+        let s = 0;
+        let c = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const yy = y + dy;
+            const xx = x + dx;
+            if (yy < 0 || xx < 0 || yy >= bh || xx >= bw) continue;
+            s += avg[yy * bw + xx];
+            c++;
+          }
+        next[y * bw + x] = s / c;
+      }
+    avg = next;
+  }
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(bw - 1.001, Math.max(0, x / block - 0.5));
+      const fy = Math.min(bh - 1.001, Math.max(0, y / block - 0.5));
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      const tx = fx - x0;
+      const ty = fy - y0;
+      const x1 = Math.min(bw - 1, x0 + 1);
+      const y1 = Math.min(bh - 1, y0 + 1);
+      out[y * w + x] =
+        avg[y0 * bw + x0] * (1 - tx) * (1 - ty) +
+        avg[y0 * bw + x1] * tx * (1 - ty) +
+        avg[y1 * bw + x0] * (1 - tx) * ty +
+        avg[y1 * bw + x1] * tx * ty;
+    }
+  return out;
 }
 
 // Calibración del detector para cada exploración (como hace el equipo): con los valores ideales,
 // el tejido blando típico recibe una exposición algo por encima de la media de la curva.
 const TARGET = 1.4;
-const calibration = new Map<PhantomId, number>();
-function referenceOf(id: PhantomId) {
-  let ref = calibration.get(id);
+const calibration = new Map<Phantom, number>();
+function referenceOf(id: PhantomId, p: Phantom) {
+  let ref = calibration.get(p);
   if (ref === undefined) {
-    const p = phantom(id);
-    const m = mu(IDEAL[id].kv);
-    const out = tubeOutput(IDEAL[id]);
+    const { signal } = detector(p, IDEAL[id]);
     const vals: number[] = [];
-    for (let i = 0; i < p.soft.length; i++)
-      if (p.body[i] && !p.boneMask[i]) vals.push(out * Math.exp(-(m.soft * p.soft[i] + m.bone * p.bone[i])));
+    for (let i = 0; i < signal.length; i++) if (p.body[i] && !p.boneMask[i]) vals.push(signal[i]);
     vals.sort((a, b) => a - b);
     ref = (vals[Math.floor(vals.length / 2)] ?? 1) / TARGET;
-    calibration.set(id, ref);
+    calibration.set(p, ref);
   }
   return ref;
 }
+
+/** Lo que llega al detector: radiación útil (atravesada) + dispersa (niebla), con o sin rejilla. */
+function detector(p: Phantom, s: Settings) {
+  const m = mu(s.kv);
+  const out = tubeOutput(s);
+  const n = p.w * p.h;
+  const primary = new Float32Array(n);
+  for (let i = 0; i < n; i++) primary[i] = out * Math.exp(-(m.soft * p.soft[i] + m.bone * p.bone[i]));
+  // La dispersa sale del propio paciente: proporcional a lo que entra en él y a su grosor.
+  const spr = scatterRatio(p.thickness, s.kv);
+  const inBody = new Float32Array(n);
+  for (let i = 0; i < n; i++) inBody[i] = p.body[i] ? primary[i] : 0;
+  const scatter = fog(inBody, p.w, p.h);
+  const gp = s.grid ? GRID_PRIMARY : 1;
+  const gs = s.grid ? GRID_SCATTER : 1;
+  const signal = new Float32Array(n);
+  for (let i = 0; i < n; i++) signal[i] = primary[i] * gp + scatter[i] * spr * gs;
+  return { signal, scatterShare: (spr * gs) / (gp + spr * gs) };
+}
+
 const QUANTA = 600; // fotones por píxel con una exposición "correcta" (ruido ≈ 3%)
-const GAMMA = 1.5; // pendiente de la curva del detector (latitud)
+const GAMMA = 1.15; // pendiente de la curva del detector (latitud amplia, como un equipo digital)
 
 export interface Result {
   pixels: Uint8ClampedArray; // 0 = negro (mucha radiación), 255 = blanco
@@ -290,15 +263,14 @@ export interface Result {
   contrast: number; // diferencia hueso / tejido blando (0–1)
   noise: number; // ruido relativo en el tejido blando
   dose: number; // dosis en la piel, relativa a la ideal de la exploración
+  scatter: number; // parte de la señal que es radiación dispersa (0–1)
 }
 
-export function simulate(id: PhantomId, s: Settings): Result {
-  const p = phantom(id);
-  const m = mu(s.kv);
-  const out = tubeOutput(s);
-  const nf = noiseField();
-  const ref = referenceOf(id);
-  const px = new Uint8ClampedArray(W * H);
+export function simulate(id: PhantomId, p: Phantom, s: Settings): Result {
+  const { signal, scatterShare } = detector(p, s);
+  const ref = referenceOf(id, p);
+  const nf = noiseField(signal.length);
+  const px = new Uint8ClampedArray(signal.length);
   let sumB = 0;
   let nB = 0;
   let boneSum = 0;
@@ -307,33 +279,30 @@ export function simulate(id: PhantomId, s: Settings): Result {
   let nSoft = 0;
   let softQuanta = 0;
   for (let i = 0; i < px.length; i++) {
-    const t = Math.exp(-(m.soft * p.soft[i] + m.bone * p.bone[i]));
-    const exposure = (out * t) / ref;
+    const exposure = signal[i] / ref;
     const quanta = Math.max(exposure * QUANTA, 0.5);
     const noisy = Math.max(1e-6, (quanta + nf[i] * Math.sqrt(quanta)) / QUANTA);
-    const v = 1 / (1 + Math.pow(noisy, GAMMA)); // curva característica: más exposición → más negro
-    px[i] = Math.round(v * 255);
+    px[i] = Math.round(255 / (1 + Math.pow(noisy, GAMMA))); // más exposición → más negro
+    if (!p.body[i]) continue;
     const clean = 1 / (1 + Math.pow(exposure, GAMMA));
-    if (p.body[i]) {
-      sumB += clean;
-      nB++;
-      if (p.boneMask[i] && p.bone[i] > 0.6) {
-        boneSum += clean;
-        nBone++;
-      } else if (!p.boneMask[i]) {
-        softSum += clean;
-        nSoft++;
-        softQuanta += quanta;
-      }
+    sumB += clean;
+    nB++;
+    if (p.boneMask[i]) {
+      boneSum += clean;
+      nBone++;
+    } else {
+      softSum += clean;
+      nSoft++;
+      softQuanta += quanta;
     }
   }
-  const ideal = IDEAL[id];
   return {
     pixels: px,
     brightness: nB ? sumB / nB : 0,
     contrast: nBone && nSoft ? boneSum / nBone - softSum / nSoft : 0,
     noise: nSoft ? 1 / Math.sqrt(softQuanta / nSoft) : 0,
-    dose: doseOf(s) / doseOf(ideal),
+    dose: doseOf(s) / doseOf(IDEAL[id]),
+    scatter: scatterShare,
   };
 }
 
@@ -342,23 +311,25 @@ export function doseOf(s: Settings) {
   return s.mas * Math.pow(s.kv / 70, 2) * Math.pow(100 / Math.max(s.dist - 20, 30), 2);
 }
 
-export type Verdict = "under" | "over" | "lowContrast" | "noisy" | "highDose" | "good";
+export type Verdict = "under" | "over" | "lowContrast" | "scatter" | "noisy" | "highDose" | "good";
 
-const idealContrast = new Map<PhantomId, number>();
+const idealContrast = new Map<Phantom, number>();
 
 /** Contraste que da la exploración con los valores recomendados (cada parte del cuerpo tiene el suyo). */
-export function idealContrastOf(id: PhantomId) {
-  let ref = idealContrast.get(id);
+export function idealContrastOf(id: PhantomId, p: Phantom) {
+  let ref = idealContrast.get(p);
   if (ref === undefined) {
-    ref = simulate(id, IDEAL[id]).contrast;
-    idealContrast.set(id, ref);
+    ref = simulate(id, p, IDEAL[id]).contrast;
+    idealContrast.set(p, ref);
   }
   return ref;
 }
 
-export function verdict(id: PhantomId, r: Result): Verdict {
-  const ref = idealContrastOf(id);
+export function verdict(id: PhantomId, p: Phantom, r: Result, s: Settings): Verdict {
+  const ref = idealContrastOf(id, p);
   if (r.brightness > 0.78) return "under";
+  // Sin rejilla en una zona gruesa, la radiación dispersa vela la imagen (la oscurece y le quita contraste).
+  if (!s.grid && r.scatter > 0.45) return "scatter";
   if (r.brightness < 0.36) return "over";
   if (r.noise > 0.075) return "noisy";
   if (r.contrast < ref * 0.6) return "lowContrast";

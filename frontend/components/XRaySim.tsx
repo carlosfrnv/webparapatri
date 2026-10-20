@@ -3,16 +3,18 @@
 import { ArrowCounterClockwise, Lightbulb } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/lib/i18n";
+import { ErrorBox, Spinner } from "@/components/ui";
 import {
-  H,
   IDEAL,
   idealContrastOf,
+  loadPhantom,
+  type Phantom,
   type PhantomId,
+  PHANTOMS,
   type Settings,
   simulate,
   verdict,
   type Verdict,
-  W,
 } from "@/lib/xray";
 
 /**
@@ -22,13 +24,20 @@ import {
 
 const TEXT = {
   es: {
-    exams: { mano: "Mano", rodilla: "Rodilla", torax: "Tórax" } as Record<PhantomId, string>,
+    exams: { mano: "Mano", rodilla: "Rodilla", torax: "Tórax", pelvis: "Pelvis" } as Record<PhantomId, string>,
     kv: "Tensión (kV)",
     kvHelp: "Energía de los rayos: más kV = más penetración y menos contraste.",
     mas: "Carga (mAs)",
     masHelp: "Cantidad de rayos: más mAs = imagen más oscura, menos ruido y más dosis.",
     dist: "Distancia foco-detector",
     distHelp: "Ley del inverso del cuadrado: el doble de distancia = 4 veces menos radiación.",
+    grid: "Rejilla antidifusora",
+    gridHelp:
+      "Quita la radiación dispersa (que vela la imagen) en las zonas gruesas, pero absorbe parte del haz: hay que subir los mAs.",
+    scatter: "Radiación dispersa",
+    loading: "Preparando la radiografía…",
+    loadError: "No se ha podido cargar la imagen. Comprueba la conexión.",
+    marker: "D",
     brightness: "Exposición",
     contrast: "Contraste",
     noise: "Ruido",
@@ -51,6 +60,10 @@ const TEXT = {
         "Poco contraste",
         "Con tantos kV el hueso y el tejido blando se parecen demasiado. Baja los kV y compensa con mAs.",
       ],
+      scatter: [
+        "Imagen velada",
+        "En una zona tan gruesa se produce mucha radiación dispersa que vela la imagen y le quita contraste. Pon la rejilla antidifusora (y sube los mAs).",
+      ],
       highDose: [
         "Demasiada dosis",
         "La imagen se ve bien, pero con mucha más radiación de la necesaria. Baja los mAs: principio ALARA.",
@@ -63,17 +76,25 @@ const TEXT = {
       "Los mAs controlan la cantidad de fotones (densidad); los kV, su energía (contraste y penetración).",
       "Ley del inverso del cuadrado: I₁ / I₂ = d₂² / d₁². En tórax se usan 180 cm para reducir la magnificación.",
       "ALARA: tan baja como sea razonablemente posible. La mejor imagen no es la de más dosis.",
+      "La rejilla se usa en zonas de más de unos 10 cm (tórax, pelvis, rodilla); en la mano no hace falta.",
     ],
     relative: (x: number) => `${x < 0.1 ? x.toFixed(2) : x.toFixed(1)}× la recomendada`,
   },
   pt: {
-    exams: { mano: "Mão", rodilla: "Joelho", torax: "Tórax" } as Record<PhantomId, string>,
+    exams: { mano: "Mão", rodilla: "Joelho", torax: "Tórax", pelvis: "Bacia" } as Record<PhantomId, string>,
     kv: "Tensão (kV)",
     kvHelp: "Energia dos raios: mais kV = mais penetração e menos contraste.",
     mas: "Carga (mAs)",
     masHelp: "Quantidade de raios: mais mAs = imagem mais escura, menos ruído e mais dose.",
     dist: "Distância foco-detetor",
     distHelp: "Lei do inverso do quadrado: o dobro da distância = 4 vezes menos radiação.",
+    grid: "Grelha antidifusora",
+    gridHelp:
+      "Elimina a radiação dispersa (que vela a imagem) nas zonas espessas, mas absorve parte do feixe: é preciso subir os mAs.",
+    scatter: "Radiação dispersa",
+    loading: "A preparar a radiografia…",
+    loadError: "Não foi possível carregar a imagem. Verifica a ligação.",
+    marker: "D",
     brightness: "Exposição",
     contrast: "Contraste",
     noise: "Ruído",
@@ -90,6 +111,10 @@ const TEXT = {
         "Pouco contraste",
         "Com tantos kV o osso e os tecidos moles ficam parecidos. Baixa os kV e compensa com mAs.",
       ],
+      scatter: [
+        "Imagem velada",
+        "Numa zona tão espessa produz-se muita radiação dispersa que vela a imagem e lhe tira contraste. Põe a grelha antidifusora (e sobe os mAs).",
+      ],
       highDose: [
         "Dose a mais",
         "A imagem está boa, mas com muito mais radiação do que o necessário. Baixa os mAs: princípio ALARA.",
@@ -102,12 +127,13 @@ const TEXT = {
       "Os mAs controlam a quantidade de fotões (densidade); os kV, a sua energia (contraste e penetração).",
       "Lei do inverso do quadrado: I₁ / I₂ = d₂² / d₁². No tórax usam-se 180 cm para reduzir a ampliação.",
       "ALARA: tão baixa quanto razoavelmente possível. A melhor imagem não é a de mais dose.",
+      "A grelha usa-se em zonas com mais de cerca de 10 cm (tórax, bacia, joelho); na mão não é precisa.",
     ],
     relative: (x: number) => `${x < 0.1 ? x.toFixed(2) : x.toFixed(1)}× a recomendada`,
   },
 };
 
-const START: Settings = { kv: 80, mas: 20, dist: 100 };
+const START: Settings = { kv: 80, mas: 20, dist: 100, grid: false };
 
 // mAs en escala logarítmica (de 0,5 a 100) para que el deslizador sea cómodo.
 const MAS_MIN = 0.5;
@@ -124,6 +150,7 @@ const TONE: Record<Verdict, string> = {
   over: "bg-danger-soft text-danger",
   noisy: "bg-warning-soft text-amber",
   lowContrast: "bg-warning-soft text-amber",
+  scatter: "bg-warning-soft text-amber",
   highDose: "bg-danger-soft text-danger",
 };
 
@@ -132,15 +159,29 @@ export default function XRaySim() {
   const tx = TEXT[lang];
   const [exam, setExam] = useState<PhantomId>("mano");
   const [s, setS] = useState<Settings>(START);
+  const [phantom, setPhantom] = useState<{ id: PhantomId; p: Phantom } | null>(null);
+  const [error, setError] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
 
-  const result = useMemo(() => simulate(exam, s), [exam, s]);
-  const v = verdict(exam, result);
+  // La radiografía "base" de cada exploración (sale de la anatomía del atlas) se descarga al elegirla.
+  useEffect(() => {
+    let alive = true;
+    loadPhantom(exam)
+      .then((p) => alive && setPhantom({ id: exam, p }))
+      .catch(() => alive && setError(tx.loadError));
+    return () => {
+      alive = false;
+    };
+  }, [exam, tx.loadError]);
+
+  const ready = phantom?.id === exam ? phantom.p : null;
+  const result = useMemo(() => (ready ? simulate(exam, ready, s) : null), [exam, ready, s]);
+  const v = ready && result ? verdict(exam, ready, result, s) : "good";
 
   useEffect(() => {
     const ctx = canvas.current?.getContext("2d");
-    if (!ctx) return;
-    const img = ctx.createImageData(W, H);
+    if (!ctx || !result || !ready) return;
+    const img = ctx.createImageData(ready.w, ready.h);
     const px = result.pixels;
     for (let i = 0; i < px.length; i++) {
       const g = px[i];
@@ -150,7 +191,7 @@ export default function XRaySim() {
       img.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
-  }, [result]);
+  }, [result, ready]);
 
   const set = (patch: Partial<Settings>) => setS((old) => ({ ...old, ...patch }));
   const [title, explanation] = tx.verdicts[v];
@@ -159,7 +200,7 @@ export default function XRaySim() {
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div>
         <div className="mb-3 flex flex-wrap gap-2" role="radiogroup">
-          {(Object.keys(tx.exams) as PhantomId[]).map((id) => (
+          {PHANTOMS.map((id) => (
             <button
               key={id}
               role="radio"
@@ -173,11 +214,32 @@ export default function XRaySim() {
             </button>
           ))}
         </div>
-        <div className="relative mx-auto max-w-[340px] overflow-hidden rounded-2xl bg-black shadow-lg">
-          <canvas ref={canvas} width={W} height={H} className="block aspect-[3/4] w-full" aria-label={tx.exams[exam]} />
-          <div className={`absolute top-3 left-3 rounded-full px-3 py-1 text-sm font-bold shadow ${TONE[v]}`}>
-            {title}
-          </div>
+        <div className="relative mx-auto max-w-[360px] overflow-hidden rounded-2xl bg-black shadow-lg">
+          {ready ? (
+            <canvas
+              ref={canvas}
+              width={ready.w}
+              height={ready.h}
+              className="block w-full"
+              style={{ aspectRatio: `${ready.w} / ${ready.h}` }}
+              aria-label={tx.exams[exam]}
+            />
+          ) : (
+            <div className="flex aspect-[3/4] items-center justify-center">
+              {error ? <ErrorBox message={error} /> : <Spinner label={tx.loading} />}
+            </div>
+          )}
+          {ready && (
+            <>
+              <div className={`absolute top-3 left-3 rounded-full px-3 py-1 text-sm font-bold shadow ${TONE[v]}`}>
+                {title}
+              </div>
+              {/* Marcador de plomo: lado derecho del paciente (a la izquierda de la imagen). */}
+              <div className="absolute bottom-3 left-3 rounded-sm border border-white/80 px-1.5 font-mono text-sm font-bold text-white/90">
+                {tx.marker}
+              </div>
+            </>
+          )}
         </div>
         <Setup dist={s.dist} tube={tx.tube} detector={tx.detector} />
       </div>
@@ -219,21 +281,37 @@ export default function XRaySim() {
           onChange={(x) => set({ dist: x })}
         />
 
-        <div className="card grid grid-cols-2 gap-4 p-4">
-          <Meter label={tx.brightness} value={1 - result.brightness} good={[0.22, 0.64]} />
-          <Meter
-            label={tx.contrast}
-            value={Math.min(1, result.contrast / idealContrastOf(exam) / 1.6)}
-            good={[0.37, 1]}
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-5 w-5 accent-[var(--accent)]"
+            checked={s.grid}
+            onChange={(e) => set({ grid: e.target.checked })}
           />
-          <Meter label={tx.noise} value={Math.min(1, result.noise / 0.12)} good={[0, 0.62]} />
-          <Meter
-            label={tx.dose}
-            value={Math.min(1, result.dose / 4)}
-            good={[0, 0.62]}
-            note={tx.relative(result.dose)}
-          />
-        </div>
+          <span>
+            <span className="block font-semibold">{tx.grid}</span>
+            <span className="text-muted block text-sm">{tx.gridHelp}</span>
+          </span>
+        </label>
+
+        {result && ready && (
+          <div className="card grid grid-cols-2 gap-4 p-4">
+            <Meter label={tx.brightness} value={1 - result.brightness} good={[0.22, 0.64]} />
+            <Meter
+              label={tx.contrast}
+              value={Math.min(1, result.contrast / idealContrastOf(exam, ready) / 1.6)}
+              good={[0.37, 1]}
+            />
+            <Meter label={tx.noise} value={Math.min(1, result.noise / 0.12)} good={[0, 0.62]} />
+            <Meter label={tx.scatter} value={result.scatter} good={[0, 0.45]} />
+            <Meter
+              label={tx.dose}
+              value={Math.min(1, result.dose / 4)}
+              good={[0, 0.62]}
+              note={tx.relative(result.dose)}
+            />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <button className="btn-secondary" onClick={() => setS(IDEAL[exam])}>
