@@ -33,7 +33,14 @@ const PROVIDERS: Record<string, { provider: Provider; hasKey: () => boolean }> =
   anthropic: { provider: anthropicProvider, hasKey: () => !!config.ANTHROPIC_API_KEY },
 };
 
-export const CHAIN: Step[] = config.AI_CHAIN.split(",")
+// Último recurso: si hay clave de Anthropic y AI_CHAIN no incluye ningún modelo de Claude, se añade Haiku al final.
+// Así, cuando las IA gratuitas agotan su cupo, responde Haiku en vez de dar error.
+const LAST_RESORT = "anthropic:claude-haiku-5-5";
+
+export const CHAIN: Step[] = [
+  ...config.AI_CHAIN.split(","),
+  ...(config.ANTHROPIC_API_KEY && !/(^|,)\s*anthropic:/i.test(config.AI_CHAIN) ? [LAST_RESORT] : []),
+]
   .map((s) => s.trim())
   .filter(Boolean)
   .flatMap((entry) => {
@@ -100,7 +107,11 @@ export async function generate(
       }
     : undefined;
 
-  for (const step of CHAIN) {
+  // Para investigar con fuentes, primero los modelos que pueden buscar en internet (Groq no puede).
+  const chain = opts.research
+    ? [...CHAIN.filter((s) => s.provider.supportsWeb), ...CHAIN.filter((s) => !s.provider.supportsWeb)]
+    : CHAIN;
+  for (const step of chain) {
     if (cooling(cooldownUntil, step.key)) continue;
     if (opts.images?.length && !step.provider.supportsImages) continue;
     let useWeb = !!opts.web && step.provider.supportsWeb && !cooling(webCooldownUntil, step.key);

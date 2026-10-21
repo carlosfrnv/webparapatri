@@ -81,8 +81,8 @@ const messages = {
     pt: "A IA devolveu uma resposta num formato inesperado. Tenta gerar de novo.",
   },
   aiUnavailable: {
-    es: "La IA gratuita ha llegado a su límite por ahora. Inténtalo de nuevo dentro de un rato.",
-    pt: "A IA gratuita chegou ao limite por agora. Tenta novamente daqui a pouco.",
+    es: "La IA no está disponible ahora mismo. Inténtalo de nuevo dentro de un rato.",
+    pt: "A IA não está disponível neste momento. Tenta novamente daqui a pouco.",
   },
   chatFailed: {
     es: "No se ha podido responder ahora. Inténtalo de nuevo.",
