@@ -47,6 +47,9 @@ interface Section {
   research: string;
   sources: WebSource[];
   draft: string;
+  // Lo que la IA está haciendo ahora en el servidor con este apartado, y el error si falló.
+  status?: "research" | "draft" | null;
+  error?: string | null;
 }
 
 interface Assignment {
@@ -56,6 +59,7 @@ interface Assignment {
   meta: Meta;
   sections: Section[];
   updated_at?: string;
+  running?: boolean;
 }
 
 const KINDS: Record<Lang, string[]> = {
@@ -94,7 +98,12 @@ const TEXT = {
     research: "Investigar",
     researchLabel: "Investigación y fuentes",
     researching: "Buscando en fuentes fiables… (puede tardar un minuto)",
-    researchAll: "Investigar los pendientes",
+    auto: "Hacer el trabajo entero",
+    autoHint:
+      "La IA investiga y redacta todos los apartados que falten, uno detrás de otro (unos minutos). Puedes cerrar la web: sigue trabajando sola.",
+    autoRunning: (d: number, n: number) =>
+      `La IA está trabajando… ${d} de ${n} apartados redactados. Puedes cerrar la web: sigue sola y al volver lo verás.`,
+    useAndAuto: "Usar este índice y hacer el trabajo entero",
     draft: "Redactar borrador",
     drafting: "Redactando…",
     redo: "Rehacer",
@@ -146,7 +155,12 @@ const TEXT = {
     research: "Pesquisar",
     researchLabel: "Pesquisa e fontes",
     researching: "A procurar em fontes fiáveis… (pode demorar um minuto)",
-    researchAll: "Pesquisar as pendentes",
+    auto: "Fazer o trabalho todo",
+    autoHint:
+      "A IA pesquisa e redige todas as secções que faltam, uma a seguir à outra (alguns minutos). Podes fechar a web: continua a trabalhar sozinha.",
+    autoRunning: (d: number, n: number) =>
+      `A IA está a trabalhar… ${d} de ${n} secções redigidas. Podes fechar a web: continua sozinha e quando voltares vês.`,
+    useAndAuto: "Usar este índice e fazer o trabalho todo",
     draft: "Redigir rascunho",
     drafting: "A redigir…",
     redo: "Refazer",
@@ -414,7 +428,6 @@ export function AssignmentView({ id }: { id: string }) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("write");
-  const [working, setWorking] = useState<Record<string, "research" | "draft">>({});
   const [editMeta, setEditMeta] = useState(false);
 
   const load = useCallback(() => {
@@ -441,27 +454,28 @@ export function AssignmentView({ id }: { id: string }) {
     [id],
   );
 
-  const run = async (s: Section, kind: "research" | "draft") => {
-    setWorking((w) => ({ ...w, [s.id]: kind }));
+  // La IA trabaja en el servidor: aquí solo se lanza y luego se pregunta cada pocos segundos cómo va.
+  const launch = async (path: string) => {
     setError("");
     try {
-      const updated = await api.post<Section>(`/assignments/${id}/sections/${s.id}/${kind}`);
-      setA((x) => (x ? { ...x, sections: x.sections.map((y) => (y.id === s.id ? updated : y)) } : x));
+      setA(await api.post<Assignment>(`/assignments/${id}/${path}`));
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
-      setWorking((w) => {
-        const n = { ...w };
-        delete n[s.id];
-        return n;
-      });
     }
   };
+  const run = (s: Section, kind: "research" | "draft") => launch(`sections/${s.id}/${kind}`);
 
-  const researchAll = async () => {
-    if (!a) return;
-    for (const s of a.sections) if (!s.research) await run(s, "research");
-  };
+  const running = !!a?.running;
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => {
+      api
+        .get<Assignment>(`/assignments/${id}`)
+        .then(setA)
+        .catch(() => undefined);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [running, id]);
 
   if (error && !a) return <ErrorBox message={error} onRetry={load} />;
   if (!a) return <Spinner />;
@@ -531,13 +545,30 @@ export function AssignmentView({ id }: { id: string }) {
         <div className="space-y-4">
           <p className="bg-surface-2 text-muted rounded-xl p-3 text-sm">{tx.integrity}</p>
           {n === 0 ? (
-            <OutlineStart id={id} tx={tx} onReady={saveSections} />
+            <OutlineStart
+              id={id}
+              tx={tx}
+              onReady={async (sections, auto) => {
+                await saveSections(sections);
+                if (auto) await launch("auto");
+              }}
+            />
           ) : (
             <>
-              {researched < n && (
-                <button className="btn-secondary" onClick={researchAll} disabled={Object.keys(working).length > 0}>
-                  <MagnifyingGlass size={18} aria-hidden="true" /> {tx.researchAll}
-                </button>
+              {running ? (
+                <div className="card border-accent flex items-center gap-3 border-2 p-4">
+                  <Spinner />
+                  <p className="text-sm font-medium">{tx.autoRunning(drafted, n)}</p>
+                </div>
+              ) : (
+                drafted < n && (
+                  <div className="card space-y-2 p-4">
+                    <button className="btn-primary w-full sm:w-auto" onClick={() => launch("auto")}>
+                      <Sparkle size={18} aria-hidden="true" /> {tx.auto}
+                    </button>
+                    <p className="text-muted text-sm">{tx.autoHint}</p>
+                  </div>
+                )
               )}
               {a.sections.map((s, i) => (
                 <SectionCard
@@ -546,7 +577,8 @@ export function AssignmentView({ id }: { id: string }) {
                   i={i}
                   n={n}
                   tx={tx}
-                  working={working[s.id]}
+                  working={s.status ?? undefined}
+                  busy={running}
                   onChange={(patch) => saveSections(a.sections.map((y) => (y.id === s.id ? { ...y, ...patch } : y)))}
                   onMove={(d) => {
                     const list = [...a.sections];
@@ -644,7 +676,7 @@ function MetaEditor({
   );
 }
 
-function OutlineStart({ id, tx, onReady }: { id: string; tx: Tx; onReady: (s: Section[]) => void }) {
+function OutlineStart({ id, tx, onReady }: { id: string; tx: Tx; onReady: (s: Section[], auto: boolean) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [proposal, setProposal] = useState<Section[] | null>(null);
@@ -691,9 +723,14 @@ function OutlineStart({ id, tx, onReady }: { id: string; tx: Tx; onReady: (s: Se
               </li>
             ))}
           </ol>
-          <button className="btn-primary" onClick={() => onReady(proposal)}>
-            <CheckCircle size={18} aria-hidden="true" /> {tx.useOutline}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primary" onClick={() => onReady(proposal, true)}>
+              <Sparkle size={18} aria-hidden="true" /> {tx.useAndAuto}
+            </button>
+            <button className="btn-secondary" onClick={() => onReady(proposal, false)}>
+              <CheckCircle size={18} aria-hidden="true" /> {tx.useOutline}
+            </button>
+          </div>
         </div>
       )}
       <div>
@@ -705,7 +742,7 @@ function OutlineStart({ id, tx, onReady }: { id: string; tx: Tx; onReady: (s: Se
           placeholder={"1. Introducción\n2. …\n3. Conclusión"}
         />
         {typedSections.length > 0 && (
-          <button className="btn-secondary mt-2" onClick={() => onReady(typedSections)}>
+          <button className="btn-secondary mt-2" onClick={() => onReady(typedSections, false)}>
             {tx.useOutline} ({typedSections.length})
           </button>
         )}
@@ -720,6 +757,7 @@ function SectionCard({
   n,
   tx,
   working,
+  busy,
   onChange,
   onMove,
   onDelete,
@@ -730,6 +768,7 @@ function SectionCard({
   n: number;
   tx: Tx;
   working?: "research" | "draft";
+  busy: boolean;
   onChange: (patch: Partial<Section>) => void;
   onMove: (d: -1 | 1) => void;
   onDelete: () => void;
@@ -777,18 +816,15 @@ function SectionCard({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button className="btn-secondary" disabled={!!working} onClick={() => onRun("research")}>
+        <button className="btn-secondary" disabled={busy} onClick={() => onRun("research")}>
           <MagnifyingGlass size={18} aria-hidden="true" /> {s.research ? `${tx.research} · ${tx.redo}` : tx.research}
         </button>
-        <button
-          className={s.research ? "btn-primary" : "btn-secondary"}
-          disabled={!!working}
-          onClick={() => onRun("draft")}
-        >
+        <button className={s.research ? "btn-primary" : "btn-secondary"} disabled={busy} onClick={() => onRun("draft")}>
           <NotePencil size={18} aria-hidden="true" /> {s.draft ? `${tx.draft} · ${tx.redo}` : tx.draft}
         </button>
       </div>
       {working && <Spinner label={working === "research" ? tx.researching : tx.drafting} />}
+      {s.error && !working && <ErrorBox message={s.error} />}
 
       {s.research && (
         <details className="bg-surface-2 rounded-xl p-3" open={!s.draft}>
@@ -815,6 +851,7 @@ function SectionCard({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={() => draft !== s.draft && onChange({ draft })}
+            disabled={working === "draft"}
           />
         </label>
       )}

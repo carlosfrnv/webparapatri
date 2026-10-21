@@ -58,6 +58,10 @@ const messages = {
   examNotFound: { es: "Examen no encontrado.", pt: "Exame não encontrado." },
   deckNotFound: { es: "Mazo o tarjeta no encontrados.", pt: "Baralho ou cartão não encontrados." },
   assignmentNotFound: { es: "Trabajo no encontrado.", pt: "Trabalho não encontrado." },
+  assignmentBusy: {
+    es: "La IA ya está trabajando en este trabajo: espera a que termine.",
+    pt: "A IA já está a trabalhar neste trabalho: espera que termine.",
+  },
   documentNotFound: { es: "Documento no encontrado.", pt: "Documento não encontrado." },
   questionNotFound: { es: "Pregunta no encontrada.", pt: "Pergunta não encontrada." },
   saveFailed: {
