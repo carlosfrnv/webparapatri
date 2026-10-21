@@ -381,6 +381,13 @@ const es = {
       title: "Anatomía radiológica",
       subtitle: "Reconoce cada estructura en la radiografía",
     },
+    plates: {
+      button: "🖼️ Láminas",
+      title: "Láminas de anatomía",
+      subtitle: "Láminas con los nombres: míralas, practica tapándolos o hazte un examen",
+      back: "Estudiar",
+      open: "Abrir láminas",
+    },
     positioning: {
       button: "📐 Posicionamiento",
       title: "Posicionamiento radiológico",
@@ -1234,6 +1241,13 @@ const pt: Dictionary = {
       button: "🔎 Anatomia radiológica",
       title: "Anatomia radiológica",
       subtitle: "Reconhece cada estrutura na radiografia",
+    },
+    plates: {
+      button: "🖼️ Lâminas",
+      title: "Lâminas de anatomia",
+      subtitle: "Lâminas com os nomes: vê-as, pratica tapando-os ou faz um exame",
+      back: "Estudar",
+      open: "Abrir lâminas",
     },
     positioning: {
       button: "📐 Posicionamento",

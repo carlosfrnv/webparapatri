@@ -124,6 +124,9 @@ export default function SubjectPage() {
                   <Link href={`/asignatura/${subject.id}/celula`} className="btn-primary">
                     {t.tools.cell.button}
                   </Link>
+                  <Link href="/laminas" className="btn-primary">
+                    {t.tools.plates.button}
+                  </Link>
                 </>
               )}
               {/f[ií]sica/i.test(subject.name) && (

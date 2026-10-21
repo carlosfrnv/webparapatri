@@ -9,6 +9,7 @@ import {
   Exam,
   Microphone,
   Shuffle,
+  Stack,
   Timer,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -210,6 +211,18 @@ function StudyPageContent() {
             <button className="btn-primary" disabled={due.cards.length === 0} onClick={() => setSession(true)}>
               {t.studyPage.start}
             </button>
+          </section>
+
+          {/* Láminas de anatomía ya hechas */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={Stack} tone="teal" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.tools.plates.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.tools.plates.subtitle}</p>
+            </div>
+            <Link href="/laminas" className="btn-secondary">
+              {t.tools.plates.open}
+            </Link>
           </section>
 
           {/* Mazos tipo Anki (tarjetas propias, aparte de las de los apuntes) */}
