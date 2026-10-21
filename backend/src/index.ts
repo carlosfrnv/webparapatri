@@ -20,6 +20,7 @@ import { quizRouter } from "./routes/quiz";
 import { scheduleRouter } from "./routes/schedule";
 import { sessionsRouter } from "./routes/sessions";
 import { assignmentsRouter } from "./routes/assignments";
+import { trueFalseRouter } from "./routes/truefalse";
 import { decksRouter } from "./routes/decks";
 import { studyRouter } from "./routes/study";
 import { subjectsRouter } from "./routes/subjects";
@@ -63,6 +64,7 @@ app.use("/highlights", highlightsRouter);
 app.use("/atlas", atlasRouter);
 app.use("/decks", decksRouter);
 app.use("/assignments", assignmentsRouter);
+app.use("/truefalse", trueFalseRouter);
 app.use("/", studyRouter);
 
 app.use(errorHandler);

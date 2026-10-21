@@ -9,6 +9,7 @@ import {
   Exam,
   Microphone,
   NotePencil,
+  Scales,
   Shuffle,
   Stack,
   Timer,
@@ -214,6 +215,21 @@ function StudyPageContent() {
             </button>
           </section>
 
+          {/* Verdadero o falso con afirmaciones de sus temas */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={Scales} tone="pink" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.trueFalse.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.trueFalse.subtitle}</p>
+            </div>
+            <Link
+              href={subjectId ? `/verdadero-falso?asignatura=${subjectId}` : "/verdadero-falso"}
+              className="btn-secondary"
+            >
+              {t.trueFalse.open}
+            </Link>
+          </section>
+
           {/* Trabajos: índice, fuentes, borradores y revisión */}
           <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
             <GradientIcon icon={NotePencil} tone="amber" size={52} />
@@ -316,6 +332,14 @@ function StudyPageContent() {
                             className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
                           >
                             <Timer size={18} weight="duotone" aria-hidden="true" /> {t.mock.button}
+                          </Link>
+                        )}
+                        {g.subject && (
+                          <Link
+                            href={`/verdadero-falso?asignatura=${g.subject.id}`}
+                            className="btn-secondary min-h-10 flex-1 text-sm sm:flex-none"
+                          >
+                            <Scales size={18} weight="duotone" aria-hidden="true" /> {t.trueFalse.button}
                           </Link>
                         )}
                         {g.subject && (
