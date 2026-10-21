@@ -7,6 +7,21 @@ export function langOf(req: Request): Lang {
   return req.header("x-lang")?.toLowerCase().startsWith("pt") ? "pt" : "es";
 }
 
+// Palabras y grafías que solo (o casi solo) se usan en uno de los dos idiomas.
+const ES_HINTS =
+  /ñ|¿|¡|\b(el|los|las|del|y|pero|muy|tengo|estoy|hacer|puedes|necesito|quiero|cómo|qué|también|ayúdame|ayuda|buscar|dónde|información|gracias|hola|efecto|es)\b|ción\b/gi;
+const PT_HINTS =
+  /[ãõç]|\b(não|você|eu|os|as|do|da|dos|das|e|mas|muito|tenho|estou|fazer|podes|preciso|quero|como|também|ajuda-me|ajudas|procurar|pesquisar|onde|informação|obrigad[ao]|olá|efeito|o que)\b|ção\b|ções\b|(^|\s)é(\s|$)/gi;
+
+/** Idioma en el que está escrito un texto (null si no está claro): la IA contesta en el idioma en que le escriben. */
+export function detectLang(text: string): Lang | null {
+  const es = text.match(ES_HINTS)?.length ?? 0;
+  const pt = text.match(PT_HINTS)?.length ?? 0;
+  if (es >= pt + 2 || (es > 0 && pt === 0)) return "es";
+  if (pt >= es + 2 || (pt > 0 && es === 0)) return "pt";
+  return null;
+}
+
 const messages = {
   missingSession: { es: "Falta la sesión. Vuelve a entrar.", pt: "Sessão em falta. Entra novamente." },
   expiredSession: { es: "La sesión ha caducado. Vuelve a entrar.", pt: "Sessão expirada. Entra novamente." },

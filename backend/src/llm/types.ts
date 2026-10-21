@@ -12,6 +12,8 @@ export interface LlmRequest {
   json: boolean;
   /** Activa la búsqueda web en Radiopaedia, IAEA y EFRS si el proveedor la tiene. */
   web: boolean;
+  /** Modo trabajo: búsqueda abierta en cualquier web (fuentes fiables) y más búsquedas. */
+  research?: boolean;
   /** Fotos adjuntas por la estudiante (base64), para los proveedores que pueden verlas. */
   images?: LlmImage[];
   onText?: (delta: string) => void;

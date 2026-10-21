@@ -7,7 +7,7 @@ import { answerQuestion } from "../chatEngine";
 import { OFF_TOPIC_MARKER } from "../prompts";
 import { STORAGE_BUCKET } from "../config";
 import { asyncHandler, HttpError } from "../http";
-import { langOf, t } from "../i18n";
+import { detectLang, langOf, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { supabase } from "../supabase";
 
@@ -43,8 +43,9 @@ chatRouter.post(
   aiLimiter,
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
-    const lang = langOf(req);
     const body = chatSchema.parse(req.body);
+    // Contesta en el idioma en que escribe (si está claro); si no, en el idioma elegido en la web.
+    const lang = (body.question && detectLang(body.question)) || langOf(req);
     if (!body.question && body.images.length === 0) throw new HttpError(400, "invalidData");
     const question = body.question || (lang === "es" ? "¿Me ayudas con esta foto?" : "Ajudas-me com esta foto?");
     const conversationId = body.conversation_id ?? randomUUID();

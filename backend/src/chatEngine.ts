@@ -31,6 +31,21 @@ export interface ChatAnswer extends GenerateResult {
  * Responde a una pregunta siguiendo el orden de prioridad:
  *  1) apuntes  2) biblioteca de referencia  3) web (radiopaedia/iaea/efrs)  4) conocimiento general.
  */
+// Está preparando un trabajo y pide fuentes / búsqueda en internet (en español o portugués).
+const RESEARCH_RE =
+  /\b(trabajo|trabalho|informe|relat[oó]rio|monograf[ií]a|ensayo|fuentes?|fontes?|bibliograf[ií]a|referencias|refer[eê]ncias|citar|cita[sr]?|internet|webs? fiables?|sites? fi[aá]veis|pesquis[ae]r?|investigar|apartados?|[ií]ndice)\b/i;
+
+/** Modo trabajo: la pregunta (o lo último que ha escrito en esta conversación) es sobre un trabajo con fuentes. */
+export function isResearch(question: string, history: string) {
+  if (RESEARCH_RE.test(question)) return true;
+  const lastUser = history
+    .split("\n")
+    .filter((l) => /^(Estudiante|Estudante):/.test(l))
+    .slice(-2)
+    .join(" ");
+  return RESEARCH_RE.test(lastUser) && question.length > 40;
+}
+
 export async function answerQuestion(p: {
   userId: string;
   lang: Lang;
@@ -47,12 +62,14 @@ export async function answerQuestion(p: {
 }): Promise<ChatAnswer> {
   const found = await findTieredSources(p.userId, p.question, { lang: p.lang, documentId: p.documentId });
   const localSources = [...found.notes, ...found.references];
+  const research = !p.voice && isResearch(p.question, p.history);
   // Nivel 3 solo si ninguno de los niveles locales tiene relevancia suficiente
   // (y no cuando pregunta sobre un archivo concreto).
   const tiers: ChatTiers = {
     notes: found.notesSufficient,
     reference: found.referencesSufficient,
-    web: WEB_ENABLED && !found.notesSufficient && !found.referencesSufficient && !p.documentId,
+    // En un trabajo con fuentes siempre se busca en internet (aunque sus apuntes hablen del tema).
+    web: WEB_ENABLED && (research || (!found.notesSufficient && !found.referencesSufficient && !p.documentId)),
   };
   const publicLocal: PublicSource[] = localSources.map(
     ({ content: _c, rank: _r, coverage: _v, proximity: _p, ...s }) => s,
@@ -90,12 +107,14 @@ export async function answerQuestion(p: {
         webAllowed: tiers.web && webAvailable,
         imagenes: p.images?.length ?? 0,
         voz: p.voice,
+        trabajo: research,
       }),
     {
       lang: p.lang,
-      effort: tiers.web ? "medium" : "low",
-      maxTokens: 16000,
+      effort: research ? "high" : tiers.web ? "medium" : "low",
+      maxTokens: research ? 24000 : 16000,
       web: tiers.web,
+      research,
       images: p.images,
       onText,
       onWebTool: p.onWebTool,

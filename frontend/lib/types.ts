@@ -98,7 +98,8 @@ export interface Source {
 /** Fuente consultada en vivo (solo nombre y enlace; el texto de la página nunca se guarda). */
 export interface WebSource {
   kind: "web";
-  site: "Radiopaedia" | "IAEA" | "EFRS";
+  /** Radiopaedia, IAEA, EFRS… o, en los trabajos con fuentes, cualquier web (PubMed, SciELO, el dominio…). */
+  site: string;
   title: string;
   url: string;
 }

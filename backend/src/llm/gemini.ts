@@ -24,7 +24,7 @@ function cleanQuery(q: string): string {
     .trim();
 }
 
-function webSourcesFrom(meta: GroundingMetadata | undefined): WebSource[] {
+function webSourcesFrom(meta: GroundingMetadata | undefined, open = false): WebSource[] {
   if (!meta) return [];
   const query = cleanQuery(meta.webSearchQueries?.[0] ?? "");
   const found = new Map<string, WebSource>();
@@ -32,14 +32,15 @@ function webSourcesFrom(meta: GroundingMetadata | undefined): WebSource[] {
     const web = chunk.web;
     if (!web?.uri) continue;
     // Gemini devuelve un enlace de redirección de Google; el título suele ser el dominio de la página.
-    const site = siteOf(web.uri) ?? siteOf(`https://${web.title ?? ""}`);
-    if (!site) continue; // solo Radiopaedia, IAEA y EFRS
+    // El enlace es una redirección de Google: la web real se sabe por el título (suele ser el dominio).
+    const site = siteOf(`https://${web.title ?? ""}`, open) ?? siteOf(web.uri, false);
+    if (!site) continue; // sin modo trabajo, solo Radiopaedia, IAEA y EFRS
     const looksLikeDomain = !web.title || /^[\w.-]+\.[a-z]{2,}$/i.test(web.title.trim());
     const title = looksLikeDomain ? query || site : web.title!.split(/\s+[|–—]\s+/)[0].trim();
     const key = `${site}|${title}`;
     if (!found.has(key)) found.set(key, { kind: "web", site, title: title.slice(0, 90), url: web.uri });
   }
-  return [...found.values()].slice(0, 6);
+  return [...found.values()].slice(0, open ? 15 : 6);
 }
 
 export const gemini: Provider = {
@@ -92,7 +93,7 @@ export const gemini: Provider = {
     if (blocked && !text.trim()) throw new ProviderError("refused", "Gemini ha bloqueado la respuesta");
     return {
       text: text.trim(),
-      webSources: webSourcesFrom(meta),
+      webSources: webSourcesFrom(meta, req.research),
       webSearches: meta?.webSearchQueries?.length ?? 0,
       searchSuggestionsHtml: meta?.searchEntryPoint?.renderedContent || undefined,
     };

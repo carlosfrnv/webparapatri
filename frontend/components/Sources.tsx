@@ -116,7 +116,7 @@ const ORIGIN_STYLE: Record<Origin, string> = {
 };
 
 const LABEL_RE =
-  /\[(Os teus apontamentos|Tus apuntes|Biblioteca de refer[eê]ncia\s*[–—-]\s*(?:IAEA|EFRS)(?:\s*\/\s*(?:IAEA|EFRS))?|Radiopaedia|IAEA|EFRS)\](?!\()/g;
+  /\[(Os teus apontamentos|Tus apuntes|Biblioteca de refer[eê]ncia\s*[–—-]\s*(?:IAEA|EFRS)(?:\s*\/\s*(?:IAEA|EFRS))?|Radiopaedia|IAEA|EFRS|Web)\](?!\()/g;
 const GENERAL_RE = /(?:\*\*)?(Fora dos teus apontamentos|Fuera de tus apuntes):(?:\*\*)?/g;
 
 function originOf(label: string): Origin {

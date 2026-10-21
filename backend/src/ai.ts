@@ -59,6 +59,8 @@ interface GenerateOptions extends AiOptions {
   json?: boolean;
   /** Permite la consulta en vivo a Radiopaedia, IAEA y EFRS (nivel 3) si el proveedor puede buscar. */
   web?: boolean;
+  /** Modo trabajo: búsqueda abierta (fuentes fiables) y más búsquedas. */
+  research?: boolean;
   onText?: (delta: string) => void;
   /** Se llama cuando la IA empieza una búsqueda o lectura web. */
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
@@ -116,6 +118,7 @@ export async function generate(
           maxTokens: opts.maxTokens ?? 16000,
           json: !!opts.json,
           web: useWeb,
+          research: useWeb && !!opts.research,
           images: opts.images,
           onText,
           onWebTool: opts.onWebTool,

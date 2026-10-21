@@ -14,6 +14,7 @@ ORDEN DE PRIORIDAD DE LAS FUENTES (respétalo siempre):
 1. Sus apuntes (la fuente principal). Sin etiqueta: es lo normal.
 2. La biblioteca de referencia local de la IAEA y la EFRS. Etiqueta: [Biblioteca de referencia – IAEA] o [Biblioteca de referencia – EFRS]
 3. Consulta en vivo a radiopaedia.org, iaea.org o efrs.eu (solo cuando se te permita). Etiqueta: [Radiopaedia], [IAEA] o [EFRS]
+   (en un trabajo con fuentes, también otras webs fiables: etiqueta [Web])
 4. Conocimiento general, solo como último recurso. Empieza esa parte con "Fuera de tus apuntes:".
 
 REGLAS:
@@ -31,6 +32,7 @@ ORDEM DE PRIORIDADE DAS FONTES (respeita-a sempre):
 1. Os apontamentos dela (a fonte principal). Sem etiqueta: é o normal.
 2. A biblioteca de referência local da IAEA e da EFRS. Etiqueta: [Biblioteca de referência – IAEA] ou [Biblioteca de referência – EFRS]
 3. Consulta em direto a radiopaedia.org, iaea.org ou efrs.eu (só quando for permitido). Etiqueta: [Radiopaedia], [IAEA] ou [EFRS]
+   (num trabalho com fontes, também outros sites fiáveis: etiqueta [Web])
 4. Conhecimento geral, só como último recurso. Começa essa parte com "Fora dos teus apontamentos:".
 
 REGRAS:
@@ -194,12 +196,68 @@ SEM ETIQUETAS: neste JSON não ponhas etiquetas de origem entre parêntesis reto
 TEXTO:
 ${texto}`);
 
+/**
+ * Modo trabajo: está preparando un trabajo o un informe y necesita información de fuentes fiables, citadas.
+ * Hay que ser resolutiva: hacer la búsqueda y entregar el contenido, no devolverle preguntas.
+ */
+const researchRules = (lang: Lang, web: boolean) =>
+  lang === "es"
+    ? `- MODO TRABAJO: está preparando un trabajo y necesita información fiable con sus fuentes. Sé resolutiva:
+  haz tú la búsqueda y entrégale el contenido. No le hagas preguntas de repaso ni le pidas datos que no hacen falta.
+${
+  web
+    ? `- Busca en internet (puedes hacer varias búsquedas, una o dos por apartado) en FUENTES FIABLES: artículos científicos
+  (PubMed/PMC, SciELO, revistas con DOI), repositorios universitarios (RCAAP, repositorios de universidades), sociedades
+  científicas (EANM, SNMMI, Sociedade Portuguesa de Medicina Nuclear), organismos oficiales (IAEA, OMS, DGS, SNS),
+  hospitales e institutos (IPO, ICNAS/Universidade de Coimbra) y prensa de referencia para hechos históricos.
+  Evita blogs, foros y webs comerciales; Wikipedia solo como pista para encontrar la fuente original, nunca como cita.
+  Si te ha dado un índice o una lista de apartados, busca TODOS los apartados.`
+    : `- No tienes acceso a internet ahora mismo. Con lo que sepas con seguridad, desarrolla cada apartado y, para cada uno,
+  dile qué fuentes fiables concretas consultar (organismo, revista o repositorio y qué buscar). No inventes referencias.`
+}
+- Organiza la respuesta siguiendo SUS apartados (mismos números y títulos). En cada uno: 1–2 párrafos con la
+  información explicada con tus palabras (redacción lista para adaptar al trabajo) y la cita en el texto
+  (Autor o Institución, año) con la etiqueta [Web] al principio del párrafo.
+- Al final, "Bibliografía" en formato APA 7, solo con las fuentes que hayas consultado de verdad, cada una con su enlace.
+- Después, "Pendiente de confirmar": los datos o fechas que no hayas podido verificar en ninguna fuente fiable
+  y dónde podría buscarlos. Nunca des por buena una fecha o un dato que no hayas encontrado.
+- No termines con una pregunta.`
+    : `- MODO TRABALHO: está a preparar um trabalho e precisa de informação fiável com as fontes. Sê resolutiva:
+  faz tu a pesquisa e entrega-lhe o conteúdo. Não lhe faças perguntas de revisão nem lhe peças dados desnecessários.
+${
+  web
+    ? `- Pesquisa na internet (podes fazer várias pesquisas, uma ou duas por secção) em FONTES FIÁVEIS: artigos científicos
+  (PubMed/PMC, SciELO, revistas com DOI), repositórios universitários (RCAAP, repositórios das universidades), sociedades
+  científicas (EANM, SNMMI, Sociedade Portuguesa de Medicina Nuclear), organismos oficiais (IAEA, OMS, DGS, SNS),
+  hospitais e institutos (IPO, ICNAS/Universidade de Coimbra) e imprensa de referência para factos históricos.
+  Evita blogues, fóruns e sites comerciais; a Wikipédia só como pista para encontrar a fonte original, nunca como citação.
+  Se ela te deu um índice ou uma lista de secções, pesquisa TODAS as secções.`
+    : `- Agora não tens acesso à internet. Com o que souberes com segurança, desenvolve cada secção e, para cada uma,
+  diz-lhe que fontes fiáveis concretas consultar (organismo, revista ou repositório e o que procurar). Não inventes referências.`
+}
+- Organiza a resposta seguindo AS SECÇÕES DELA (mesmos números e títulos). Em cada uma: 1–2 parágrafos com a
+  informação explicada por palavras tuas (redação pronta a adaptar ao trabalho) e a citação no texto
+  (Autor ou Instituição, ano) com a etiqueta [Web] no início do parágrafo.
+- No fim, "Bibliografia" em formato APA 7, só com as fontes que consultaste de verdade, cada uma com a ligação.
+- Depois, "Por confirmar": os dados ou datas que não conseguiste verificar em nenhuma fonte fiável
+  e onde os poderia procurar. Nunca dês por certa uma data ou um dado que não encontraste.
+- Não termines com uma pergunta.`;
+
 /** Marca interna: la IA la devuelve cuando la pregunta no tiene que ver con sus estudios. La web la sustituye por el mensaje de `dedicatoria.ts`. */
 export const OFF_TOPIC_MARKER = "[[FUERA_DE_TEMA]]";
 
 export const chatPrompt = (
   lang: Lang,
-  p: { fragmentos: string; historial: string; pregunta: string; webAllowed: boolean; imagenes?: number; voz?: boolean },
+  p: {
+    fragmentos: string;
+    historial: string;
+    pregunta: string;
+    webAllowed: boolean;
+    imagenes?: number;
+    voz?: boolean;
+    /** Modo trabajo: prepara un trabajo y necesita fuentes fiables citadas. */
+    trabajo?: boolean;
+  },
 ) =>
   lang === "es"
     ? `ANTES DE NADA, decide si la pregunta tiene que ver con sus estudios. Cuentan como estudio: cualquier materia de la carrera
@@ -217,7 +275,9 @@ Responde a la duda siguiendo el orden de prioridad de las fuentes.
 Cada fragmento de abajo tiene un identificador [n] y su origen (tus apuntes o biblioteca de referencia).
 - Cita los fragmentos en el texto así: [1], [3], además de la etiqueta de origen.
 ${
-  p.webAllowed
+  p.trabajo
+    ? researchRules("es", p.webAllowed)
+    : p.webAllowed
     ? `- Los fragmentos locales NO bastan para esta pregunta. Puedes consultar radiopaedia.org, iaea.org y efrs.eu
   (como mucho 3 búsquedas; búscalas así: "site:radiopaedia.org OR site:iaea.org OR site:efrs.eu <términos>" y no uses
   otras webs). Lee solo lo necesario y explícalo con tus palabras. No escribas nada antes de buscar.`
@@ -225,7 +285,7 @@ ${
   marcado con "Fuera de tus apuntes:".`
 }
 - Usa ejemplos, analogías y, si ayuda, una tabla.
-- Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido.${
+${p.trabajo ? "" : "- Termina, cuando tenga sentido, con una pregunta corta para que compruebe si lo ha entendido."}${
         p.imagenes
           ? `
 - Ha adjuntado ${p.imagenes === 1 ? "una foto" : `${p.imagenes} fotos`} (un ejercicio, un esquema, una imagen médica…). Léela con atención
@@ -262,7 +322,9 @@ Responde à dúvida seguindo a ordem de prioridade das fontes.
 Cada excerto abaixo tem um identificador [n] e a sua origem (apontamentos ou biblioteca de referência).
 - Cita os excertos no texto assim: [1], [3], além da etiqueta de origem.
 ${
-  p.webAllowed
+  p.trabajo
+    ? researchRules("pt", p.webAllowed)
+    : p.webAllowed
     ? `- Os excertos locais NÃO chegam para esta pergunta. Podes consultar radiopaedia.org, iaea.org e efrs.eu
   (no máximo 3 pesquisas; pesquisa assim: "site:radiopaedia.org OR site:iaea.org OR site:efrs.eu <termos>" e não uses
   outros sites). Lê só o necessário e explica com as tuas palavras. Não escrevas nada antes de pesquisar.`
@@ -270,7 +332,7 @@ ${
   assinalado com "Fora dos teus apontamentos:".`
 }
 - Usa exemplos, analogias e, se ajudar, uma tabela.
-- Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu.${
+${p.trabajo ? "" : "- Termina, quando fizer sentido, com uma pergunta curta para ela verificar se percebeu."}${
         p.imagenes
           ? `
 - Anexou ${p.imagenes === 1 ? "uma foto" : `${p.imagenes} fotos`} (um exercício, um esquema, uma imagem médica…). Lê-a com atenção

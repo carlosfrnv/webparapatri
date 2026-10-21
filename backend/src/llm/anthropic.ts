@@ -5,7 +5,7 @@ import type {
   BetaMessageParam,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { config } from "../config";
-import { extractWebSources, finalAnswerText, WEB_TOOLS } from "../web";
+import { extractWebSources, finalAnswerText, RESEARCH_TOOLS, WEB_TOOLS } from "../web";
 import { classifyHttpError, ProviderError, type LlmRequest, type LlmResult, type Provider } from "./types";
 
 /**
@@ -54,7 +54,7 @@ export const anthropicProvider: Provider = {
             : {}),
           max_tokens: req.maxTokens,
           messages,
-          ...(req.web ? { tools: WEB_TOOLS } : {}),
+          ...(req.web ? { tools: req.research ? RESEARCH_TOOLS : WEB_TOOLS } : {}),
         });
         if (req.onText) stream.on("text", req.onText);
         if (req.onWebTool) {
@@ -88,7 +88,7 @@ export const anthropicProvider: Provider = {
             .map((b) => (b.type === "text" ? b.text : ""))
             .join("")
             .trim(),
-      webSources: req.web ? extractWebSources(content) : [],
+      webSources: req.web ? extractWebSources(content, req.research) : [],
       webSearches,
     };
   },

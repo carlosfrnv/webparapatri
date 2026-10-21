@@ -34,7 +34,18 @@ export const WEB_TOOLS = [
   },
 ];
 
-export type WebSite = "Radiopaedia" | "IAEA" | "EFRS";
+/**
+ * Modo trabajo (cuando prepara un trabajo y pide fuentes): búsqueda abierta en cualquier web, con más búsquedas.
+ * El prompt le pide fuentes fiables (artículos científicos, sociedades, organismos oficiales, hospitales, universidades).
+ */
+export const RESEARCH_MAX_SEARCHES = 8;
+export const RESEARCH_TOOLS = [
+  { type: "web_search_20260318" as const, name: "web_search" as const, max_uses: RESEARCH_MAX_SEARCHES },
+  { type: "web_fetch_20260318" as const, name: "web_fetch" as const, max_uses: 6, max_content_tokens: 15000 },
+];
+
+/** Nombre que se enseña en el chip de la fuente (Radiopaedia, IAEA, PubMed… o el dominio). */
+export type WebSite = string;
 
 export interface WebSource {
   kind: "web";
@@ -43,12 +54,35 @@ export interface WebSource {
   url: string;
 }
 
-export function siteOf(url: string): WebSite | null {
+const KNOWN_SITES: [RegExp, string][] = [
+  [/(^|\.)radiopaedia\.org$/, "Radiopaedia"],
+  [/(^|\.)iaea\.org$/, "IAEA"],
+  [/(^|\.)efrs\.eu$/, "EFRS"],
+  [/(^|\.)pubmed\.ncbi\.nlm\.nih\.gov$/, "PubMed"],
+  [/(^|\.)ncbi\.nlm\.nih\.gov$/, "NCBI / PMC"],
+  [/(^|\.)scielo\./, "SciELO"],
+  [/(^|\.)rcaap\.pt$/, "RCAAP"],
+  [/(^|\.)eanm\.org$/, "EANM"],
+  [/(^|\.)snmmi\.org$/, "SNMMI"],
+  [/(^|\.)who\.int$/, "OMS"],
+  [/(^|\.)dgs\.pt$/, "DGS"],
+  [/(^|\.)sns\.gov\.pt$/, "SNS"],
+  [/(^|\.)uc\.pt$/, "Universidade de Coimbra"],
+  [/(^|\.)ipolisboa\.min-saude\.pt$/, "IPO Lisboa"],
+  [/(^|\.)spmn\.pt$/, "SPMN"],
+  [/(^|\.)doi\.org$/, "DOI"],
+  [/(^|\.)sciencedirect\.com$/, "ScienceDirect"],
+  [/(^|\.)springer(link)?\.com$/, "Springer"],
+  [/(^|\.)wikipedia\.org$/, "Wikipedia"],
+];
+
+/** Nombre de la web de una URL. Sin `open`, solo las tres webs del nivel 3 (Radiopaedia, IAEA, EFRS). */
+export function siteOf(url: string, open = false): WebSite | null {
   try {
-    const host = new URL(url).hostname.toLowerCase();
-    if (host === "radiopaedia.org" || host.endsWith(".radiopaedia.org")) return "Radiopaedia";
-    if (host === "iaea.org" || host.endsWith(".iaea.org")) return "IAEA";
-    if (host === "efrs.eu" || host.endsWith(".efrs.eu")) return "EFRS";
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    const known = KNOWN_SITES.find(([re]) => re.test(host))?.[1];
+    if (!open) return known && ["Radiopaedia", "IAEA", "EFRS"].includes(known) ? known : null;
+    return known ?? host;
   } catch {
     /* URL no válida */
   }
@@ -71,10 +105,10 @@ function cleanTitle(title: string | null | undefined, url: string): string {
  * Fuentes web usadas de verdad: las citadas en el texto de la respuesta y las páginas leídas con web_fetch.
  * (Los resultados de búsqueda que la IA no ha usado no aparecen.)
  */
-export function extractWebSources(content: BetaContentBlock[]): WebSource[] {
+export function extractWebSources(content: BetaContentBlock[], open = false): WebSource[] {
   const found = new Map<string, WebSource>();
   const add = (url: string, title: string | null | undefined) => {
-    const site = siteOf(url);
+    const site = siteOf(url, open);
     if (!site || found.has(url)) return;
     found.set(url, { kind: "web", site, url, title: cleanTitle(title, url) });
   };
@@ -87,7 +121,7 @@ export function extractWebSources(content: BetaContentBlock[]): WebSource[] {
       add(block.content.url, block.content.content.title);
     }
   }
-  return [...found.values()].slice(0, 6);
+  return [...found.values()].slice(0, open ? 15 : 6);
 }
 
 /** Texto final de la respuesta: solo lo que viene después de la última búsqueda/lectura (sin preámbulos). */
