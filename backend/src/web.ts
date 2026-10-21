@@ -41,7 +41,8 @@ export const WEB_TOOLS = [
 export const RESEARCH_MAX_SEARCHES = 8;
 export const RESEARCH_TOOLS = [
   { type: "web_search_20260318" as const, name: "web_search" as const, max_uses: RESEARCH_MAX_SEARCHES },
-  { type: "web_fetch_20260318" as const, name: "web_fetch" as const, max_uses: 6, max_content_tokens: 15000 },
+  // Páginas recortadas: leer 6 enteras disparaba el límite de texto por minuto de Anthropic al investigar seguido.
+  { type: "web_fetch_20260318" as const, name: "web_fetch" as const, max_uses: 4, max_content_tokens: 6000 },
 ];
 
 /** Nombre que se enseña en el chip de la fuente (Radiopaedia, IAEA, PubMed… o el dominio). */

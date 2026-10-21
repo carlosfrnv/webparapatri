@@ -75,6 +75,11 @@ interface GenerateOptions extends AiOptions {
   onReset?: () => void;
   /** Fotos adjuntas: solo se usan los modelos que pueden verlas. */
   images?: LlmImage[];
+  /**
+   * Tareas en segundo plano (trabajos): si todos los modelos están solo en pausa de un minuto (límite por
+   * minuto), se espera y se vuelve a intentar en vez de dar error. No se usa en el chat, donde ella espera.
+   */
+  patient?: boolean;
 }
 
 export interface GenerateResult {
@@ -94,6 +99,25 @@ export interface GenerateResult {
  * para no decirle a la IA que puede buscar cuando no puede (y que no se invente fuentes).
  */
 export async function generate(
+  prompt: string | ((webAvailable: boolean) => string),
+  opts: GenerateOptions,
+): Promise<GenerateResult> {
+  if (!opts.patient) return generateOnce(prompt, opts);
+  for (let wait = 0; ; wait++) {
+    try {
+      return await generateOnce(prompt, opts);
+    } catch (err) {
+      // Si alguno de los modelos vuelve a estar libre en menos de 3 minutos, se espera a ese y se reintenta.
+      const usable = CHAIN.filter((s) => !opts.images?.length || s.provider.supportsImages);
+      const soonest = Math.min(...usable.map((s) => cooldownUntil.get(s.key) ?? 0)) - Date.now();
+      if (!(err instanceof AiError) || err.key !== "aiUnavailable" || wait >= 4 || soonest > 3 * 60_000) throw err;
+      console.warn(`[IA] todos los modelos en pausa: se espera ${Math.round(Math.max(soonest, 0) / 1000) + 5} s.`);
+      await new Promise((r) => setTimeout(r, Math.max(soonest, 0) + 5_000));
+    }
+  }
+}
+
+async function generateOnce(
   prompt: string | ((webAvailable: boolean) => string),
   opts: GenerateOptions,
 ): Promise<GenerateResult> {

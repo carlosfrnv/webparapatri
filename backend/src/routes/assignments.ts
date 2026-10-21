@@ -329,6 +329,7 @@ async function doStep(
           maxTokens: 12000,
           web: WEB_ENABLED,
           research: true,
+          patient: true,
         },
       );
       // Una investigación vacía no sirve (y dejaría el borrador sin fuentes): mejor avisar del fallo.
@@ -355,7 +356,7 @@ async function doStep(
           s.research,
           a.sections[i - 1]?.draft ?? "",
         ),
-        { lang: a.meta.lang, effort: "medium", maxTokens: 8000 },
+        { lang: a.meta.lang, effort: "medium", maxTokens: 8000, patient: true },
       );
       await patchSection(userId, id, sid, {
         draft: result.text.slice(0, 60000),
