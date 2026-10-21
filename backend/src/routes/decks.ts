@@ -1,10 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { previews, type Rating, type Sched, schedule } from "../anki";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { materialInLang } from "../study";
+import { STORAGE_BUCKET } from "../config";
 import { supabase } from "../supabase";
 
 /**
@@ -14,18 +17,33 @@ import { supabase } from "../supabase";
 export const decksRouter = Router();
 
 // Si aún no se ha ejecutado el SQL de los mazos, se avisa en vez de fallar.
-const missingTable = (code?: string) => code === "42P01" || code === "PGRST205";
+// (o faltan las columnas nuevas: tarjetas de imagen).
+const missingTable = (code?: string) => ["42P01", "PGRST205", "42703", "PGRST204"].includes(code ?? "");
 function check(error: { code?: string } | null) {
   if (missingTable(error?.code)) throw new HttpError(409, "needsUpdate");
   if (error) throw error;
 }
 
-const CARD_FIELDS = "id, deck_id, front, back, state, step, interval_days, ease, lapses, reps, due_at, created_at";
+const CARD_FIELDS =
+  "id, deck_id, front, back, state, step, interval_days, ease, lapses, reps, due_at, created_at, image_path, occlusion";
+
+// Láminas de las tarjetas de imagen (nombres tapados): se guardan en el almacenamiento privado.
+const imageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
+
+/** Añade a cada tarjeta de imagen un enlace temporal a su lámina. */
+async function withImages<T extends { image_path?: string | null }>(cards: T[]) {
+  const paths = [...new Set(cards.map((c) => c.image_path).filter((p): p is string => !!p))];
+  if (!paths.length) return cards.map((c) => ({ ...c, image_url: null as string | null }));
+  const { data } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 3 * 3600);
+  const urls = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
+  return cards.map((c) => ({ ...c, image_url: (c.image_path && urls.get(c.image_path)) || null }));
+}
 // Las tarjetas en aprendizaje que tocan dentro de poco se adelantan (como en Anki).
 const LEARN_AHEAD_MS = 20 * 60_000;
 
 interface CardRow extends Sched {
   id: string;
+  image_path?: string | null;
   deck_id: string;
   front: string;
   back: string;
@@ -68,7 +86,7 @@ async function newStudiedToday(userId: string, since: Date) {
   return out;
 }
 
-const withPreviews = (c: CardRow) => ({ ...c, previews: previews(c) });
+const withPreviews = <T extends CardRow>(c: T) => ({ ...c, previews: previews(c) });
 
 decksRouter.get(
   "/",
@@ -154,8 +172,15 @@ decksRouter.delete(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     await ownDeck(userId, req.params.id as string);
+    const { data: imgs } = await supabase
+      .from("deck_cards")
+      .select("image_path")
+      .eq("deck_id", req.params.id)
+      .not("image_path", "is", null);
     const { error } = await supabase.from("decks").delete().eq("id", req.params.id).eq("user_id", userId);
     check(error);
+    const paths = [...new Set((imgs ?? []).map((c) => c.image_path as string))];
+    if (paths.length) await supabase.storage.from(STORAGE_BUCKET).remove(paths);
     res.status(204).end();
   }),
 );
@@ -180,16 +205,60 @@ decksRouter.get(
       const day = Math.floor((new Date(c.due_at).getTime() - start.getTime()) / (24 * 3600_000));
       forecast[Math.max(0, Math.min(6, day))] += day <= 6 ? 1 : 0;
     }
-    res.json({ ...deck, cards: cards ?? [], forecast });
+    res.json({ ...deck, cards: await withImages(cards ?? []), forecast });
   }),
 );
 
+// Recuadros en fracciones de la imagen (0–1); `target` = el que pregunta esta tarjeta.
+const occlusionSchema = z.object({
+  boxes: z
+    .array(
+      z.object({
+        x: z.number().min(0).max(1),
+        y: z.number().min(0).max(1),
+        w: z.number().min(0).max(1),
+        h: z.number().min(0).max(1),
+        label: z.string().trim().max(300).default(""),
+      }),
+    )
+    .min(1)
+    .max(150),
+  target: z.number().int().min(0),
+});
+
 const cardsSchema = z.object({
   cards: z
-    .array(z.object({ front: z.string().trim().min(1).max(4000), back: z.string().trim().min(1).max(8000) }))
+    .array(
+      z.object({
+        front: z.string().trim().min(1).max(4000),
+        back: z.string().trim().min(1).max(8000),
+        image_path: z.string().max(300).optional(),
+        occlusion: occlusionSchema.optional(),
+      }),
+    )
     .min(1)
     .max(2000),
 });
+
+/** Sube la lámina de unas tarjetas de imagen; devuelve dónde ha quedado guardada. */
+decksRouter.post(
+  "/:id/images",
+  imageUpload.single("file"),
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    await ownDeck(userId, req.params.id as string);
+    const file = req.file;
+    if (!file) throw new HttpError(400, "noFile");
+    if (!/^image\/(jpeg|png|webp)$/.test(file.mimetype)) throw new HttpError(400, "unsupportedType");
+    const ext = file.mimetype === "image/png" ? "png" : file.mimetype === "image/webp" ? "webp" : "jpg";
+    const path = `${userId}/decks/${req.params.id}/${randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
+    if (error) throw new HttpError(500, "saveFailed");
+    res.status(201).json({ path });
+  }),
+);
 
 decksRouter.post(
   "/:id/cards",
@@ -197,6 +266,12 @@ decksRouter.post(
     const userId = userIdOf(req);
     const deck = await ownDeck(userId, req.params.id as string);
     const { cards } = cardsSchema.parse(req.body);
+    // Solo láminas suyas de este mazo, y el recuadro preguntado tiene que existir.
+    for (const c of cards) {
+      if (c.image_path && !c.image_path.startsWith(`${userId}/decks/${deck.id}/`)) throw new HttpError(400, "invalidData");
+      if (c.occlusion && (!c.image_path || c.occlusion.target >= c.occlusion.boxes.length))
+        throw new HttpError(400, "invalidData");
+    }
     const { data, error } = await supabase
       .from("deck_cards")
       .insert(cards.map((c) => ({ ...c, deck_id: deck.id, user_id: userId })))
@@ -261,12 +336,22 @@ decksRouter.patch(
 decksRouter.delete(
   "/cards/:cardId",
   asyncHandler(async (req, res) => {
-    const { error } = await supabase
+    const { data: gone, error } = await supabase
       .from("deck_cards")
       .delete()
       .eq("id", req.params.cardId)
-      .eq("user_id", userIdOf(req));
+      .eq("user_id", userIdOf(req))
+      .select("image_path");
     check(error);
+    // Si era la última tarjeta de su lámina, se borra también la imagen.
+    const path = gone?.[0]?.image_path as string | null | undefined;
+    if (path) {
+      const { count } = await supabase
+        .from("deck_cards")
+        .select("id", { count: "exact", head: true })
+        .eq("image_path", path);
+      if (!count) await supabase.storage.from(STORAGE_BUCKET).remove([path]);
+    }
     res.status(204).end();
   }),
 );
@@ -298,7 +383,7 @@ decksRouter.get(
       deck,
       learn_ahead_ms: LEARN_AHEAD_MS,
       day_end: end.toISOString(),
-      cards: [...learning, ...review, ...fresh].map(withPreviews),
+      cards: (await withImages([...learning, ...review, ...fresh])).map(withPreviews),
     });
   }),
 );
@@ -333,6 +418,6 @@ decksRouter.post(
       rating,
       was_new: prev.state === "new",
     });
-    res.json(withPreviews(saved as CardRow));
+    res.json(withPreviews((await withImages([saved as CardRow]))[0]));
   }),
 );

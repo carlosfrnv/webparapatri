@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GradientIcon } from "@/components/GradientIcon";
+import { type Box, OcclusionEditor, OcclusionView, occlusionText } from "@/components/Occlusion";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/lib/i18n";
@@ -38,6 +39,9 @@ interface DeckCard {
   interval_days: number;
   due_at: string;
   previews?: Record<Rating, number>;
+  // Tarjetas de imagen (nombres tapados).
+  image_url?: string | null;
+  occlusion?: { boxes: Box[]; target: number } | null;
 }
 
 interface DeckDetail {
@@ -422,6 +426,7 @@ function parsePasted(text: string) {
 }
 
 function AddCards({ deck, tx, onAdded }: { deck: DeckDetail; tx: (typeof TEXT)["es"]; onAdded: () => void }) {
+  const lang = useLang() as Lang;
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
   const [msg, setMsg] = useState("");
@@ -453,6 +458,7 @@ function AddCards({ deck, tx, onAdded }: { deck: DeckDetail; tx: (typeof TEXT)["
 
   return (
     <div className="space-y-4">
+      <OcclusionEditor deckId={deck.id} lang={lang} onCreated={onAdded} />
       <form
         className="card space-y-3 p-4"
         onSubmit={(e) => {
@@ -628,7 +634,13 @@ function Browse({
             ) : (
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold whitespace-pre-wrap">{c.front}</div>
+                  {c.image_url && c.occlusion ? (
+                    <div className="max-w-xs">
+                      <OcclusionView url={c.image_url} boxes={c.occlusion.boxes} target={c.occlusion.target} revealed />
+                    </div>
+                  ) : (
+                    <div className="font-semibold whitespace-pre-wrap">{c.front}</div>
+                  )}
                   <div className="text-muted mt-1 text-sm whitespace-pre-wrap">{c.back}</div>
                   <div className="text-muted mt-2 text-xs">
                     {tx.state[c.state]}
@@ -851,7 +863,21 @@ function DeckStudy({ id, onExit }: { id: string; onExit: () => void }) {
         </p>
       )}
       <div className="card min-h-40 p-6 text-center sm:min-h-64">
-        <div className="text-xl font-semibold whitespace-pre-wrap">{current.front}</div>
+        {current.image_url && current.occlusion ? (
+          <>
+            <div className="text-muted mb-3 text-sm font-semibold">
+              {current.front.replace(/^🖼️\s*/, "") || occlusionText(lang).question}
+            </div>
+            <OcclusionView
+              url={current.image_url}
+              boxes={current.occlusion.boxes}
+              target={current.occlusion.target}
+              revealed={shown}
+            />
+          </>
+        ) : (
+          <div className="text-xl font-semibold whitespace-pre-wrap">{current.front}</div>
+        )}
         {shown && (
           <>
             <hr className="border-border my-5" />

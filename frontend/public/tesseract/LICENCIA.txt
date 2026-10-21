@@ -1,0 +1,4 @@
+Lector de texto (OCR) para las tarjetas de imagen, alojado aquí para no depender de un CDN.
+- tesseract.js 7.0.0 y tesseract.js-core: Apache License 2.0 (https://github.com/naptha/tesseract.js)
+- Datos de idioma (por, eng, spa; 4.0.0_best_int) de tessdata: Apache License 2.0 (https://github.com/tesseract-ocr/tessdata_best)
+Para actualizar: copiar de node_modules/tesseract.js/dist/worker.min.js y node_modules/tesseract.js-core/*lstm.wasm.js.

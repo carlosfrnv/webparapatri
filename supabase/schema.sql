@@ -323,6 +323,9 @@ create table if not exists deck_cards (
   created_at timestamptz default now()
 );
 create index if not exists deck_cards_deck_idx on deck_cards (deck_id, due_at);
+-- Tarjetas de imagen (nombres tapados): la lámina y los recuadros, con el que pregunta cada tarjeta.
+alter table deck_cards add column if not exists image_path text;
+alter table deck_cards add column if not exists occlusion jsonb;
 create table if not exists deck_review_log (
   id bigserial primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
