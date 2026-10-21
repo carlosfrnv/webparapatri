@@ -389,6 +389,8 @@ export default function Plates() {
                   const ax = imgLeft + p.x * scale;
                   const ay = 12 + p.y * scale;
                   const hot = focus === i || i === target;
+                  // En el examen solo se marca la estructura que se pregunta (los demás puntos taparían la figura).
+                  if (mode === "exam" && i !== target) return null;
                   const lab = labels.find((l) => l.i === i);
                   return (
                     <g key={i}>
@@ -416,31 +418,45 @@ export default function Plates() {
                 })}
               </svg>
               {narrow &&
-                meta.parts.map((p, i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggle(i)}
-                    className={`absolute flex h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full px-1 text-[0.65rem] font-bold text-white shadow ${
-                      focus === i || i === target ? "bg-accent" : "bg-gray-700"
-                    }`}
-                    style={{ left: imgLeft + p.x * scale, top: 12 + p.y * scale }}
+                meta.parts.map((p, i) =>
+                  mode === "exam" ? (
+                    i === target && (
+                      <span
+                        key={i}
+                        className="bg-accent pointer-events-none absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-base font-bold text-white shadow-lg ring-4 ring-pink-300/70"
+                        style={{ left: imgLeft + p.x * scale, top: 12 + p.y * scale }}
+                      >
+                        ?
+                      </span>
+                    )
+                  ) : (
+                    <button
+                      key={i}
+                      onClick={() => toggle(i)}
+                      className={`absolute flex h-5 min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full px-1 text-[0.65rem] font-bold text-white shadow ${
+                        focus === i ? "bg-accent" : "bg-gray-700"
+                      }`}
+                      style={{ left: imgLeft + p.x * scale, top: 12 + p.y * scale }}
+                    >
+                      {number.get(i)}
+                    </button>
+                  ),
+                )}
+              {labels
+                .filter((l) => mode !== "exam" || l.i === target)
+                .map((l) => (
+                  <div
+                    key={l.i}
+                    className="absolute"
+                    style={{
+                      top: 12 + l.top,
+                      width: colW - 8,
+                      ...(l.side === "left" ? { left: 4 } : { right: 4 }),
+                    }}
                   >
-                    {i === target ? "?" : number.get(i)}
-                  </button>
+                    {labelBox(l.i)}
+                  </div>
                 ))}
-              {labels.map((l) => (
-                <div
-                  key={l.i}
-                  className="absolute"
-                  style={{
-                    top: 12 + l.top,
-                    width: colW - 8,
-                    ...(l.side === "left" ? { left: 4 } : { right: 4 }),
-                  }}
-                >
-                  {labelBox(l.i)}
-                </div>
-              ))}
             </div>
           )
         )}
