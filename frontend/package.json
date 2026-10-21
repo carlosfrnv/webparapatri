@@ -19,7 +19,6 @@
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "tesseract.js": "^7.0.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
