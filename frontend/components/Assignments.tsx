@@ -101,14 +101,19 @@ const TEXT = {
     auto: "Hacer el trabajo entero",
     autoHint:
       "La IA investiga y redacta todos los apartados que falten, uno detrás de otro (unos minutos). Puedes cerrar la web: sigue trabajando sola.",
-    autoRunning: (d: number, n: number) =>
-      `La IA está trabajando… ${d} de ${n} apartados redactados. Puedes cerrar la web: sigue sola y al volver lo verás.`,
     useAndAuto: "Usar este índice y hacer el trabajo entero",
     draft: "Redactar borrador",
     drafting: "Redactando…",
     redo: "Rehacer",
     draftLabel: "Borrador (edítalo con tus palabras)",
-    noResearch: "Primero investiga este apartado para que el borrador tenga datos y citas.",
+    noResearch: "Al redactar, la IA investiga antes este apartado para que el borrador tenga datos y citas.",
+    working: (r: number, d: number, n: number) =>
+      `La IA está trabajando… ${r}/${n} investigados · ${d}/${n} redactados. Puedes cerrar la web: sigue sola y al volver lo verás.`,
+    findRefs: "Buscar las referencias",
+    findRefsHint: (n: number) =>
+      `${n} ${n === 1 ? "apartado no tiene" : "apartados no tienen"} fuentes todavía. La IA las busca en fuentes fiables y monta la lista en el formato de citas del trabajo (no cambia tus borradores).`,
+    citeHint:
+      "Para que el texto lleve las citas (Autor, año) en su sitio, pulsa «Redactar borrador · Rehacer» en los apartados que se escribieron sin fuentes (ojo: sustituye ese borrador).",
     del: "Borrar",
     confirmDel: "¿Borrar este trabajo?",
     confirmDelSection: "¿Quitar este apartado?",
@@ -158,14 +163,19 @@ const TEXT = {
     auto: "Fazer o trabalho todo",
     autoHint:
       "A IA pesquisa e redige todas as secções que faltam, uma a seguir à outra (alguns minutos). Podes fechar a web: continua a trabalhar sozinha.",
-    autoRunning: (d: number, n: number) =>
-      `A IA está a trabalhar… ${d} de ${n} secções redigidas. Podes fechar a web: continua sozinha e quando voltares vês.`,
     useAndAuto: "Usar este índice e fazer o trabalho todo",
     draft: "Redigir rascunho",
     drafting: "A redigir…",
     redo: "Refazer",
     draftLabel: "Rascunho (edita-o com as tuas palavras)",
-    noResearch: "Primeiro pesquisa esta secção para o rascunho ter dados e citações.",
+    noResearch: "Ao redigir, a IA pesquisa antes esta secção para o rascunho ter dados e citações.",
+    working: (r: number, d: number, n: number) =>
+      `A IA está a trabalhar… ${r}/${n} pesquisadas · ${d}/${n} redigidas. Podes fechar a web: continua sozinha e quando voltares vês.`,
+    findRefs: "Procurar as referências",
+    findRefsHint: (n: number) =>
+      `${n} ${n === 1 ? "secção ainda não tem" : "secções ainda não têm"} fontes. A IA procura-as em fontes fiáveis e monta a lista no formato de citações do trabalho (não muda os teus rascunhos).`,
+    citeHint:
+      "Para o texto ter as citações (Autor, ano) no sítio certo, toca em «Redigir rascunho · Refazer» nas secções escritas sem fontes (atenção: substitui esse rascunho).",
     del: "Apagar",
     confirmDel: "Apagar este trabalho?",
     confirmDelSection: "Tirar esta secção?",
@@ -521,6 +531,13 @@ export function AssignmentView({ id }: { id: string }) {
       )}
       {error && <ErrorBox message={error} />}
 
+      {running && (
+        <div className="card border-accent mb-4 flex items-center gap-3 border-2 p-4">
+          <Spinner />
+          <p className="text-sm font-medium">{tx.working(researched, drafted, n)}</p>
+        </div>
+      )}
+
       <details className="card mb-4 p-4" open={editMeta} onToggle={(e) => setEditMeta(e.currentTarget.open)}>
         <summary className="cursor-pointer font-semibold">{tx.editData}</summary>
         {editMeta && <MetaEditor a={a} subjects={subjects} tx={tx} lang={lang} onSaved={setA} />}
@@ -556,20 +573,13 @@ export function AssignmentView({ id }: { id: string }) {
             />
           ) : (
             <>
-              {running ? (
-                <div className="card border-accent flex items-center gap-3 border-2 p-4">
-                  <Spinner />
-                  <p className="text-sm font-medium">{tx.autoRunning(drafted, n)}</p>
+              {!running && drafted < n && (
+                <div className="card space-y-2 p-4">
+                  <button className="btn-primary w-full sm:w-auto" onClick={() => launch("auto")}>
+                    <Sparkle size={18} aria-hidden="true" /> {tx.auto}
+                  </button>
+                  <p className="text-muted text-sm">{tx.autoHint}</p>
                 </div>
-              ) : (
-                drafted < n && (
-                  <div className="card space-y-2 p-4">
-                    <button className="btn-primary w-full sm:w-auto" onClick={() => launch("auto")}>
-                      <Sparkle size={18} aria-hidden="true" /> {tx.auto}
-                    </button>
-                    <p className="text-muted text-sm">{tx.autoHint}</p>
-                  </div>
-                )
               )}
               {a.sections.map((s, i) => (
                 <SectionCard
@@ -607,7 +617,7 @@ export function AssignmentView({ id }: { id: string }) {
           )}
         </div>
       )}
-      {tab === "bib" && <Bibliography a={a} tx={tx} />}
+      {tab === "bib" && <Bibliography a={a} tx={tx} running={running} onFind={() => launch("references")} />}
       {tab === "review" && <Review id={id} tx={tx} />}
     </div>
   );
@@ -860,33 +870,56 @@ function SectionCard({
   );
 }
 
-function Bibliography({ a, tx }: { a: Assignment; tx: Tx }) {
+function Bibliography({ a, tx, running, onFind }: { a: Assignment; tx: Tx; running: boolean; onFind: () => void }) {
   const list = bibliography(a.sections, a.meta.citation);
   const [copied, setCopied] = useState(false);
-  if (!list.length) return <p className="card text-muted p-4">{tx.bibEmpty}</p>;
+  const missing = a.sections.filter((s) => !s.research.trim()).length;
+  const find = missing > 0 && !running && (
+    <div className="card space-y-2 p-4">
+      <button className="btn-primary w-full sm:w-auto" onClick={onFind}>
+        <MagnifyingGlass size={18} aria-hidden="true" /> {tx.findRefs} (
+        {a.meta.citation === "APA" ? "APA 7" : "Vancouver"})
+      </button>
+      <p className="text-muted text-sm">{tx.findRefsHint(missing)}</p>
+    </div>
+  );
+  if (!list.length)
+    return (
+      <div className="space-y-4">
+        {find}
+        {!find && <p className="card text-muted p-4">{tx.bibEmpty}</p>}
+      </div>
+    );
+  const withoutCites = a.sections.some(
+    (s) => s.draft && /no hay investigaci|não há pesquisa|sin citas|sem citações/i.test(s.draft),
+  );
   const text = list.map((l, i) => (a.meta.citation === "Vancouver" ? `${i + 1}. ${l}` : l)).join("\n");
   return (
-    <div className="card space-y-3 p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-bold">{tx.references}</h2>
-        <button
-          className="btn-ghost"
-          onClick={async () => {
-            await navigator.clipboard.writeText(text);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          <Copy size={18} aria-hidden="true" /> {copied ? tx.copied : tx.copy}
-        </button>
+    <div className="space-y-4">
+      {find}
+      <div className="card space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold">{tx.references}</h2>
+          <button
+            className="btn-ghost"
+            onClick={async () => {
+              await navigator.clipboard.writeText(text);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            <Copy size={18} aria-hidden="true" /> {copied ? tx.copied : tx.copy}
+          </button>
+        </div>
+        <ol className={`space-y-2 text-sm ${a.meta.citation === "Vancouver" ? "list-decimal pl-5" : ""}`}>
+          {list.map((l) => (
+            <li key={l} className={a.meta.citation === "APA" ? "pl-6 -indent-6" : ""}>
+              <Markdown>{l}</Markdown>
+            </li>
+          ))}
+        </ol>
+        {withoutCites && <p className="bg-surface-2 text-muted rounded-xl p-3 text-sm">{tx.citeHint}</p>}
       </div>
-      <ol className={`space-y-2 text-sm ${a.meta.citation === "Vancouver" ? "list-decimal pl-5" : ""}`}>
-        {list.map((l) => (
-          <li key={l} className={a.meta.citation === "APA" ? "pl-6 -indent-6" : ""}>
-            <Markdown>{l}</Markdown>
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }

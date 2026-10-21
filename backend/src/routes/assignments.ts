@@ -297,7 +297,12 @@ async function doStep(
   id: string,
   sid: string,
   kind: "research" | "draft",
-) {
+): Promise<void> {
+  // Sin investigación el borrador no tendría datos ni citas: se investiga antes, sola.
+  if (kind === "draft") {
+    const cur = (await own(userId, id)).sections.find((x) => x.id === sid);
+    if (cur && !cur.research.trim()) await doStep(userId, id, sid, "research");
+  }
   const a = await patchSection(userId, id, sid, { status: kind, error: null });
   const i = a.sections.findIndex((x) => x.id === sid);
   const s = a.sections[i];
@@ -326,6 +331,8 @@ async function doStep(
           research: true,
         },
       );
+      // Una investigación vacía no sirve (y dejaría el borrador sin fuentes): mejor avisar del fallo.
+      if (result.text.trim().length < 80) throw new AiError("aiUnavailable");
       await patchSection(userId, id, sid, {
         research: result.text.slice(0, 40000),
         sources: result.webSources.slice(0, 30).map((w) => ({
@@ -391,6 +398,23 @@ for (const kind of ["research", "draft"] as const) {
     }),
   );
 }
+
+/** Bibliografía: investiga (sin tocar los borradores) los apartados que aún no tienen fuentes. */
+assignmentsRouter.post(
+  "/:id/references",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const a = await own(userId, req.params.id as string);
+    start(a.id, async () => {
+      for (const s of a.sections) {
+        if (!s.research.trim()) await doStep(userId, a.id, s.id, "research");
+      }
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    res.status(202).json(present(await own(userId, a.id), langOf(req)));
+  }),
+);
 
 /** Todo el trabajo de una vez: investiga y redacta, por orden, los apartados que falten. */
 assignmentsRouter.post(
