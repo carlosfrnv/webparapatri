@@ -18,7 +18,24 @@ const FILES = { bones: "huesos", muscles: "musculos", organs: "organos", vessels
 function colorOf(layer, name) {
   if (layer === "bones") return /cartilage|disc|meniscus/i.test(name) ? 0xb9cfd9 : 0xd2bf98;
   if (layer === "muscles") return /tendon|aponeurosis|retinaculum/i.test(name) ? 0xe9e0cf : 0xa63c33;
-  if (layer === "nerves") return 0xf0cf5a;
+  if (layer === "nerves") {
+    // En la capa de "nervios" también están el encéfalo, el ojo y el oído.
+    if (/Sclera/i.test(name)) return 0xf3efe6;
+    if (/Cornea/i.test(name)) return 0xd6e6ee;
+    if (/Iris/i.test(name)) return 0x6b4a2b;
+    if (/Lens|Vitreous/i.test(name)) return 0xe6dfc4;
+    if (/Retina/i.test(name)) return 0xd88a6a;
+    if (/Lacrimal|Nasolacrimal/i.test(name)) return 0xe3aea2;
+    if (/Cochlea|Vestibule|Semicircular/i.test(name)) return 0xe4d6b8;
+    if (/Tympanic/i.test(name)) return 0xe8c3a8;
+    if (/Auditory tube/i.test(name)) return 0xd9a79a;
+    if (/Corpus callosum|Fornix|commissure|White matter/i.test(name)) return 0xf1ebe2;
+    if (/Thalamus|Hypothalamus|Septal|Amygdal|Pineal/i.test(name)) return 0xd6a093;
+    if (/Choroid plexus/i.test(name)) return 0xb8584e;
+    if (/gyr|lobule|pole|Insula|Cuneus|Precuneus|cerebell|vermis|Lingula|Tonsil|Flocculus|Pons|Midbrain|Medulla oblongata|peduncle|colliculus/i.test(name))
+      return 0xe6bfae;
+    return 0xf0cf5a;
+  }
   if (layer === "vessels") {
     if (/atrium|ventricle|auricle/i.test(name)) return 0xb4584b;
     if (/pulmonary (trunk|artery)|bifurcation of pulmonary/i.test(name)) return 0x3f64c4;
@@ -222,7 +239,16 @@ window.run = async (plates) => {
     sctx.drawImage(renderer.domElement, 0, 0, W, H);
     // El ajuste de tono deja el fondo gris claro: se aclara todo por igual hasta que el fondo sea blanco.
     const pix = sctx.getImageData(0, 0, W, H);
-    const bg = [pix.data[0], pix.data[1], pix.data[2]];
+    // Color del fondo: el más repetido entre los píxeles claros (la pieza puede tapar las esquinas).
+    const freq = new Map();
+    for (let i = 0; i < pix.data.length; i += 4) {
+      const [r, g, b] = [pix.data[i], pix.data[i + 1], pix.data[i + 2]];
+      if (r + g + b < 600) continue;
+      const k = (r << 16) | (g << 8) | b;
+      freq.set(k, (freq.get(k) ?? 0) + 1);
+    }
+    const top = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0xffffff;
+    const bg = [(top >> 16) & 255, (top >> 8) & 255, top & 255];
     for (let i = 0; i < pix.data.length; i += 4)
       for (let c = 0; c < 3; c++) pix.data[i + c] = 255 * Math.min(1, pix.data[i + c] / Math.max(1, bg[c])) ** 1.25;
     sctx.putImageData(pix, 0, 0);

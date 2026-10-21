@@ -22,23 +22,57 @@ interface PlateMeta {
   parts: { name: string; x: number; y: number; area: number }[];
 }
 
-const PLATES: { id: string; group: "bones" | "organs" | "muscles"; title: L }[] = [
-  { id: "esqueleto", group: "bones", title: { es: "Esqueleto (vista anterior)", pt: "Esqueleto (vista anterior)" } },
-  { id: "craneo-frontal", group: "bones", title: { es: "Cráneo (vista frontal)", pt: "Crânio (vista frontal)" } },
-  { id: "craneo-lateral", group: "bones", title: { es: "Cráneo (vista lateral)", pt: "Crânio (vista lateral)" } },
-  { id: "columna", group: "bones", title: { es: "Columna vertebral", pt: "Coluna vertebral" } },
-  { id: "mano", group: "bones", title: { es: "Huesos de la mano", pt: "Ossos da mão" } },
-  { id: "pie", group: "bones", title: { es: "Huesos del pie", pt: "Ossos do pé" } },
-  { id: "corazon", group: "organs", title: { es: "Corazón y grandes vasos", pt: "Coração e grandes vasos" } },
-  { id: "pulmones", group: "organs", title: { es: "Pulmones y vía aérea", pt: "Pulmões e via aérea" } },
-  { id: "abdomen", group: "organs", title: { es: "Órganos abdominales", pt: "Órgãos abdominais" } },
-  { id: "musculos-brazo", group: "muscles", title: { es: "Músculos del brazo", pt: "Músculos do braço" } },
-  { id: "musculos-pierna", group: "muscles", title: { es: "Músculos de la pierna", pt: "Músculos da perna" } },
+type Group = "bones" | "organs" | "vessels" | "nervous" | "muscles";
+const GROUPS: Group[] = ["bones", "organs", "vessels", "nervous", "muscles"];
+const P = (id: string, group: Group, es: string, pt: string) => ({ id, group, title: { es, pt } });
+const PLATES: { id: string; group: Group; title: L }[] = [
+  P("esqueleto", "bones", "Esqueleto (anterior)", "Esqueleto (anterior)"),
+  P("esqueleto-posterior", "bones", "Esqueleto (posterior)", "Esqueleto (posterior)"),
+  P("craneo-frontal", "bones", "Cráneo (frontal)", "Crânio (frontal)"),
+  P("craneo-lateral", "bones", "Cráneo (lateral)", "Crânio (lateral)"),
+  P("craneo-inferior", "bones", "Base del cráneo", "Base do crânio"),
+  P("columna", "bones", "Columna vertebral", "Coluna vertebral"),
+  P("torax-oseo", "bones", "Tórax óseo", "Tórax ósseo"),
+  P("miembro-superior-oseo", "bones", "Huesos del miembro superior", "Ossos do membro superior"),
+  P("mano", "bones", "Huesos de la mano", "Ossos da mão"),
+  P("pelvis-osea", "bones", "Pelvis", "Bacia"),
+  P("miembro-inferior-oseo", "bones", "Huesos del miembro inferior", "Ossos do membro inferior"),
+  P("pie", "bones", "Huesos del pie", "Ossos do pé"),
+  P("pulmones", "organs", "Pulmones y vía aérea", "Pulmões e via aérea"),
+  P("abdomen", "organs", "Órganos abdominales", "Órgãos abdominais"),
+  P("rinon-vias-urinarias", "organs", "Riñones y vías urinarias", "Rins e vias urinárias"),
+  P("cabeza-cuello-visceras", "organs", "Boca, faringe y cuello", "Boca, faringe e pescoço"),
+  P("diafragma", "organs", "Diafragma y pared posterior", "Diafragma e parede posterior"),
+  P("corazon", "vessels", "Corazón (anterior)", "Coração (anterior)"),
+  P("corazon-posterior", "vessels", "Corazón (posterior)", "Coração (posterior)"),
+  P("arterias", "vessels", "Arterias del cuerpo", "Artérias do corpo"),
+  P("venas", "vessels", "Venas del cuerpo", "Veias do corpo"),
+  P("arterias-encefalo", "vessels", "Arterias del encéfalo", "Artérias do encéfalo"),
+  P("encefalo-lateral", "nervous", "Encéfalo (lateral)", "Encéfalo (lateral)"),
+  P("encefalo-medial", "nervous", "Encéfalo (corte medial)", "Encéfalo (corte mediano)"),
+  P("pares-craneales", "nervous", "Pares craneales", "Pares cranianos"),
+  P("plexo-braquial", "nervous", "Plexo braquial y nervios del brazo", "Plexo braquial e nervos do braço"),
+  P("nervios-pierna", "nervous", "Nervios de la pierna", "Nervos da perna"),
+  P("ojo", "nervous", "Ojo y músculos extraoculares", "Olho e músculos extraoculares"),
+  P("oido", "nervous", "Oído interno", "Ouvido interno"),
+  P("musculos-cabeza", "muscles", "Cabeza y cara", "Cabeça e face"),
+  P("musculos-tronco-anterior", "muscles", "Tronco (anterior)", "Tronco (anterior)"),
+  P("musculos-espalda", "muscles", "Espalda", "Costas"),
+  P("musculos-brazo", "muscles", "Brazo (anterior)", "Braço (anterior)"),
+  P("musculos-brazo-posterior", "muscles", "Brazo (posterior)", "Braço (posterior)"),
+  P("musculos-pierna", "muscles", "Pierna (anterior)", "Perna (anterior)"),
+  P("musculos-pierna-posterior", "muscles", "Pierna (posterior)", "Perna (posterior)"),
 ];
 
 const TEXT = {
   es: {
-    groups: { bones: "Huesos", organs: "Órganos", muscles: "Músculos" },
+    groups: {
+      bones: "Huesos",
+      organs: "Órganos",
+      vessels: "Corazón y vasos",
+      nervous: "Nervioso y sentidos",
+      muscles: "Músculos",
+    },
     modes: { view: "Ver nombres", practice: "Practicar", exam: "Examen" },
     practiceHint: "Los nombres están tapados: toca un recuadro para destaparlo.",
     showAll: "Destapar todo",
@@ -54,7 +88,13 @@ const TEXT = {
     credits: "Láminas generadas a partir de Z-Anatomy (CC BY-SA 4.0), basado en BodyParts3D © DBCLS.",
   },
   pt: {
-    groups: { bones: "Ossos", organs: "Órgãos", muscles: "Músculos" },
+    groups: {
+      bones: "Ossos",
+      organs: "Órgãos",
+      vessels: "Coração e vasos",
+      nervous: "Nervoso e sentidos",
+      muscles: "Músculos",
+    },
     modes: { view: "Ver nomes", practice: "Praticar", exam: "Exame" },
     practiceHint: "Os nomes estão tapados: toca num retângulo para o destapar.",
     showAll: "Destapar tudo",
@@ -262,7 +302,7 @@ export default function Plates() {
         aria-label={plate.title[lang]}
         onChange={(e) => pickPlate(e.target.value)}
       >
-        {(["bones", "organs", "muscles"] as const).map((g) => (
+        {GROUPS.map((g) => (
           <optgroup key={g} label={tx.groups[g]}>
             {PLATES.filter((p) => p.group === g).map((p) => (
               <option key={p.id} value={p.id}>
@@ -273,9 +313,9 @@ export default function Plates() {
         ))}
       </select>
       <div className="hidden space-y-2 sm:block">
-        {(["bones", "organs", "muscles"] as const).map((g) => (
+        {GROUPS.map((g) => (
           <div key={g} className="flex flex-wrap items-center gap-2">
-            <span className="text-muted w-20 text-xs font-bold tracking-wider uppercase">{tx.groups[g]}</span>
+            <span className="text-muted w-full text-xs font-bold tracking-wider uppercase">{tx.groups[g]}</span>
             {PLATES.filter((p) => p.group === g).map((p) => (
               <button
                 key={p.id}
