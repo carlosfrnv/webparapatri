@@ -227,7 +227,8 @@ export function AssignmentList() {
     subject_id: "",
     kind: KINDS[lang][0],
     words: 2000,
-    lang: "pt" as Lang,
+    // Por defecto, el trabajo se escribe en el idioma de la web (se puede cambiar en el formulario).
+    lang: lang,
     citation: "APA" as Meta["citation"],
     instructions: "",
   });
