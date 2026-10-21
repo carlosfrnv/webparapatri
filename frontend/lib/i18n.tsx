@@ -699,6 +699,12 @@ const es = {
     action: "Pomodoro",
     actionText: (today: string) => `Hoy llevas ${today} de estudio`,
   },
+  assignments: {
+    title: "Trabajos",
+    subtitle:
+      "Índice, búsqueda en fuentes fiables con bibliografía, borradores con citas, revisión y descarga en Word.",
+    open: "Abrir trabajos",
+  },
   decks: {
     title: "Mazos (estilo Anki)",
     subtitle: "Tus propias tarjetas con la repetición espaciada de Anki: Otra vez · Difícil · Bien · Fácil.",
@@ -1557,6 +1563,12 @@ const pt: Dictionary = {
     pill: "Pomodoro em curso",
     action: "Pomodoro",
     actionText: (today: string) => `Hoje levas ${today} de estudo`,
+  },
+  assignments: {
+    title: "Trabalhos",
+    subtitle:
+      "Índice, pesquisa em fontes fiáveis com bibliografia, rascunhos com citações, revisão e exportação para Word.",
+    open: "Abrir trabalhos",
   },
   decks: {
     title: "Baralhos (estilo Anki)",

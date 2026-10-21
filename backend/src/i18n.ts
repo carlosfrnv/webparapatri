@@ -57,6 +57,7 @@ const messages = {
   },
   examNotFound: { es: "Examen no encontrado.", pt: "Exame não encontrado." },
   deckNotFound: { es: "Mazo o tarjeta no encontrados.", pt: "Baralho ou cartão não encontrados." },
+  assignmentNotFound: { es: "Trabajo no encontrado.", pt: "Trabalho não encontrado." },
   documentNotFound: { es: "Documento no encontrado.", pt: "Documento não encontrado." },
   questionNotFound: { es: "Pregunta no encontrada.", pt: "Pergunta não encontrada." },
   saveFailed: {

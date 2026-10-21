@@ -334,6 +334,19 @@ create table if not exists deck_review_log (
 );
 create index if not exists deck_review_log_user_idx on deck_review_log (user_id, reviewed_at);
 
+-- Trabajos: datos, índice y, por apartado, la investigación con sus fuentes y el borrador.
+create table if not exists assignments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject_id uuid references subjects(id) on delete set null,
+  title text not null,
+  meta jsonb not null default '{}'::jsonb,
+  sections jsonb not null default '[]'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists assignments_user_idx on assignments (user_id, updated_at desc);
+
 -- Seguridad: RLS en todas las tablas. El backend usa service_role, pero filtra siempre por user_id.
 alter table subjects enable row level security;
 alter table documents enable row level security;
@@ -356,11 +369,12 @@ alter table highlights enable row level security;
 alter table decks enable row level security;
 alter table deck_cards enable row level security;
 alter table deck_review_log enable row level security;
+alter table assignments enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras','highlights','decks','deck_cards','deck_review_log']
+  foreach t in array array['subjects','documents','chunks','study_materials','flashcard_reviews','quiz_attempts','chat_messages','user_settings','exams','schedule_blocks','quiz_mistakes','study_sessions','document_extras','highlights','decks','deck_cards','deck_review_log','assignments']
   loop
     execute format('drop policy if exists "own_rows" on %I', t);
     execute format('create policy "own_rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);

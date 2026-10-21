@@ -8,6 +8,7 @@ import {
   CheckCircle,
   Exam,
   Microphone,
+  NotePencil,
   Shuffle,
   Stack,
   Timer,
@@ -211,6 +212,18 @@ function StudyPageContent() {
             <button className="btn-primary" disabled={due.cards.length === 0} onClick={() => setSession(true)}>
               {t.studyPage.start}
             </button>
+          </section>
+
+          {/* Trabajos: índice, fuentes, borradores y revisión */}
+          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <GradientIcon icon={NotePencil} tone="amber" size={52} />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">{t.assignments.title}</h2>
+              <p className="text-muted mt-0.5 text-sm">{t.assignments.subtitle}</p>
+            </div>
+            <Link href="/trabajos" className="btn-secondary">
+              {t.assignments.open}
+            </Link>
           </section>
 
           {/* Láminas de anatomía ya hechas */}
