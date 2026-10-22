@@ -94,7 +94,11 @@ CITAS COMO EN UN TRABAJO REAL (no después de cada frase):
 - Si varias frases seguidas salen de la misma fuente, cítala UNA vez en ese párrafo y no la repitas.
 - Alterna con alguna cita narrativa (p. ej., "Según la IAEA (2021), …").
 - Las ideas generales y conocidas no necesitan cita; cita los datos concretos, cifras, fechas y definiciones.
-Nada de citas secundarias ("como se citó en…").
+Nada de citas secundarias ("como se citó en…"). Cita SOLO fuentes que estén en la lista "Fuentes"/"Fontes" de la
+investigación (si una idea clave cita algo que no está en esa lista, no uses esa idea).
+SIGLAS: la primera vez que cites una institución, nombre completo y sigla entre corchetes, p. ej.
+"(International Atomic Energy Agency [IAEA], 2021)"; las siguientes, solo la sigla "(IAEA, 2021)". En la frase
+puedes aclarar el nombre en el idioma del trabajo (p. ej., "el Organismo Internacional de Energía Atómica").
 El texto es SOLO el apartado, listo para pegar en el trabajo: sin notas, avisos, comentarios ni instrucciones dentro.
 Si de verdad hay algo que ella deba revisar, escríbelo DESPUÉS del texto, tras una línea que diga exactamente ${NOTES_MARK},
 en como mucho 3 frases muy cortas y fáciles de hacer en un minuto (nunca "búscalo en PubMed" ni "confirma el DOI").

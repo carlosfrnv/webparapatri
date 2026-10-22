@@ -95,6 +95,7 @@ function defaultCover(a: Assignment): Cover {
     place: "Chaves",
     date: month.charAt(0).toUpperCase() + month.slice(1),
     toc: true,
+    ...Object.fromEntries(Object.entries(a.cover_defaults ?? {}).filter(([, v]) => typeof v === "string" && v.trim())),
   };
 }
 const coverOf = (a: Assignment): Cover => ({ ...defaultCover(a), ...(a.meta.cover ?? {}) });
@@ -112,6 +113,8 @@ interface Section {
   error?: string | null;
   // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
   notes?: string;
+  // Las referencias de la investigación ya se comprobaron solas.
+  checked?: boolean;
 }
 
 interface Assignment {
@@ -122,6 +125,8 @@ interface Assignment {
   sections: Section[];
   updated_at?: string;
   running?: boolean;
+  // Sus datos de la última portada que rellenó (para no tener que escribirlos otra vez).
+  cover_defaults?: Partial<Cover> | null;
 }
 
 const KINDS: Record<Lang, string[]> = {
@@ -187,7 +192,7 @@ const TEXT = {
       "Crea el índice (la IA te lo propone).",
       "Pulsa «Hacer el trabajo entero»: la IA busca fuentes y escribe todos los apartados.",
       "Lee cada borrador y cámbialo con tus palabras: quita, añade o reordena lo que quieras. Si sale un recuadro amarillo, léelo.",
-      "En la pestaña «Bibliografía», abre 2 o 3 enlaces para ver que existen. Si alguno no abre, borra esa frase o pide «Rehacer».",
+      "Mira la pestaña «Bibliografía»: las referencias ya se comprueban solas (las que no existen se quitan). No tienes que buscar nada.",
       "Pulsa «Descargar en Word», añade la portada (tu nombre, asignatura, profesor y fecha) y entrégalo.",
     ],
     researching: "Buscando en fuentes fiables… (puede tardar un minuto)",
@@ -220,7 +225,8 @@ const TEXT = {
     reviewing: "Revisando…",
     word: "Descargar en Word",
     integrity:
-      "Los borradores son un punto de partida: reescríbelos con tus palabras, comprueba cada fuente (abre los enlaces) y cita siempre. Así el trabajo es tuyo de verdad.",
+      "Los borradores son un punto de partida: léelos y cámbialos con tus palabras. Así el trabajo es tuyo de verdad y podrás defenderlo si te preguntan.",
+    checkedRefs: "✓ Enlaces y DOI comprobados automáticamente: las referencias que no existían se han quitado.",
     references: "Referencias bibliográficas",
     words_: (n: number) => `${n} palabras`,
   },
@@ -281,7 +287,7 @@ const TEXT = {
       "Cria o índice (a IA propõe-to).",
       "Toca em «Fazer o trabalho todo»: a IA procura fontes e escreve todas as secções.",
       "Lê cada rascunho e muda-o com as tuas palavras: tira, acrescenta ou reordena o que quiseres. Se aparecer um quadro amarelo, lê-o.",
-      "No separador «Bibliografia», abre 2 ou 3 ligações para ver que existem. Se alguma não abrir, apaga essa frase ou pede «Refazer».",
+      "Vê o separador «Bibliografia»: as referências já são verificadas sozinhas (as que não existem são retiradas). Não tens de procurar nada.",
       "Toca em «Descarregar em Word», acrescenta a capa (o teu nome, disciplina, professor e data) e entrega.",
     ],
     researching: "A procurar em fontes fiáveis… (pode demorar um minuto)",
@@ -314,7 +320,8 @@ const TEXT = {
     reviewing: "A rever…",
     word: "Descarregar em Word",
     integrity:
-      "Os rascunhos são um ponto de partida: reescreve-os com as tuas palavras, verifica cada fonte (abre as ligações) e cita sempre. Assim o trabalho é mesmo teu.",
+      "Os rascunhos são um ponto de partida: lê-os e muda-os com as tuas palavras. Assim o trabalho é mesmo teu e consegues defendê-lo se te perguntarem.",
+    checkedRefs: "✓ Ligações e DOI verificados automaticamente: as referências que não existiam foram retiradas.",
     references: "Referências bibliográficas",
     words_: (n: number) => `${n} palavras`,
   },
@@ -1169,7 +1176,8 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
 }
 
 function Bibliography({ a, tx, running, onFind }: { a: Assignment; tx: Tx; running: boolean; onFind: () => void }) {
-  const list = bibliography(a.sections, a.meta.citation);
+  // La misma lista que irá al Word (sin apuntes de clase ni repetidas).
+  const list = wordBibliography(a);
   const [copied, setCopied] = useState(false);
   const missing = a.sections.filter((s) => !s.research.trim()).length;
   const find = missing > 0 && !running && (
@@ -1216,6 +1224,9 @@ function Bibliography({ a, tx, running, onFind }: { a: Assignment; tx: Tx; runni
             </li>
           ))}
         </ol>
+        {a.sections.some((s) => s.checked) && (
+          <p className="bg-success-soft text-success rounded-xl p-3 text-sm font-medium">{tx.checkedRefs}</p>
+        )}
         {withoutCites && <p className="bg-surface-2 text-muted rounded-xl p-3 text-sm">{tx.citeHint}</p>}
       </div>
     </div>

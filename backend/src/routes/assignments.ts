@@ -16,6 +16,7 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf, type Lang, type MessageKey, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { findSources, formatSources } from "../search";
+import { cleanResearchSources } from "../linkcheck";
 import { supabase } from "../supabase";
 import { WEB_ENABLED } from "../web";
 
@@ -74,6 +75,8 @@ const sectionSchema = z.object({
   draft: z.string().max(60000).default(""),
   // Avisos de la IA para ella sobre el borrador (se ven aparte y no van al Word).
   notes: z.string().max(4000).default(""),
+  // Si las referencias de la investigación ya se han comprobado (enlaces y DOI que existen).
+  checked: z.boolean().default(false),
   // Lo que la IA está haciendo ahora con este apartado y, si falló, por qué (código del mensaje).
   status: z.enum(["research", "draft", "queued"]).nullable().optional(),
   error: z.string().max(60).nullable().optional(),
@@ -198,11 +201,38 @@ const ERROR_KEYS: Record<string, true> = {
 assignmentsRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
-    res.json(
-      present(await own(userIdOf(req), req.params.id as string), langOf(req)),
-    );
+    const userId = userIdOf(req);
+    const a = await own(userId, req.params.id as string);
+    res.json({
+      ...present(a, langOf(req)),
+      cover_defaults: a.meta.cover ? null : await coverDefaults(userId, a.id),
+    });
   }),
 );
+
+/** Para una portada nueva: sus datos personales de la última portada que rellenó (nombre, número, escuela…). */
+async function coverDefaults(userId: string, exceptId: string) {
+  const { data } = await supabase
+    .from("assignments")
+    .select("id, meta")
+    .eq("user_id", userId)
+    .neq("id", exceptId)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+  const cover = (data ?? [])
+    .map((x) => (x.meta as AssignmentMeta | null)?.cover)
+    .find((c) => typeof c?.authors === "string" && c.authors.trim());
+  if (!cover) return null;
+  const pick = (k: string) =>
+    typeof cover[k] === "string" ? (cover[k] as string) : "";
+  return {
+    authors: pick("authors"),
+    number: pick("number"),
+    institution: pick("institution"),
+    course: pick("course"),
+    place: pick("place"),
+  };
+}
 
 // Cada trabajo se guarda entero: las escrituras al mismo trabajo van de una en una para que ninguna pise a otra
 // (p. ej., una edición suya justo cuando termina una investigación).
@@ -259,6 +289,7 @@ async function patchAssignment(userId: string, id: string, input: unknown) {
         error: old.error ?? null,
         draft: old.status === "draft" ? old.draft : x.draft,
         notes: old.status === "draft" ? old.notes : x.notes,
+        checked: old.checked ?? false,
       };
     });
   }
@@ -398,9 +429,20 @@ async function doStep(
       );
       // Una investigación vacía no sirve (y dejaría el borrador sin fuentes): mejor avisar del fallo.
       if (result.text.trim().length < 80) throw new AiError("aiUnavailable");
+      // Se comprueban solas las referencias y se quitan las que no existen (así ella no tiene que abrirlas).
+      const cleaned = await cleanResearchSources(result.text).catch(() => ({
+        research: result.text,
+        dead: [] as string[],
+        checked: 0,
+      }));
+      const alive = result.webSources.filter(
+        (w) =>
+          !cleaned.dead.some((d) => w.url.startsWith(d) || d.startsWith(w.url)),
+      );
       await patchSection(userId, id, sid, {
-        research: result.text.slice(0, 40000),
-        sources: result.webSources.slice(0, 30).map((w) => ({
+        research: cleaned.research.slice(0, 40000),
+        checked: true,
+        sources: alive.slice(0, 30).map((w) => ({
           kind: "web" as const,
           site: String(w.site).slice(0, 80),
           title: w.title.slice(0, 300),
