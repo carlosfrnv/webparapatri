@@ -25,6 +25,7 @@ const MAX_CONTINUATIONS = 3;
 export const anthropicProvider: Provider = {
   id: "anthropic",
   supportsWeb: true,
+  paid: true,
   supportsImages: true,
   async generate(model: string, req: LlmRequest): Promise<LlmResult> {
     const messages: BetaMessageParam[] = [

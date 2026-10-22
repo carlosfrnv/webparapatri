@@ -40,6 +40,8 @@ export interface Provider {
   id: "gemini" | "groq" | "anthropic";
   /** Si el proveedor puede buscar en internet. */
   supportsWeb: boolean;
+  /** De pago (Claude): en los trabajos en segundo plano solo se usa si las gratuitas no pueden. */
+  paid?: boolean;
   /** Si el proveedor puede ver imágenes. */
   supportsImages: boolean;
   generate(model: string, req: LlmRequest): Promise<LlmResult>;

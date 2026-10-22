@@ -103,23 +103,30 @@ export async function generate(
   opts: GenerateOptions,
 ): Promise<GenerateResult> {
   if (!opts.patient) return generateOnce(prompt, opts);
-  for (let wait = 0; ; wait++) {
+  // Trabajos en segundo plano (nadie espera delante de la pantalla): primero solo las IA gratuitas, esperando a que
+  // vuelvan a estar libres si hace falta. Claude (de pago, y con búsqueda web cara) solo si siguen sin poder.
+  // Al investigar, solo las que buscan en internet: si no, saldría una investigación sin fuentes.
+  const free = (s: Step) => !s.provider.paid && (!opts.research || s.provider.supportsWeb);
+  const usable = CHAIN.filter((s) => free(s) && (!opts.images?.length || s.provider.supportsImages));
+  for (let wait = 0; usable.length; wait++) {
     try {
-      return await generateOnce(prompt, opts);
+      return await generateOnce(prompt, opts, free);
     } catch (err) {
-      // Si alguno de los modelos vuelve a estar libre en menos de 3 minutos, se espera a ese y se reintenta.
-      const usable = CHAIN.filter((s) => !opts.images?.length || s.provider.supportsImages);
+      // Si alguno de los modelos gratuitos vuelve a estar libre en menos de 3 minutos, se espera a ese y se reintenta.
       const soonest = Math.min(...usable.map((s) => cooldownUntil.get(s.key) ?? 0)) - Date.now();
-      if (!(err instanceof AiError) || err.key !== "aiUnavailable" || wait >= 4 || soonest > 3 * 60_000) throw err;
-      console.warn(`[IA] todos los modelos en pausa: se espera ${Math.round(Math.max(soonest, 0) / 1000) + 5} s.`);
+      if (!(err instanceof AiError) || err.key !== "aiUnavailable") throw err;
+      if (wait >= 4 || soonest > 3 * 60_000) break;
+      console.warn(`[IA] modelos gratuitos en pausa: se espera ${Math.round(Math.max(soonest, 0) / 1000) + 5} s.`);
       await new Promise((r) => setTimeout(r, Math.max(soonest, 0) + 5_000));
     }
   }
+  return generateOnce(prompt, opts);
 }
 
 async function generateOnce(
   prompt: string | ((webAvailable: boolean) => string),
   opts: GenerateOptions,
+  only: (s: Step) => boolean = () => true,
 ): Promise<GenerateResult> {
   if (CHAIN.length === 0) throw new AiError("aiUnavailable");
   const build = typeof prompt === "function" ? prompt : () => prompt;
@@ -136,6 +143,7 @@ async function generateOnce(
     ? [...CHAIN.filter((s) => s.provider.supportsWeb), ...CHAIN.filter((s) => !s.provider.supportsWeb)]
     : CHAIN;
   for (const step of chain) {
+    if (!only(step)) continue;
     if (cooling(cooldownUntil, step.key)) continue;
     if (opts.images?.length && !step.provider.supportsImages) continue;
     let useWeb = !!opts.web && step.provider.supportsWeb && !cooling(webCooldownUntil, step.key);
