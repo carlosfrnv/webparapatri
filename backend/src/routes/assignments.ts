@@ -20,7 +20,11 @@ import { langOf, type Lang, type MessageKey, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { findSources, formatSources } from "../search";
 import { formatReference, inTextCite, searchArticles } from "../scholar";
-import { cleanResearchSources, hasSourceList, withSourceList } from "../linkcheck";
+import {
+  cleanResearchSources,
+  hasSourceList,
+  withSourceList,
+} from "../linkcheck";
 import { supabase } from "../supabase";
 import { WEB_ENABLED } from "../web";
 
@@ -349,7 +353,7 @@ assignmentsRouter.post(
           .min(2)
           .max(30),
       }),
-      { lang: a.meta.lang, effort: "medium", maxTokens: 6000 },
+      { lang: a.meta.lang, effort: "medium", patient: true, maxTokens: 6000 },
     );
     res.json({
       sections: out.sections.map((s) => ({
@@ -417,12 +421,23 @@ async function doStep(
       );
       const all = a.sections.map((x) => x.title);
       // 1) Gratis: artículos científicos reales (Europe PMC) y una IA gratuita, sin búsqueda web.
-      const free = await researchFromArticles(a.title, a.meta, s, all, notes).catch((err) => {
+      const free = await researchFromArticles(
+        a.title,
+        a.meta,
+        s,
+        all,
+        notes,
+      ).catch((err) => {
         console.warn("[trabajos] artículos:", err);
         return null;
       });
       if (free) {
-        await patchSection(userId, id, sid, { research: free.research.slice(0, 40000), checked: true, sources: free.sources, status: null });
+        await patchSection(userId, id, sid, {
+          research: free.research.slice(0, 40000),
+          checked: true,
+          sources: free.sources,
+          status: null,
+        });
         return;
       }
       // 2) Si no hay artículos sobre el tema: búsqueda web, solo con las IA gratuitas (Claude, sin web).
@@ -450,15 +465,24 @@ async function doStep(
       if (result.text.trim().length < 80) throw new AiError("aiUnavailable");
       // Sin lista de fuentes la bibliografía quedaría vacía: se monta aparte con lo que citó y consultó.
       if (!hasSourceList(result.text)) {
-        const list = await generate(sourcesPrompt(a.meta, result.text, result.webSources), {
-          lang: a.meta.lang,
-          effort: "low",
-          maxTokens: 3000,
-          patient: true,
-        }).catch(() => null);
-        const lines = (list?.text ?? "").split("\n").filter((l) => /^\s*[-*•]\s+\S/.test(l));
+        const list = await generate(
+          sourcesPrompt(a.meta, result.text, result.webSources),
+          {
+            lang: a.meta.lang,
+            effort: "low",
+            maxTokens: 3000,
+            patient: true,
+          },
+        ).catch(() => null);
+        const lines = (list?.text ?? "")
+          .split("\n")
+          .filter((l) => /^\s*[-*•]\s+\S/.test(l));
         if (lines.length)
-          result.text = withSourceList(result.text, lines, a.meta.lang === "pt" ? "Fontes" : "Fuentes");
+          result.text = withSourceList(
+            result.text,
+            lines,
+            a.meta.lang === "pt" ? "Fontes" : "Fuentes",
+          );
       }
       // Se comprueban solas las referencias y se quitan las que no existen (así ella no tiene que abrirlas).
       const cleaned = await cleanResearchSources(result.text).catch(() => ({
@@ -524,12 +548,16 @@ async function researchFromArticles(
   notes: string,
 ) {
   if (meta.citation !== "APA") return null;
-  const { queries } = await completeJson(queriesPrompt(title, s), z.object({ queries: z.array(z.string()).min(1) }), {
-    lang: meta.lang,
-    effort: "low",
-    maxTokens: 1500,
-    patient: true,
-  }).catch(() => ({ queries: [s.title] }));
+  const { queries } = await completeJson(
+    queriesPrompt(title, s),
+    z.object({ queries: z.array(z.string()).min(1) }),
+    {
+      lang: meta.lang,
+      effort: "low",
+      maxTokens: 1500,
+      patient: true,
+    },
+  ).catch(() => ({ queries: [s.title] }));
   const articles = await searchArticles(queries, 6);
   if (articles.length < 2) return null;
   const result = await generate(
@@ -539,14 +567,25 @@ async function researchFromArticles(
       s,
       all,
       notes,
-      articles.map((x) => ({ cite: inTextCite(x), title: x.title, journal: x.journal, abstract: x.abstract })),
+      articles.map((x) => ({
+        cite: inTextCite(x),
+        title: x.title,
+        journal: x.journal,
+        abstract: x.abstract,
+      })),
     ),
     { lang: meta.lang, effort: "medium", maxTokens: 6000, patient: true },
   );
-  const ideas = result.text.replace(/\n[ \t]*#{1,4}[ \t]*(?:Fontes|Fuentes|Refer)[\s\S]*$/i, "").trim();
+  const ideas = result.text
+    .replace(/\n[ \t]*#{1,4}[ \t]*(?:Fontes|Fuentes|Refer)[\s\S]*$/i, "")
+    .trim();
   if (ideas.length < 80) return null;
   // En la bibliografía, solo los artículos que de verdad ha citado.
-  const used = articles.filter((x) => ideas.includes(x.authors[0]?.last ?? x.collective ?? "\u0000") && ideas.includes(x.year));
+  const used = articles.filter(
+    (x) =>
+      ideas.includes(x.authors[0]?.last ?? x.collective ?? "\u0000") &&
+      ideas.includes(x.year),
+  );
   if (!used.length) return null;
   return {
     research: `${ideas}\n### ${meta.lang === "pt" ? "Fontes" : "Fuentes"}\n${used.map((x) => `- ${formatReference(x, "APA")}`).join("\n")}`,
@@ -861,7 +900,7 @@ Responde SOLO con JSON: {"siglas":[{"sigla":"OMS","significado":"Organização M
           .max(60)
           .default([]),
       }),
-      { lang, effort: "low", maxTokens: 4000 },
+      { lang, effort: "low", patient: true, maxTokens: 4000 },
     );
     const seen = new Set<string>();
     const siglas = out.siglas
@@ -890,6 +929,7 @@ assignmentsRouter.post(
     const result = await generate(reviewPrompt(uiLang, a.title, a.meta, text), {
       lang: uiLang,
       effort: "medium",
+      patient: true,
       maxTokens: 8000,
     });
     res.json({ review: result.text });

@@ -107,8 +107,8 @@ export async function generate(
   opts: GenerateOptions,
 ): Promise<GenerateResult> {
   if (!opts.patient) return generateOnce(prompt, opts);
-  // Trabajos en segundo plano (nadie espera delante de la pantalla): primero solo las IA gratuitas, esperando a que
-  // vuelvan a estar libres si hace falta. Claude (de pago, y con búsqueda web cara) solo si siguen sin poder.
+  // Trabajos en segundo plano (nadie espera delante de la pantalla): solo las IA gratuitas, esperando a que
+  // vuelvan a estar libres si hace falta. Claude (de pago) no se usa nunca aquí.
   // Al investigar, solo las que buscan en internet: si no, saldría una investigación sin fuentes.
   const free = (s: Step) => !s.provider.paid && (!opts.research || canWeb(s, opts));
   const usable = CHAIN.filter((s) => free(s) && (!opts.images?.length || s.provider.supportsImages));
@@ -124,7 +124,8 @@ export async function generate(
       await new Promise((r) => setTimeout(r, Math.max(soonest, 0) + 5_000));
     }
   }
-  return generateOnce(prompt, opts);
+  // Nunca de pago en segundo plano: si las gratuitas siguen sin poder, se avisa y se reintenta más tarde.
+  return generateOnce(prompt, opts, (s) => !s.provider.paid);
 }
 
 async function generateOnce(
