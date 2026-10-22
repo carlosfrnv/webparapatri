@@ -105,6 +105,49 @@ oficiales) y cómo se ha usado la información.`
 objetivos planteados en la introducción; recomendaciones o sugerencias que se deriven del trabajo. Verbos en presente.`
       : "";
 
+/** Consultas para buscar artículos científicos sobre un apartado (en inglés, que es donde más hay). */
+export const queriesPrompt = (title: string, section: { title: string; goal: string }) =>
+  `Trabajo: «${title}». Apartado: «${section.title}» — ${section.goal}
+Escribe 3 búsquedas cortas EN INGLÉS para encontrar artículos científicos (PubMed) sobre este apartado: 2-5 palabras
+clave cada una, sin comillas ni operadores, de la más concreta a la más general.
+Responde SOLO con JSON: {"queries": ["…", "…", "…"]}`;
+
+/**
+ * Investigación de un apartado a partir de artículos ya encontrados (gratis: sin búsqueda web).
+ * La lista de fuentes no la escribe la IA: se monta después con los datos reales de cada artículo.
+ */
+export const researchFromArticlesPrompt = (
+  title: string,
+  m: AssignmentMeta,
+  section: { title: string; goal: string },
+  all: string[],
+  notes: string,
+  articles: { cite: string; title: string; journal: string; abstract: string }[],
+) =>
+  `Eres un tutor universitario que ayuda a una estudiante a documentarse para un trabajo académico.
+${context(title, m)}
+ÍNDICE COMPLETO (para no repetir lo de otros apartados): ${all.join(" · ")}
+APARTADO A INVESTIGAR: «${section.title}» — ${section.goal}
+${sectionRole(section.title, m)}
+
+ARTÍCULOS CIENTÍFICOS ENCONTRADOS (resumen de cada uno):
+${articles.map((a, i) => `[${i + 1}] (${a.cite}) «${a.title}». ${a.journal}.\n${a.abstract}`).join("\n\n")}
+
+APUNTES RELACIONADOS:
+${notes || "(nada en sus apuntes)"}
+
+REGLAS:
+- Usa SOLO datos que aparezcan en esos resúmenes o en sus apuntes; no añadas fechas, cifras ni nombres que no estén ahí.
+- Cita cada dato con su artículo ${
+    m.citation === "APA" ? "exactamente así: (Autor, año), (Autor & Autor, año) o (Autor et al., año), como va entre paréntesis arriba" : "con el número entre corchetes de arriba, p. ej. [2]"
+  }. Usa los artículos que traten de verdad el tema (mejor varios distintos); ignora los que no vengan al caso.
+- Sus apuntes se citan como "apuntes de clase".
+
+Escribe en ${langName(m.lang)}, en Markdown, SOLO esta sección (sin lista de fuentes: se añade sola):
+### ${m.lang === "pt" ? "Ideias-chave" : "Ideas clave"}
+Entre 5 y 10 viñetas con los datos importantes para este apartado (fechas, nombres, cifras, conceptos), cada una con su cita.
+Explícalo con tus palabras, sin copiar. No añadas nada más (ni avisos, ni saludo, ni pregunta final).`;
+
 /** Investigación de un apartado con búsqueda en internet (Markdown con fuentes). */
 export const researchPrompt = (
   title: string,

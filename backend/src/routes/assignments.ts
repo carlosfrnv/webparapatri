@@ -6,6 +6,8 @@ import {
   type AssignmentMeta,
   draftPrompt,
   outlinePrompt,
+  queriesPrompt,
+  researchFromArticlesPrompt,
   researchPrompt,
   reviewPrompt,
   sourcesPrompt,
@@ -17,6 +19,7 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf, type Lang, type MessageKey, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { findSources, formatSources } from "../search";
+import { formatReference, inTextCite, searchArticles } from "../scholar";
 import { cleanResearchSources, hasSourceList, withSourceList } from "../linkcheck";
 import { supabase } from "../supabase";
 import { WEB_ENABLED } from "../web";
@@ -412,6 +415,17 @@ async function doStep(
         await findSources(userId, `${s.title} ${s.goal}`, { limit: 4 }),
         a.meta.lang,
       );
+      const all = a.sections.map((x) => x.title);
+      // 1) Gratis: artículos científicos reales (Europe PMC) y una IA gratuita, sin búsqueda web.
+      const free = await researchFromArticles(a.title, a.meta, s, all, notes).catch((err) => {
+        console.warn("[trabajos] artículos:", err);
+        return null;
+      });
+      if (free) {
+        await patchSection(userId, id, sid, { research: free.research.slice(0, 40000), checked: true, sources: free.sources, status: null });
+        return;
+      }
+      // 2) Si no hay artículos sobre el tema: búsqueda web, solo con las IA gratuitas (Claude, sin web).
       const result = await generate(
         (web) =>
           researchPrompt(
@@ -428,6 +442,7 @@ async function doStep(
           maxTokens: 12000,
           web: WEB_ENABLED,
           research: true,
+          paidWeb: false,
           patient: true,
         },
       );
@@ -494,6 +509,54 @@ async function doStep(
     }).catch(() => undefined);
     throw err;
   }
+}
+
+/**
+ * Investigación con artículos de Europe PMC: la IA (gratuita) escribe las ideas clave a partir de sus resúmenes y la
+ * lista de fuentes se monta con los datos reales (autores, año, revista, DOI). Solo APA: en Vancouver los números
+ * dependen del orden de todo el trabajo. Devuelve null si no hay artículos suficientes.
+ */
+async function researchFromArticles(
+  title: string,
+  meta: AssignmentMeta,
+  s: { title: string; goal: string },
+  all: string[],
+  notes: string,
+) {
+  if (meta.citation !== "APA") return null;
+  const { queries } = await completeJson(queriesPrompt(title, s), z.object({ queries: z.array(z.string()).min(1) }), {
+    lang: meta.lang,
+    effort: "low",
+    maxTokens: 1500,
+    patient: true,
+  }).catch(() => ({ queries: [s.title] }));
+  const articles = await searchArticles(queries, 6);
+  if (articles.length < 2) return null;
+  const result = await generate(
+    researchFromArticlesPrompt(
+      title,
+      meta,
+      s,
+      all,
+      notes,
+      articles.map((x) => ({ cite: inTextCite(x), title: x.title, journal: x.journal, abstract: x.abstract })),
+    ),
+    { lang: meta.lang, effort: "medium", maxTokens: 6000, patient: true },
+  );
+  const ideas = result.text.replace(/\n[ \t]*#{1,4}[ \t]*(?:Fontes|Fuentes|Refer)[\s\S]*$/i, "").trim();
+  if (ideas.length < 80) return null;
+  // En la bibliografía, solo los artículos que de verdad ha citado.
+  const used = articles.filter((x) => ideas.includes(x.authors[0]?.last ?? x.collective ?? "\u0000") && ideas.includes(x.year));
+  if (!used.length) return null;
+  return {
+    research: `${ideas}\n### ${meta.lang === "pt" ? "Fontes" : "Fuentes"}\n${used.map((x) => `- ${formatReference(x, "APA")}`).join("\n")}`,
+    sources: used.map((x) => ({
+      kind: "web" as const,
+      site: (x.journal || "PubMed").slice(0, 80),
+      title: x.title.slice(0, 300),
+      url: x.url.slice(0, 2000),
+    })),
+  };
 }
 
 /** Añade pasos a la cola del trabajo (sin repetir) y, si no estaba en marcha, la arranca. */

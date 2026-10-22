@@ -53,6 +53,8 @@ export const CHAIN: Step[] = [
 
 const cooldownUntil = new Map<string, number>();
 const webCooldownUntil = new Map<string, number>();
+const canWeb = (s: Step, opts: { paidWeb?: boolean }) =>
+  s.provider.supportsWeb && !(s.provider.paid && opts.paidWeb === false);
 const cooling = (map: Map<string, number>, key: string) => (map.get(key) ?? 0) > Date.now();
 
 interface AiOptions {
@@ -68,6 +70,8 @@ interface GenerateOptions extends AiOptions {
   web?: boolean;
   /** Modo trabajo: búsqueda abierta (fuentes fiables) y más búsquedas. */
   research?: boolean;
+  /** false: los modelos de pago (Claude) responden sin búsqueda web (cada búsqueda y página leída se paga). */
+  paidWeb?: boolean;
   onText?: (delta: string) => void;
   /** Se llama cuando la IA empieza una búsqueda o lectura web. */
   onWebTool?: (tool: "web_search" | "web_fetch") => void;
@@ -106,7 +110,7 @@ export async function generate(
   // Trabajos en segundo plano (nadie espera delante de la pantalla): primero solo las IA gratuitas, esperando a que
   // vuelvan a estar libres si hace falta. Claude (de pago, y con búsqueda web cara) solo si siguen sin poder.
   // Al investigar, solo las que buscan en internet: si no, saldría una investigación sin fuentes.
-  const free = (s: Step) => !s.provider.paid && (!opts.research || s.provider.supportsWeb);
+  const free = (s: Step) => !s.provider.paid && (!opts.research || canWeb(s, opts));
   const usable = CHAIN.filter((s) => free(s) && (!opts.images?.length || s.provider.supportsImages));
   for (let wait = 0; usable.length; wait++) {
     try {
@@ -140,13 +144,13 @@ async function generateOnce(
 
   // Para investigar con fuentes, primero los modelos que pueden buscar en internet (Groq no puede).
   const chain = opts.research
-    ? [...CHAIN.filter((s) => s.provider.supportsWeb), ...CHAIN.filter((s) => !s.provider.supportsWeb)]
+    ? [...CHAIN.filter((s) => canWeb(s, opts)), ...CHAIN.filter((s) => !canWeb(s, opts))]
     : CHAIN;
   for (const step of chain) {
     if (!only(step)) continue;
     if (cooling(cooldownUntil, step.key)) continue;
     if (opts.images?.length && !step.provider.supportsImages) continue;
-    let useWeb = !!opts.web && step.provider.supportsWeb && !cooling(webCooldownUntil, step.key);
+    let useWeb = !!opts.web && canWeb(step, opts) && !cooling(webCooldownUntil, step.key);
 
     for (let attempt = 0; attempt < 2; attempt++) {
       if (emitted) {
