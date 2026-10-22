@@ -65,8 +65,9 @@ export async function checkReference(line: string): Promise<Status> {
  * Devuelve el texto limpio, las URL que quedan fuera y cuántas se han podido comprobar.
  */
 export async function cleanResearchSources(research: string) {
+  // La IA no siempre titula igual la lista ("### Fontes", "## Fontes consultadas", "**Referências:**"…).
   const m = research.match(
-    /(###\s*(?:Fuentes|Fontes)\s*\n)([\s\S]*?)(?=\n###|$)/i,
+    /^([ \t]*(?:#{1,4}[ \t]*)?\**[ \t]*(?:Fuentes|Fontes|Referencias|Referências|Bibliograf[ií]a)\b[^\n]*\n)([\s\S]*?)(?=\n[ \t]*#{1,4}[ \t]|(?![\s\S]))/im,
   );
   if (!m) return { research, dead: [] as string[], checked: 0 };
   // Si el servidor no tiene internet en ese momento, todo parecería roto: entonces no se quita nada.

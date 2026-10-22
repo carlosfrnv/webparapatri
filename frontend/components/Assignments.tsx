@@ -376,14 +376,22 @@ const cleanResearch = (md: string) =>
     )
     .trim();
 
+// La IA no siempre titula igual la lista ("### Fontes", "## Fontes consultadas", "**Referências:**"…).
+const SOURCES_RE =
+  /^[ \t]*(?:#{1,4}[ \t]*)?\**[ \t]*(?:Fuentes|Fontes|Referencias|Referências|Bibliograf[ií]a)\b[^\n]*\n([\s\S]*?)(?=\n[ \t]*#{1,4}[ \t]|(?![\s\S]))/im;
+// Si no hay título, se reconocen las referencias por su forma: "Autor. (2023). Título…".
+const REF_LINE_RE = /\((?:\d{4}[a-z]?|s\.\s?[df]\.)(?:,[^)]*)?\)\.?\s+\S/i;
+
 /** Líneas de la sección "Fuentes"/"Fontes" de cada investigación, sin repetir. */
 function bibliography(sections: Section[], style: Meta["citation"]) {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const s of sections) {
-    const m = s.research.match(/###\s*(Fuentes|Fontes)\s*\n([\s\S]*?)(?=\n###|$)/i);
-    if (!m) continue;
-    for (const raw of m[2].split("\n")) {
+    const m = s.research.match(SOURCES_RE);
+    const lines = m
+      ? m[1].split("\n")
+      : s.research.split("\n").filter((l) => /^\s*(?:[-*•]|\d+[.)])\s+/.test(l) && REF_LINE_RE.test(l));
+    for (const raw of lines) {
       const line = raw.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
       if (line.length < 12 || line === "—") continue;
       const key = line
