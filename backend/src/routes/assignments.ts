@@ -604,6 +604,72 @@ assignmentsRouter.post(
   }),
 );
 
+/**
+ * Lista de siglas y acrónimos y lista de símbolos (obligatorias según la guía de la escuela) a partir del texto.
+ * Se piden al descargar el Word.
+ */
+assignmentsRouter.post(
+  "/:id/lists",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const a = await own(userId, req.params.id as string);
+    const text = a.sections
+      .map((s) => `${s.title}\n${s.draft}`)
+      .join("\n\n")
+      .slice(0, 60000);
+    if (!text.trim()) {
+      res.json({ siglas: [], simbolos: [] });
+      return;
+    }
+    const lang = a.meta.lang;
+    const out = await completeJson(
+      `Este es el texto de un trabajo académico en ${lang === "pt" ? "português europeu" : "español"}.
+Haz las dos listas que exige la escuela:
+1. "siglas": TODAS las abreviaturas, siglas y acrónimos que aparecen en el texto (OMS, PET, SPECT, TC, IAEA, DGS…),
+   cada una con su significado completo tal y como se usa en el texto (en el idioma del trabajo; si es una institución
+   extranjera, su nombre oficial). Sin repetir. No incluyas "et al.", "p.", "s.d." ni "s. f.".
+2. "simbolos": los símbolos que aparecen (%, ≠, ≈, ±, °C, ×…) con su significado. Las unidades (keV, mSv, Gy…) cuentan
+   como símbolos solo si aparecen. Si no hay, lista vacía.
+TEXTO:
+${text}
+
+Responde SOLO con JSON: {"siglas":[{"sigla":"OMS","significado":"Organização Mundial da Saúde"}],"simbolos":[{"simbolo":"%","significado":"Percentagem"}]}`,
+      z.object({
+        siglas: z
+          .array(
+            z.object({
+              sigla: z.string().min(1).max(30),
+              significado: z.string().min(1).max(300),
+            }),
+          )
+          .max(120)
+          .default([]),
+        simbolos: z
+          .array(
+            z.object({
+              simbolo: z.string().min(1).max(20),
+              significado: z.string().min(1).max(200),
+            }),
+          )
+          .max(60)
+          .default([]),
+      }),
+      { lang, effort: "low", maxTokens: 4000 },
+    );
+    const seen = new Set<string>();
+    const siglas = out.siglas
+      .filter(
+        (x) =>
+          !seen.has(x.sigla.toUpperCase()) && seen.add(x.sigla.toUpperCase()),
+      )
+      .sort((x, y) =>
+        x.sigla.localeCompare(y.sigla, lang, { sensitivity: "base" }),
+      );
+    res.json({ siglas, simbolos: out.simbolos });
+  }),
+);
+
 /** Revisa un texto suyo: lo que está bien, qué mejorar, correcciones y citas. */
 assignmentsRouter.post(
   "/:id/review",

@@ -15,22 +15,60 @@ export interface AssignmentMeta {
   cover?: Record<string, string | boolean>; // portada del Word (no la usa la IA)
 }
 
-const langName = (l: Lang) => (l === "pt" ? "português europeu (norma do Acordo Ortográfico de 1990)" : "español de España");
+const langName = (l: Lang) =>
+  l === "pt"
+    ? "português europeu (norma do Acordo Ortográfico de 1990)"
+    : "español de España";
 
 const context = (title: string, m: AssignmentMeta) =>
   `TRABAJO: «${title}»
 Tipo: ${m.kind}. Extensión aproximada: ${m.words} palabras. Idioma del trabajo: ${langName(m.lang)}.
 Norma de citas: ${m.citation === "APA" ? "APA 7.ª edición" : "Vancouver"}.${m.subject ? `\nAsignatura: ${m.subject}.` : ""}
 Curso: 1.º de la Licenciatura en Imagen Médica y Radioterapia (ESSCVP, Portugal).
-${m.instructions ? `INSTRUCCIONES DEL PROFESOR:\n${m.instructions.slice(0, 4000)}` : "(sin instrucciones del profesor)"}`;
+${m.instructions ? `INSTRUCCIONES DEL PROFESOR:\n${m.instructions.slice(0, 4000)}` : "(sin instrucciones del profesor)"}
+${GUIDE(m.lang)}`;
+
+/**
+ * Normas de la escuela: "Guia de elaboração de trabalhos académicos e científicos" de la ESSCVP – Alto Tâmega
+ * (2024), basada en APA 7. Las instrucciones del profesor, si las hay, mandan sobre esto.
+ */
+const GUIDE = (
+  l: Lang,
+) => `NORMAS DE LA ESCUELA (guía de trabajos de la ESSCVP – Alto Tâmega, APA 7; síguelas siempre):
+- Redacción: clara y objetiva, discurso directo y FRASES CORTAS; forma impersonal o primera persona del plural;
+  preferir el pasado para describir, y el presente en las conclusiones; solo los adjetivos y adverbios necesarios;
+  sin repeticiones.${l === "pt" ? " Português europeu com o novo Acordo Ortográfico." : ""}
+- Citas en el texto (APA 7, autor-año):
+  · indirecta (con tus palabras): autor y año, y la página cuando la fuente tiene páginas (libro o artículo) y la conoces,
+    p. ej. "(Bardin, 2014, p. 212)" o "De acuerdo con Bardin (2014)…";
+  · directa (literal, entre comillas): autor, año y página; úsala muy poco;
+  · 2 autores: ambos, con "&" dentro del paréntesis "(Silva & Lage, 2010)" y "${l === "pt" ? "e" : "y"}" en la frase "Silva ${l === "pt" ? "e" : "y"} Lage (2010)";
+  · 3 o más autores: primer autor + "et al." desde la primera cita;
+  · autor colectivo: la primera vez nombre completo y sigla entre corchetes "(Direção-Geral da Saúde [DGS], 2017)";
+    después solo la sigla "(DGS, 2017)";
+  · citas de citas ("citado por") solo si es imposible acceder a la fuente original.
+- Siglas y acrónimos: la primera vez que aparecen en el texto, nombre completo seguido de la sigla entre paréntesis,
+  p. ej. "Organização Mundial da Saúde (OMS)"; después, solo la sigla.`;
 
 /** Propone un índice (JSON). */
-export const outlinePrompt = (title: string, m: AssignmentMeta, notes: string) =>
+export const outlinePrompt = (
+  title: string,
+  m: AssignmentMeta,
+  notes: string,
+) =>
   `Eres un tutor universitario que ayuda a una estudiante a planificar un trabajo académico.
 ${context(title, m)}
 
-Propón un índice adecuado a la extensión (normalmente entre 4 y 8 apartados, con subapartados numerados solo si hacen falta),
-que empiece por una introducción y acabe con una conclusión (las referencias van aparte, no las incluyas).
+Propón un índice adecuado a la extensión (normalmente entre 4 y 8 apartados, con subapartados solo si hacen falta),
+con la estructura que pide la escuela:
+- "${l(m, "Introdução", "Introducción")}" SIN número;
+- los capítulos del desarrollo numerados "1.", "2.", … y sus subcapítulos "1.1", "1.2", …;
+- "${l(m, "Conclusão", "Conclusión")}" SIN número.
+(Las referencias van aparte, no las incluyas.)
+En el "goal" de la introducción incluye lo que debe tener según la escuela: presentación y justificación del tema,
+delimitación, encuadre en la asignatura, objetivos, finalidad, descripción de la estructura del trabajo y metodología
+(búsqueda bibliográfica y fuentes utilizadas). En el de la conclusión: síntesis de las ideas principales, reflexión sobre
+el cumplimiento de los objetivos y recomendaciones o sugerencias.
 Si el profesor ha dado una estructura, respétala. Los títulos van en el idioma del trabajo (${langName(m.lang)}).
 Para cada apartado, en "goal" escribe en una frase qué hay que contar en él (también en el idioma del trabajo)
 y en "words" cuántas palabras aproximadas le corresponden (que sumen la extensión total).
@@ -38,10 +76,44 @@ Si sus apuntes tratan el tema, tenlos en cuenta.
 APUNTES RELACIONADOS:
 ${notes || "(nada en sus apuntes)"}
 
-Responde SOLO con JSON: {"sections":[{"title":"1. Introducción","goal":"...","words":150}]}`;
+Responde SOLO con JSON: {"sections":[{"title":"${l(m, "Introdução", "Introducción")}","goal":"...","words":150},{"title":"1. ...","goal":"...","words":400}]}`;
+
+const l = (m: AssignmentMeta, pt: string, es: string) =>
+  m.lang === "pt" ? pt : es;
+
+/** Fecha de hoy como la escribe la guía ("15 dezembro, 2023" / "15 de diciembre de 2023"). */
+const today = (m: AssignmentMeta) => {
+  const d = new Date();
+  const month = d.toLocaleDateString(m.lang === "pt" ? "pt-PT" : "es-ES", {
+    month: "long",
+  });
+  return m.lang === "pt"
+    ? `${d.getDate()} ${month}, ${d.getFullYear()}`
+    : `${d.getDate()} de ${month} de ${d.getFullYear()}`;
+};
+
+/** Introducción y conclusión: lo que la escuela pide que contengan. */
+const sectionRole = (title: string, m: AssignmentMeta) =>
+  /introdu/i.test(title)
+    ? `ES LA INTRODUCCIÓN: según la guía de la escuela debe incluir, en párrafos naturales (sin poner estos rótulos):
+presentación y justificación del tema; delimitación del ámbito; encuadre en la unidad curricular${m.subject ? ` (${m.subject})` : ""};
+objetivos; finalidad del trabajo; descripción de la estructura (qué se trata en cada capítulo del índice); metodología
+(búsqueda bibliográfica: tipo de fuentes y bases de datos consultadas, como PubMed, SciELO o RCAAP, libros y organismos
+oficiales) y cómo se ha usado la información.`
+    : /conclus|considera[cç][oõ]es finais/i.test(title)
+      ? `ES LA CONCLUSIÓN: síntesis completa y objetiva de las ideas principales; reflexión sobre el cumplimiento de los
+objetivos planteados en la introducción; recomendaciones o sugerencias que se deriven del trabajo. Verbos en presente.`
+      : "";
 
 /** Investigación de un apartado con búsqueda en internet (Markdown con fuentes). */
-export const researchPrompt = (title: string, m: AssignmentMeta, section: { title: string; goal: string }, all: string[], notes: string, web: boolean) =>
+export const researchPrompt = (
+  title: string,
+  m: AssignmentMeta,
+  section: { title: string; goal: string },
+  all: string[],
+  notes: string,
+  web: boolean,
+) =>
   `Eres un tutor universitario que ayuda a una estudiante a documentarse para un trabajo académico.
 ${context(title, m)}
 ÍNDICE COMPLETO (para no repetir lo de otros apartados): ${all.join(" · ")}
@@ -72,15 +144,29 @@ Entre 5 y 10 viñetas con los datos importantes para este apartado (fechas, nomb
 en el texto (${m.citation === "APA" ? "Autor o Institución, año" : "número de referencia [1]"}). Explícalo con tus palabras, sin copiar.
 ### ${m.lang === "pt" ? "Fontes" : "Fuentes"}
 Una línea por fuente realmente consultada, ya en formato ${m.citation === "APA" ? "APA 7" : "Vancouver"}, con su enlace.
-Usa "${m.lang === "pt" ? "s.d." : "s. f."}" solo si de verdad no hay ninguna fecha.
+Usa "${m.lang === "pt" ? "s.d." : "s. f."}" solo si de verdad no hay ninguna fecha. Cuando un artículo tiene DOI, pon solo el DOI
+(sin añadir el enlace de PubMed u otra web). Páginas web cuya información cambia (o sin fecha): añade la fecha de consulta
+como pide la escuela, p. ej. ${
+    m.lang === "pt"
+      ? `"Instituto Nacional de Estatística. (s.d.). Indicadores de Saúde. Acedido a ${today(m)}, a partir de https://…"`
+      : `"Instituto Nacional de Estadística. (s. f.). Indicadores de salud. Recuperado el ${today(m)}, de https://…"`
+  }.
 No añadas nada más (ni avisos, ni saludo, ni pregunta final).`;
 
 /** Borrador de un apartado a partir de la investigación (sin internet). */
-export const draftPrompt = (title: string, m: AssignmentMeta, section: { title: string; goal: string; words: number }, all: string[], research: string, prev: string) =>
+export const draftPrompt = (
+  title: string,
+  m: AssignmentMeta,
+  section: { title: string; goal: string; words: number },
+  all: string[],
+  research: string,
+  prev: string,
+) =>
   `Eres un tutor universitario que ayuda a una estudiante a redactar un trabajo académico.
 ${context(title, m)}
 ÍNDICE: ${all.join(" · ")}
 APARTADO A REDACTAR: «${section.title}» — ${section.goal} (unas ${section.words} palabras).
+${sectionRole(section.title, m)}
 ${prev ? `FINAL DEL APARTADO ANTERIOR (para enlazar sin repetir):\n${prev.slice(-800)}\n` : ""}
 INVESTIGACIÓN DE ESTE APARTADO (usa solo estos datos y sus citas; no inventes datos ni referencias; si hay una
 sección "Pendiente de confirmar"/"Por confirmar", ignórala y no uses esos datos):
@@ -112,7 +198,8 @@ export function splitLegacyDraft(draft: string) {
   const i = draft.lastIndexOf("\n---");
   if (i < 0) return null;
   const tail = draft.slice(i).replace(/^\n-{3,}\s*/, "");
-  const advice = /(confirm|verific|comprueb|compro|c[ií]tala|te recomiendo|recomendo|no la concretes|búscala|procura)/i;
+  const advice =
+    /(confirm|verific|comprueb|compro|c[ií]tala|te recomiendo|recomendo|no la concretes|búscala|procura)/i;
   if (tail.length > 3000 || !advice.test(tail)) return null;
   return { body: draft.slice(0, i).trim(), notes: tail.trim() };
 }
@@ -121,13 +208,20 @@ export function splitLegacyDraft(draft: string) {
 export const NOTES_MARK = "===NOTAS===";
 export function splitDraft(text: string) {
   const i = text.indexOf(NOTES_MARK);
-  const body = (i >= 0 ? text.slice(0, i) : text).replace(/\n-{3,}\s*$/, "").trim();
+  const body = (i >= 0 ? text.slice(0, i) : text)
+    .replace(/\n-{3,}\s*$/, "")
+    .trim();
   const notes = i >= 0 ? text.slice(i + NOTES_MARK.length).trim() : "";
   return { body, notes };
 }
 
 /** Revisión de un texto suyo (comentarios en el idioma de la web). */
-export const reviewPrompt = (uiLang: Lang, title: string, m: AssignmentMeta, text: string) =>
+export const reviewPrompt = (
+  uiLang: Lang,
+  title: string,
+  m: AssignmentMeta,
+  text: string,
+) =>
   uiLang === "es"
     ? `Eres un profesor universitario que revisa, con cariño pero con rigor, un texto de una estudiante de primer curso.
 ${context(title, m)}

@@ -51,29 +51,32 @@ interface Cover {
   number: string;
   teacher: string;
   year: string;
+  semester: string;
   place: string;
   date: string;
   toc: boolean;
 }
 
-// Textos de la portada en el idioma del trabajo (no en el de la web).
+// Textos del Word en el idioma del trabajo (no en el de la web), según la guía de trabajos de la ESSCVP – Alto Tâmega.
 const COVER_TEXT = {
   es: {
     course: "Licenciatura en Imagen Médica y Radioterapia",
     year: "1.º curso",
-    by: "Trabajo realizado por:",
-    number: "N.º de estudiante:",
+    number: "n.º",
     teacher: "Docente:",
     toc: "Índice",
+    acronyms: "Lista de abreviaturas, siglas y acrónimos",
+    symbols: "Lista de símbolos",
     references: "Referencias bibliográficas",
   },
   pt: {
     course: "Licenciatura em Imagem Médica e Radioterapia",
     year: "1.º ano",
-    by: "Trabalho realizado por:",
-    number: "N.º de estudante:",
+    number: "n.º",
     teacher: "Docente:",
-    toc: "Índice",
+    toc: "Índice geral",
+    acronyms: "Lista de abreviaturas, siglas e acrónimos",
+    symbols: "Lista de símbolos",
     references: "Referências bibliográficas",
   },
 };
@@ -81,19 +84,23 @@ const COVER_TEXT = {
 function defaultCover(a: Assignment): Cover {
   const ct = COVER_TEXT[a.meta.lang];
   const now = new Date();
-  const month = now.toLocaleDateString(a.meta.lang === "pt" ? "pt-PT" : "es-ES", { month: "long", year: "numeric" });
+  const loc = a.meta.lang === "pt" ? "pt-PT" : "es-ES";
+  // El curso empieza en septiembre: de septiembre a enero, 1.er semestre; de febrero a julio, 2.º.
+  const second = now.getMonth() >= 1 && now.getMonth() <= 7;
   return {
-    institution: "Escola Superior de Saúde da Cruz Vermelha Portuguesa – Alto Tâmega",
+    institution: "Escola Superior de Saúde Cruz Vermelha Portuguesa – Alto Tâmega",
     course: ct.course,
     subject: a.meta.subject ?? "",
     title: a.title,
-    subtitle: a.meta.kind,
+    subtitle: "",
     authors: "",
     number: "",
     teacher: "",
     year: ct.year,
+    semester: second ? "2.º semestre" : a.meta.lang === "pt" ? "1.º semestre" : "1.er semestre",
     place: "Chaves",
-    date: month.charAt(0).toUpperCase() + month.slice(1),
+    // Como en el modelo de la escuela: "Chaves, outubro 2026" (mes en minúscula).
+    date: `${now.toLocaleDateString(loc, { month: "long" })} ${now.getFullYear()}`,
     toc: true,
     ...Object.fromEntries(Object.entries(a.cover_defaults ?? {}).filter(([, v]) => typeof v === "string" && v.trim())),
   };
@@ -155,23 +162,26 @@ const TEXT = {
     progress: (r: number, d: number, n: number) => `${r}/${n} investigados · ${d}/${n} redactados`,
     tabs: { write: "Índice y redacción", cover: "Portada", bib: "Bibliografía", review: "Revisar mi texto" },
     coverIntro:
-      "Así saldrá la primera página del Word. Ya viene rellena: completa tu nombre, tu número y el docente, y cambia lo que quieras.",
+      "Portada y hoja de rosto como en el modelo de la guía de la escuela. Ya vienen rellenas: completa tu nombre, tu número mecanográfico y el docente.",
     coverFields: {
       institution: "Escuela",
       course: "Carrera",
       subject: "Asignatura",
       title: "Título del trabajo",
       subtitle: "Subtítulo o tipo (opcional)",
-      authors: "Tu nombre completo (si sois varios, uno por línea)",
-      number: "N.º de estudiante (opcional)",
-      teacher: "Docente",
+      authors: "Tu nombre completo (si sois varios, uno por línea: «Nombre, n.º 12345»)",
+      number: "N.º mecanográfico",
+      teacher: "Docente responsable de la UC",
       year: "Curso",
+      semester: "Semestre",
       place: "Lugar",
       date: "Fecha",
     },
-    coverToc: "Añadir una página de índice después de la portada",
+    coverToc: "",
     coverSaved: "Portada guardada",
     coverPreview: "Vista previa",
+    capa: "Portada",
+    rosto: "Hoja de rosto (con el docente)",
     coverReset: "Volver a lo de por defecto",
     editData: "Datos del trabajo",
     save: "Guardar",
@@ -193,7 +203,7 @@ const TEXT = {
       "Pulsa «Hacer el trabajo entero»: la IA busca fuentes y escribe todos los apartados.",
       "Lee cada borrador y cámbialo con tus palabras: quita, añade o reordena lo que quieras. Si sale un recuadro amarillo, léelo.",
       "Mira la pestaña «Bibliografía»: las referencias ya se comprueban solas (las que no existen se quitan). No tienes que buscar nada.",
-      "Pulsa «Descargar en Word», añade la portada (tu nombre, asignatura, profesor y fecha) y entrégalo.",
+      "Revisa la pestaña «Portada» (tu nombre, número y docente) y pulsa «Descargar en Word»: sale con el formato de la guía de la escuela (portada, folha de rosto, índice, listas de siglas y referencias).",
     ],
     researching: "Buscando en fuentes fiables… (puede tardar un minuto)",
     auto: "Hacer el trabajo entero",
@@ -250,23 +260,26 @@ const TEXT = {
     progress: (r: number, d: number, n: number) => `${r}/${n} pesquisados · ${d}/${n} redigidos`,
     tabs: { write: "Índice e redação", cover: "Capa", bib: "Bibliografia", review: "Rever o meu texto" },
     coverIntro:
-      "Assim fica a primeira página do Word. Já vem preenchida: completa o teu nome, o teu número e o docente, e muda o que quiseres.",
+      "Capa e folha de rosto como no modelo do guia da escola. Já vêm preenchidas: completa o teu nome, o teu número mecanográfico e o docente.",
     coverFields: {
       institution: "Escola",
       course: "Curso",
       subject: "Unidade curricular",
       title: "Título do trabalho",
       subtitle: "Subtítulo ou tipo (opcional)",
-      authors: "O teu nome completo (se forem vários, um por linha)",
-      number: "N.º de estudante (opcional)",
-      teacher: "Docente",
+      authors: "O teu nome completo (se forem vários, um por linha: «Nome, n.º 12345»)",
+      number: "N.º mecanográfico",
+      teacher: "Docente responsável pela UC",
       year: "Ano",
+      semester: "Semestre",
       place: "Local",
       date: "Data",
     },
-    coverToc: "Acrescentar uma página de índice depois da capa",
+    coverToc: "",
     coverSaved: "Capa guardada",
     coverPreview: "Pré-visualização",
+    capa: "Capa",
+    rosto: "Folha de rosto (com o docente)",
     coverReset: "Voltar ao predefinido",
     editData: "Dados do trabalho",
     save: "Guardar",
@@ -288,7 +301,7 @@ const TEXT = {
       "Toca em «Fazer o trabalho todo»: a IA procura fontes e escreve todas as secções.",
       "Lê cada rascunho e muda-o com as tuas palavras: tira, acrescenta ou reordena o que quiseres. Se aparecer um quadro amarelo, lê-o.",
       "Vê o separador «Bibliografia»: as referências já são verificadas sozinhas (as que não existem são retiradas). Não tens de procurar nada.",
-      "Toca em «Descarregar em Word», acrescenta a capa (o teu nome, disciplina, professor e data) e entrega.",
+      "Revê o separador «Capa» (o teu nome, número e docente) e toca em «Descarregar em Word»: sai com o formato do guia da escola (capa, folha de rosto, índice, listas de siglas e referências).",
     ],
     researching: "A procurar em fontes fiáveis… (pode demorar um minuto)",
     auto: "Fazer o trabalho todo",
@@ -1057,6 +1070,16 @@ function SectionCard({
   );
 }
 
+/** Cómo se escribe el autor en la portada: "Nombre, n.º 12345" (si hay un solo autor y número aparte). */
+function authorLines(cover: Cover, ct: (typeof COVER_TEXT)["es"]) {
+  const lines = cover.authors
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 1 && cover.number.trim()) return [`${lines[0]}, ${ct.number} ${cover.number.trim()}`];
+  return lines;
+}
+
 function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: Assignment) => void }) {
   const [cover, setCover] = useState<Cover>(() => coverOf(a));
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
@@ -1077,7 +1100,7 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
       setState("idle");
     }
   }
-  const field = (k: Exclude<keyof Cover, "toc">, multiline = false) => (
+  const field = (k: Exclude<keyof Cover, "toc" | "institution">, multiline = false) => (
     <label key={k} className="block">
       <span className="text-sm font-semibold">{tx.coverFields[k]}</span>
       {multiline ? (
@@ -1086,6 +1109,39 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
         <input className="input mt-1" value={cover[k]} onChange={(e) => set(k, e.target.value)} />
       )}
     </label>
+  );
+  const authors = authorLines(cover, ct);
+  // Hoja A4 en miniatura con la disposición del modelo de la escuela.
+  const page = (rosto: boolean) => (
+    <div
+      className="flex aspect-[210/297] w-full flex-col items-center bg-white px-[9%] py-[8%] text-center text-[#222] shadow-lg"
+      style={{ fontFamily: "Calibri, Carlito, Arial, sans-serif" }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- miniatura de la portada, no merece next/image */}
+      <img src="/esscvp-logo.png" alt="" className="w-[26%]" />
+      <p className="mt-[6%] text-[clamp(7px,1.3vw,11px)] font-semibold uppercase">{cover.course}</p>
+      <p className="text-[clamp(6px,1.1vw,9px)]">{[cover.year, cover.semester].filter(Boolean).join(", ")}</p>
+      {cover.subject && <p className="mt-[3%] text-[clamp(6px,1.1vw,9px)]">{cover.subject}</p>}
+      <div className="flex flex-1 flex-col justify-center">
+        <p className="text-[clamp(9px,1.8vw,14px)] leading-tight font-bold">{cover.title}</p>
+        {cover.subtitle && <p className="mt-1 text-[clamp(7px,1.3vw,11px)]">{cover.subtitle}</p>}
+      </div>
+      <div className="w-full text-right text-[clamp(6px,1.1vw,9px)] leading-relaxed">
+        {authors.map((l, i) => (
+          <p key={i} className="font-semibold">
+            {l}
+          </p>
+        ))}
+        {rosto && cover.teacher && (
+          <p className="mt-[4%]">
+            {ct.teacher} {cover.teacher}
+          </p>
+        )}
+      </div>
+      <p className="mt-[14%] text-[clamp(6px,1.1vw,9px)]">
+        {rosto ? "\u00a0" : [cover.place, cover.date].filter(Boolean).join(", ")}
+      </p>
+    </div>
   );
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -1099,17 +1155,15 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
         {field("title")}
         {field("subtitle")}
         {field("subject")}
-        {field("institution")}
         {field("course")}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {field("year")}
+          {field("semester")}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           {field("place")}
           {field("date")}
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={cover.toc} onChange={(e) => set("toc", e.target.checked)} />
-          {tx.coverToc}
-        </label>
         {error && <ErrorBox message={error} />}
         <div className="flex flex-wrap items-center gap-2">
           <button className="btn-primary" disabled={state === "saving"} onClick={() => save()}>
@@ -1133,42 +1187,17 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
         </div>
       </div>
 
-      {/* Vista previa: una hoja A4 con la misma disposición que el Word */}
       <div>
         <p className="text-muted mb-2 text-sm font-semibold">{tx.coverPreview}</p>
-        <div
-          className="mx-auto flex aspect-[210/297] w-full max-w-md flex-col items-center bg-white px-[9%] py-[10%] text-center text-[#222] shadow-lg"
-          style={{ fontFamily: "Calibri, Carlito, Arial, sans-serif" }}
-        >
-          <p className="text-[clamp(10px,2.2vw,15px)] font-bold">{cover.institution}</p>
-          <p className="mt-1 text-[clamp(9px,1.9vw,13px)]">{cover.course}</p>
-          {cover.subject && <p className="mt-1 text-[clamp(9px,1.9vw,13px)]">{cover.subject}</p>}
-          <div className="flex flex-1 flex-col justify-center">
-            <p className="text-[clamp(14px,3.6vw,24px)] leading-tight font-bold">{cover.title}</p>
-            {cover.subtitle && <p className="mt-2 text-[clamp(10px,2.1vw,14px)] italic">{cover.subtitle}</p>}
+        <div className="mx-auto grid max-w-md grid-cols-2 gap-3">
+          <div>
+            {page(false)}
+            <p className="text-muted mt-1 text-center text-xs">{tx.capa}</p>
           </div>
-          <div className="w-full text-right text-[clamp(9px,1.8vw,12px)] leading-relaxed">
-            {cover.authors && (
-              <>
-                <p className="font-semibold">{ct.by}</p>
-                {cover.authors.split("\n").map((l, i) => (
-                  <p key={i}>{l}</p>
-                ))}
-              </>
-            )}
-            {cover.number && (
-              <p>
-                {ct.number} {cover.number}
-              </p>
-            )}
-            {cover.teacher && (
-              <p className="mt-2">
-                {ct.teacher} {cover.teacher}
-              </p>
-            )}
-            {cover.year && <p>{cover.year}</p>}
+          <div>
+            {page(true)}
+            <p className="text-muted mt-1 text-center text-xs">{tx.rosto}</p>
           </div>
-          <p className="mt-6 text-[clamp(9px,1.8vw,12px)]">{[cover.place, cover.date].filter(Boolean).join(", ")}</p>
         </div>
       </div>
     </div>
@@ -1307,138 +1336,199 @@ function wordBibliography(a: Assignment) {
   });
 }
 
+const isIntro = (t: string) => /^\s*(\d+(\.\d+)*\.?\s*)?introdu/i.test(t);
+const isConclusion = (t: string) => /^\s*(\d+(\.\d+)*\.?\s*)?(conclus|considera[cç][oõ]es finais)/i.test(t);
+
+/**
+ * Títulos como pide la guía: Introducción y Conclusión sin número; capítulos 1, 2… y subcapítulos 1.1, 1.2…
+ * (se renumeran aunque la IA o ella los hayan numerado de otra forma).
+ */
+function displayTitles(sections: Section[]) {
+  let chapter = 0;
+  let sub = 0;
+  return sections.map((s) => {
+    const raw = s.title.trim();
+    const bare = raw.replace(/^\d+(\.\d+)*\.?\s*/, "");
+    if (isIntro(raw) || isConclusion(raw)) return { title: bare, level: 1 as const, numbered: false };
+    if (/^\d+\.\d+/.test(raw) && chapter > 0) {
+      sub++;
+      return { title: `${chapter}.${sub}. ${bare}`, level: 2 as const, numbered: true };
+    }
+    chapter++;
+    sub = 0;
+    return { title: `${chapter}. ${bare}`, level: 1 as const, numbered: true };
+  });
+}
+
+/** Párrafos del borrador (bloques separados por líneas en blanco; listas con guiones aparte). */
+function draftBlocks(draft: string) {
+  const out: { kind: "p" | "li" | "h"; text: string }[] = [];
+  for (const block of draft.split(/\n\s*\n/)) {
+    const lines = block
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) continue;
+    if (lines.every((l) => /^[-•*]\s+/.test(l)))
+      lines.forEach((l) => out.push({ kind: "li", text: l.replace(/^[-•*]\s+/, "") }));
+    else if (/^#{1,4}\s/.test(lines[0])) {
+      out.push({ kind: "h", text: lines[0].replace(/^#+\s*/, "") });
+      if (lines.length > 1) out.push({ kind: "p", text: lines.slice(1).join(" ") });
+    } else out.push({ kind: "p", text: lines.join(" ") });
+  }
+  return out;
+}
+
 async function exportWord(a: Assignment) {
-  const { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak, Footer, PageNumber, HeadingLevel } =
-    await import("docx");
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    TextRun,
+    AlignmentType,
+    Footer,
+    PageNumber,
+    HeadingLevel,
+    ImageRun,
+    NumberFormat,
+    SectionType,
+    TabStopType,
+    LeaderType,
+  } = await import("docx");
   const cover = coverOf(a);
   const ct = COVER_TEXT[a.meta.lang];
-  const FONT = "Times New Roman";
-  type P = InstanceType<typeof Paragraph>;
-  const out: P[] = [];
+  const titles = displayTitles(a.sections);
+  const bib = wordBibliography(a);
+  // Listas de siglas y símbolos (las hace la IA a partir del texto; si falla, el Word sale igual sin ellas).
+  const lists = await api
+    .post<{ siglas: { sigla: string; significado: string }[]; simbolos: { simbolo: string; significado: string }[] }>(
+      `/assignments/${a.id}/lists`,
+    )
+    .catch(() => ({ siglas: [], simbolos: [] }));
+  const logo = await fetch("/esscvp-logo.png")
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
 
-  // Todo con formato directo (negrita, tamaño, espaciado) y saltos de página "de verdad": así se ve igual en Word,
-  // Pages, la vista previa del iPad o Google Docs (algunos ignoran los estilos y los saltos de sección).
-  // Siempre en negro (los estilos de título de Word los pondrían en azul).
-  const run = (text: string, o: { size?: number; bold?: boolean; italics?: boolean } = {}) =>
-    new TextRun({ text, font: FONT, size: o.size ?? 24, bold: o.bold, italics: o.italics, color: "000000" });
-  const pageBreak = () => out.push(new Paragraph({ children: [new PageBreak()] }));
-  const centered = (
+  // ---- Formato de la guía: A4, márgenes 2,54 cm, Calibri 11, justificado, interlineado 1,5 ----
+  const FONT = "Calibri";
+  const TEXT_WIDTH = 11906 - 2 * 1440; // ancho útil en twips (para el tabulador del índice)
+  type P = InstanceType<typeof Paragraph>;
+  const run = (text: string, o: { size?: number; bold?: boolean; italics?: boolean; caps?: boolean } = {}) =>
+    new TextRun({
+      text,
+      font: FONT,
+      size: o.size ?? 22,
+      bold: o.bold,
+      italics: o.italics,
+      allCaps: o.caps,
+      color: "000000",
+    });
+  const line = (
     text: string,
-    o: { size?: number; bold?: boolean; italics?: boolean; before?: number; after?: number } = {},
+    o: {
+      size?: number;
+      bold?: boolean;
+      italics?: boolean;
+      caps?: boolean;
+      before?: number;
+      after?: number;
+      align?: "center" | "right";
+      breakBefore?: boolean;
+    } = {},
   ) =>
+    new Paragraph({
+      alignment: o.align === "right" ? AlignmentType.RIGHT : AlignmentType.CENTER,
+      pageBreakBefore: o.breakBefore,
+      spacing: { before: o.before ?? 0, after: o.after ?? 60 },
+      children: [run(text, o)],
+    });
+  const pageTitle = (text: string, breakBefore: boolean) =>
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+      pageBreakBefore: breakBefore,
+      spacing: { after: 360 },
+      children: [run(text, { size: 24, bold: true })],
+    });
+
+  // ---- Capa y folha de rosto (modelo de la escuela) ----
+  const coverPage = (rosto: boolean, breakBefore: boolean): P[] => {
+    const out: P[] = [];
     out.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { before: o.before ?? 0, after: o.after ?? 120 },
-        children: [run(text, o)],
+        pageBreakBefore: breakBefore,
+        children: logo
+          ? [new ImageRun({ type: "png", data: logo, transformation: { width: 170, height: 120 } })]
+          : [run(cover.institution, { bold: true })],
       }),
     );
-  const heading = (text: string, level: 1 | 2, opts: { center?: boolean } = {}) =>
-    out.push(
+    out.push(line(cover.course, { caps: true, before: 480 }));
+    const ys = [cover.year, cover.semester].filter(Boolean).join(", ");
+    if (ys) out.push(line(ys, { size: 20 }));
+    if (cover.subject) out.push(line(cover.subject, { size: 20, before: 240 }));
+    out.push(line(cover.title, { size: 28, bold: true, before: 2600 }));
+    if (cover.subtitle) out.push(line(cover.subtitle, { size: 24 }));
+    authorLines(cover, ct).forEach((l, i) =>
+      out.push(line(l, { align: "right", bold: true, before: i === 0 ? 2400 : 0 })),
+    );
+    if (rosto && cover.teacher) out.push(line(`${ct.teacher} ${cover.teacher}`, { align: "right", before: 360 }));
+    if (!rosto) {
+      const placeDate = [cover.place, cover.date].filter(Boolean).join(", ");
+      if (placeDate) out.push(line(placeDate, { before: 2600 }));
+    }
+    return out;
+  };
+
+  // ---- Cuerpo del trabajo (y estimación de la página de cada título para el índice) ----
+  // Calibri 11 a 1,5 en A4 con márgenes de 2,54 cm: ~95 caracteres por línea y ~38 líneas por página
+  // (medido abriendo el Word generado). Es una estimación: en trabajos largos puede variar una página.
+  const CHARS = 95;
+  const LINES = 38;
+  let lines = 0;
+  const pageNow = () => Math.floor(lines / LINES) + 1;
+  const bodyPages: number[] = [];
+  const body: P[] = [];
+  a.sections.forEach((s, i) => {
+    const t = titles[i];
+    if (lines % LINES > LINES - 4) lines = Math.ceil(lines / LINES) * LINES; // un título no se queda solo al final
+    if (lines % LINES !== 0) lines += 1.2;
+    bodyPages.push(pageNow());
+    lines += 1.6;
+    body.push(
       new Paragraph({
-        heading: level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
-        alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        heading: t.level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
         keepNext: true,
-        spacing: { before: level === 1 ? 240 : 200, after: 160 },
-        children: [run(text, { size: level === 1 ? 28 : 26, bold: true })],
+        pageBreakBefore: i === 0,
+        spacing: { before: i === 0 ? 0 : 240, after: 120, line: 360 },
+        children: [run(t.title, { size: t.level === 1 ? 24 : 22, bold: true })],
       }),
     );
-  const body = (text: string, o: { bullet?: boolean } = {}) =>
-    out.push(
-      new Paragraph({
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: { after: 160, line: 360 },
-        indent: o.bullet ? { left: 360, hanging: 240 } : { firstLine: 0 },
-        children: [
-          ...(o.bullet ? [run("•\t")] : []),
-          ...inlineParts(text).map((p) => run(p.text, { bold: p.bold, italics: p.italics })),
-        ],
-      }),
-    );
-
-  // ---- Portada ----
-  centered(cover.institution, { size: 28, bold: true });
-  if (cover.course) centered(cover.course);
-  if (cover.subject) centered(cover.subject);
-  centered(cover.title, { size: 40, bold: true, before: 3400 });
-  if (cover.subtitle) centered(cover.subtitle, { size: 26, italics: true });
-  const right: string[][] = [];
-  if (cover.authors.trim())
-    right.push(
-      [ct.by],
-      cover.authors
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean),
-    );
-  if (cover.number) right.push([`${ct.number} ${cover.number}`]);
-  if (cover.teacher) right.push([`${ct.teacher} ${cover.teacher}`]);
-  if (cover.year) right.push([cover.year]);
-  right.flat().forEach((l, i) =>
-    out.push(
-      new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: i === 0 ? 3000 : 0, after: 60 },
-        children: [run(l, { bold: i === 0 && cover.authors.trim() !== "" })],
-      }),
-    ),
-  );
-  const placeDate = [cover.place, cover.date].filter(Boolean).join(", ");
-  if (placeDate) centered(placeDate, { before: right.length ? 1600 : 4200 });
-
-  // ---- Índice (página propia) ----
-  const bib = wordBibliography(a);
-  if (cover.toc && a.sections.length) {
-    pageBreak();
-    heading(ct.toc, 1, { center: true });
-    for (const s of a.sections) {
-      const sub = /^\s*\d+\.\d+/.test(s.title);
-      out.push(
+    for (const b of draftBlocks(s.draft)) {
+      lines += Math.ceil((b.text.length + (b.kind === "li" ? 4 : 0)) / CHARS) + 0.3;
+      body.push(
         new Paragraph({
+          alignment: b.kind === "h" ? AlignmentType.LEFT : AlignmentType.JUSTIFIED,
+          keepNext: b.kind === "h",
           spacing: { after: 120, line: 360 },
-          indent: { left: sub ? 567 : 0 },
-          children: [run(s.title, { bold: !sub })],
+          indent: b.kind === "li" ? { left: 360, hanging: 240 } : undefined,
+          children: [
+            ...(b.kind === "li" ? [run("•\t")] : []),
+            ...inlineParts(b.text).map((p) => run(p.text, { bold: p.bold || b.kind === "h", italics: p.italics })),
+          ],
         }),
       );
     }
-    if (bib.length)
-      out.push(new Paragraph({ spacing: { after: 120, line: 360 }, children: [run(ct.references, { bold: true })] }));
-  }
-
-  // ---- Trabajo (empieza en página nueva) ----
-  pageBreak();
-  for (const s of a.sections) {
-    heading(s.title, /^\s*\d+\.\d+/.test(s.title) ? 2 : 1);
-    for (const block of s.draft.split(/\n\s*\n/)) {
-      const lines = block
-        .split("\n")
-        .map((l) => l.trim())
-        .filter(Boolean);
-      if (lines.length && lines.every((l) => /^[-•*]\s+/.test(l)))
-        lines.forEach((l) => body(l.replace(/^[-•*]\s+/, ""), { bullet: true }));
-      else if (lines.length && /^#{1,4}\s/.test(lines[0])) {
-        out.push(
-          new Paragraph({
-            keepNext: true,
-            spacing: { before: 160, after: 120 },
-            children: [run(lines[0].replace(/^#+\s*/, ""), { bold: true })],
-          }),
-        );
-        if (lines.length > 1) body(lines.slice(1).join(" "));
-      } else if (lines.length) body(lines.join(" "));
-    }
-  }
-
-  // ---- Referencias (página propia, orden alfabético en APA, sangría francesa) ----
+  });
+  const refsPage = Math.ceil(Math.max(lines, 1) / LINES) + 1;
   if (bib.length) {
-    pageBreak();
-    heading(ct.references, 1, { center: true });
+    body.push(pageTitle(ct.references, true));
     bib.forEach((l, i) =>
-      out.push(
+      body.push(
         new Paragraph({
           alignment: AlignmentType.LEFT,
           indent: a.meta.citation === "APA" ? { left: 720, hanging: 720 } : { left: 567, hanging: 567 },
-          spacing: { after: 160, line: 360 },
+          spacing: { after: 120, line: 360 },
           children: [
             ...(a.meta.citation === "Vancouver" ? [run(`${i + 1}.\t`)] : []),
             ...inlineParts(l).map((p) => run(p.text, { bold: p.bold, italics: p.italics })),
@@ -1448,24 +1538,85 @@ async function exportWord(a: Assignment) {
     );
   }
 
+  // ---- Elementos pré-textuais: folha de rosto, índice geral y listas ----
+  const pre: P[] = [...coverPage(true, false)];
+  const tocEntry = (text: string, page: number, o: { bold?: boolean; indent?: number } = {}) =>
+    new Paragraph({
+      tabStops: [{ type: TabStopType.RIGHT, position: TEXT_WIDTH, leader: LeaderType.DOT }],
+      indent: { left: o.indent ?? 0 },
+      spacing: { after: 80, line: 360 },
+      children: [run(text, { bold: o.bold }), run(`\t${page}`, { bold: o.bold })],
+    });
+  pre.push(pageTitle(ct.toc, true));
+  titles.forEach((t, i) =>
+    pre.push(tocEntry(t.title, bodyPages[i], { bold: t.level === 1, indent: t.level === 2 ? 360 : 0 })),
+  );
+  if (bib.length) pre.push(tocEntry(ct.references, refsPage, { bold: true }));
+  if (lists.siglas.length) {
+    pre.push(pageTitle(ct.acronyms, true));
+    lists.siglas.forEach((x) =>
+      pre.push(
+        new Paragraph({
+          tabStops: [{ type: TabStopType.LEFT, position: 1700 }],
+          indent: { left: 1700, hanging: 1700 },
+          spacing: { after: 80, line: 360 },
+          children: [run(x.sigla), run(`\t${x.significado}`)],
+        }),
+      ),
+    );
+  }
+  if (lists.simbolos.length) {
+    pre.push(pageTitle(ct.symbols, true));
+    lists.simbolos.forEach((x) =>
+      pre.push(
+        new Paragraph({
+          tabStops: [{ type: TabStopType.LEFT, position: 1700 }],
+          indent: { left: 1700, hanging: 1700 },
+          spacing: { after: 80, line: 360 },
+          children: [run(x.simbolo), run(`\t${x.significado}`)],
+        }),
+      ),
+    );
+  }
+
+  // Paginación de la guía: la capa no se cuenta; desde la folha de rosto (sin número visible) en romanos;
+  // desde la introducción, números árabes. Abajo, centrada.
+  const margin = { top: 1440, bottom: 1440, left: 1440, right: 1440 };
+  const pageSize = { width: 11906, height: 16838 };
+  const numberFooter = () =>
+    new Footer({
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 20 })],
+        }),
+      ],
+    });
+  const emptyFooter = () => new Footer({ children: [new Paragraph({ children: [] })] });
   const doc = new Document({
-    styles: { default: { document: { run: { font: FONT, size: 24 } } } },
+    styles: { default: { document: { run: { font: FONT, size: 22 } } } },
     sections: [
       {
-        // La portada no lleva número de página.
-        properties: { titlePage: true, page: { margin: { top: 1418, bottom: 1418, left: 1701, right: 1418 } } },
-        footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 20 })],
-              }),
-            ],
-          }),
-          first: new Footer({ children: [new Paragraph({ children: [] })] }),
+        properties: { page: { size: pageSize, margin } },
+        footers: { default: emptyFooter() },
+        children: coverPage(false, false),
+      },
+      {
+        properties: {
+          type: SectionType.NEXT_PAGE,
+          titlePage: true,
+          page: { size: pageSize, margin, pageNumbers: { start: 1, formatType: NumberFormat.LOWER_ROMAN } },
         },
-        children: out,
+        footers: { default: numberFooter(), first: emptyFooter() },
+        children: pre,
+      },
+      {
+        properties: {
+          type: SectionType.NEXT_PAGE,
+          page: { size: pageSize, margin, pageNumbers: { start: 1, formatType: NumberFormat.DECIMAL } },
+        },
+        footers: { default: numberFooter() },
+        children: body,
       },
     ],
   });
