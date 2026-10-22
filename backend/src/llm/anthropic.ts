@@ -43,6 +43,9 @@ export const anthropicProvider: Provider = {
     ];
     const content: BetaContentBlock[] = [];
     let webSearches = 0;
+    // Si el buscador web de Anthropic falla (p. ej., "demasiadas peticiones"), se corta la respuesta antes de que
+    // la IA se ponga a contarle el problema a ella y se repite sin búsqueda web (ver "noWeb" en ai.ts).
+    let searchError: string | null = null;
     try {
       for (let round = 0; round <= MAX_CONTINUATIONS; round++) {
         const stream = anthropic().beta.messages.stream({
@@ -57,15 +60,20 @@ export const anthropicProvider: Provider = {
           ...(req.web ? { tools: req.research ? RESEARCH_TOOLS : WEB_TOOLS } : {}),
         });
         if (req.onText) stream.on("text", req.onText);
-        if (req.onWebTool) {
-          stream.on("streamEvent", (event) => {
-            if (event.type === "content_block_start" && event.content_block.type === "server_tool_use") {
-              const name = event.content_block.name;
-              if (name === "web_search" || name === "web_fetch") req.onWebTool?.(name);
-            }
-          });
-        }
-        const message = await stream.finalMessage();
+        stream.on("streamEvent", (event) => {
+          if (event.type !== "content_block_start") return;
+          const block = event.content_block as { type: string; name?: string; content?: { type?: string; error_code?: string } };
+          if (block.type === "server_tool_use" && (block.name === "web_search" || block.name === "web_fetch"))
+            req.onWebTool?.(block.name);
+          if (block.type === "web_search_tool_result" && block.content?.type === "web_search_tool_result_error") {
+            searchError = block.content.error_code ?? "unknown";
+            stream.abort();
+          }
+        });
+        const message = await stream.finalMessage().catch((err) => {
+          if (searchError) throw new ProviderError("noWeb", `Búsqueda web de Anthropic: ${searchError}`, 2 * 60_000);
+          throw err;
+        });
         if (message.stop_reason === "refusal") throw new ProviderError("refused", "Claude ha rechazado la petición");
         content.push(...message.content);
         webSearches += message.usage.server_tool_use?.web_search_requests ?? 0;
