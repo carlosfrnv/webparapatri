@@ -153,6 +153,23 @@ como pide la escuela, p. ej. ${
   }.
 No añadas nada más (ni avisos, ni saludo, ni pregunta final).`;
 
+/**
+ * Lista de fuentes que falta en una investigación (a veces la IA se la salta o se corta): se monta, sin internet,
+ * con las citas del texto y las páginas que de verdad consultó.
+ */
+export const sourcesPrompt = (m: AssignmentMeta, research: string, pages: { title: string; url: string }[]) =>
+  `Esta investigación para un trabajo cita fuentes en el texto, pero le falta la lista de referencias.
+INVESTIGACIÓN:
+${research}
+
+PÁGINAS QUE SE CONSULTARON (título y enlace):
+${pages.map((p) => `- ${p.title} — ${p.url}`).join("\n") || "(ninguna)"}
+
+Escribe SOLO la lista, en ${langName(m.lang)}, en formato ${m.citation === "APA" ? "APA 7" : "Vancouver"}: una línea por cada fuente citada en
+el texto, empezando por "- ", con su enlace o DOI si está entre las páginas consultadas. Usa solo los datos que veas aquí
+(autores, año, título, revista); no inventes páginas, volúmenes ni DOI. Si no hay fecha, "${m.lang === "pt" ? "s.d." : "s. f."}".
+Nada más: ni título, ni avisos, ni explicaciones.`;
+
 /** Borrador de un apartado a partir de la investigación (sin internet). */
 export const draftPrompt = (
   title: string,

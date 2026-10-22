@@ -60,15 +60,29 @@ export async function checkReference(line: string): Promise<Status> {
   return results.includes("ok") ? "ok" : "unknown";
 }
 
+// La IA no siempre titula igual la lista ("### Fontes", "## Fontes consultadas", "**Referências:**"…).
+const SOURCES_RE =
+  /^([ \t]*(?:#{1,4}[ \t]*)?\**[ \t]*(?:Fuentes|Fontes|Referencias|Referências|Bibliograf[ií]a)\b[^\n]*\n)([\s\S]*?)(?=\n[ \t]*#{1,4}[ \t]|(?![\s\S]))/im;
+// Una referencia de verdad: "Autor, A. (2023). Título…" o "Institución. (s.d.). Título…".
+export const REF_LINE_RE = /^\s*(?:[-*•]|\d+[.)])?\s*[^()\n]{2,300}?\.?\s*\((?:\d{4}[a-z]?|s\.\s?[df]\.)(?:,[^)\n]*)?\)\./i;
+
+/** Si la investigación trae su lista de fuentes con al menos una referencia. */
+export const hasSourceList = (research: string) =>
+  (research.match(SOURCES_RE)?.[2] ?? "").split("\n").some((l) => REF_LINE_RE.test(l));
+
+/** Pone las referencias bajo la lista de fuentes (la crea si no la hay). */
+export function withSourceList(research: string, lines: string[], heading: string) {
+  const m = research.match(SOURCES_RE);
+  if (!m) return `${research.trim()}\n### ${heading}\n${lines.join("\n")}`;
+  return research.replace(m[0], `${m[1]}${lines.join("\n")}\n${m[2].replace(/^\s*—\s*$/m, "")}`.trimEnd());
+}
+
 /**
  * Quita de la sección "Fuentes"/"Fontes" de una investigación las referencias rotas.
  * Devuelve el texto limpio, las URL que quedan fuera y cuántas se han podido comprobar.
  */
 export async function cleanResearchSources(research: string) {
-  // La IA no siempre titula igual la lista ("### Fontes", "## Fontes consultadas", "**Referências:**"…).
-  const m = research.match(
-    /^([ \t]*(?:#{1,4}[ \t]*)?\**[ \t]*(?:Fuentes|Fontes|Referencias|Referências|Bibliograf[ií]a)\b[^\n]*\n)([\s\S]*?)(?=\n[ \t]*#{1,4}[ \t]|(?![\s\S]))/im,
-  );
+  const m = research.match(SOURCES_RE);
   if (!m) return { research, dead: [] as string[], checked: 0 };
   // Si el servidor no tiene internet en ese momento, todo parecería roto: entonces no se quita nada.
   if ((await checkUrl("https://doi.org/")) === "dead")

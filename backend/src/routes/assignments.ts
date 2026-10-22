@@ -8,6 +8,7 @@ import {
   outlinePrompt,
   researchPrompt,
   reviewPrompt,
+  sourcesPrompt,
   splitDraft,
   splitLegacyDraft,
 } from "../assignments";
@@ -16,7 +17,7 @@ import { asyncHandler, HttpError } from "../http";
 import { langOf, type Lang, type MessageKey, t } from "../i18n";
 import { aiLimiter } from "../limits";
 import { findSources, formatSources } from "../search";
-import { cleanResearchSources } from "../linkcheck";
+import { cleanResearchSources, hasSourceList, withSourceList } from "../linkcheck";
 import { supabase } from "../supabase";
 import { WEB_ENABLED } from "../web";
 
@@ -432,6 +433,18 @@ async function doStep(
       );
       // Una investigación vacía no sirve (y dejaría el borrador sin fuentes): mejor avisar del fallo.
       if (result.text.trim().length < 80) throw new AiError("aiUnavailable");
+      // Sin lista de fuentes la bibliografía quedaría vacía: se monta aparte con lo que citó y consultó.
+      if (!hasSourceList(result.text)) {
+        const list = await generate(sourcesPrompt(a.meta, result.text, result.webSources), {
+          lang: a.meta.lang,
+          effort: "low",
+          maxTokens: 3000,
+          patient: true,
+        }).catch(() => null);
+        const lines = (list?.text ?? "").split("\n").filter((l) => /^\s*[-*•]\s+\S/.test(l));
+        if (lines.length)
+          result.text = withSourceList(result.text, lines, a.meta.lang === "pt" ? "Fontes" : "Fuentes");
+      }
       // Se comprueban solas las referencias y se quitan las que no existen (así ella no tiene que abrirlas).
       const cleaned = await cleanResearchSources(result.text).catch(() => ({
         research: result.text,

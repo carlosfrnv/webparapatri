@@ -379,8 +379,9 @@ const cleanResearch = (md: string) =>
 // La IA no siempre titula igual la lista ("### Fontes", "## Fontes consultadas", "**Referências:**"…).
 const SOURCES_RE =
   /^[ \t]*(?:#{1,4}[ \t]*)?\**[ \t]*(?:Fuentes|Fontes|Referencias|Referências|Bibliograf[ií]a)\b[^\n]*\n([\s\S]*?)(?=\n[ \t]*#{1,4}[ \t]|(?![\s\S]))/im;
-// Si no hay título, se reconocen las referencias por su forma: "Autor. (2023). Título…".
-const REF_LINE_RE = /\((?:\d{4}[a-z]?|s\.\s?[df]\.)(?:,[^)]*)?\)\.?\s+\S/i;
+// Si no hay título, se reconocen las referencias por su forma: "Autor, A. (2023). Título…"
+// (no las frases con citas, como "Rich (1997, p. 7) recorda que…").
+const REF_LINE_RE = /^\s*(?:[-*•]|\d+[.)])?\s*[^()\n]{2,300}?\.?\s*\((?:\d{4}[a-z]?|s\.\s?[df]\.)(?:,[^)\n]*)?\)\./i;
 
 /** Líneas de la sección "Fuentes"/"Fontes" de cada investigación, sin repetir. */
 function bibliography(sections: Section[], style: Meta["citation"]) {
@@ -394,6 +395,8 @@ function bibliography(sections: Section[], style: Meta["citation"]) {
     for (const raw of lines) {
       const line = raw.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
       if (line.length < 12 || line === "—") continue;
+      // En APA, solo referencias de verdad (no frases con citas que la IA haya dejado en la lista).
+      if (style === "APA" && !REF_LINE_RE.test(line)) continue;
       const key = line
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
