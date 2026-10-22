@@ -28,8 +28,8 @@ const messages = {
   forbiddenEmail: { es: "Este email no tiene acceso a esta web.", pt: "Este email não tem acesso a esta web." },
   invalidData: { es: "Datos no válidos.", pt: "Dados inválidos." },
   fileTooLarge: {
-    es: "El archivo es demasiado grande (máximo 25 MB).",
-    pt: "O ficheiro é demasiado grande (máximo 25 MB).",
+    es: "El archivo es demasiado grande (máximo 50 MB).",
+    pt: "O ficheiro é demasiado grande (máximo 50 MB).",
   },
   unexpected: {
     es: "Ha ocurrido un error inesperado. Inténtalo de nuevo.",

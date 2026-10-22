@@ -25,6 +25,8 @@ export function detectKind(mime: string, filename: string): string | null {
   // Clases grabadas (ya convertidas a M4A al subirlas).
   if (mime.startsWith("audio/") || ext === "m4a") return "audio";
   if (["pdf", "docx", "pptx"].includes(ext)) return ext;
+  // OpenDocument (LibreOffice): los lee el mismo lector que el PowerPoint.
+  if (["odt", "odp"].includes(ext)) return "office";
   if (["txt", "md"].includes(ext)) return "txt";
   return null;
 }
@@ -59,6 +61,12 @@ export async function extractText(buffer: Buffer, kind: string): Promise<Extract
     }
     case "pptx": {
       const ast = await OfficeParser.parseOffice(await withLinearFormulas(buffer, "pptx"));
+      const out = await ast.to("text");
+      pages = [{ page: null, text: String(out.value) }];
+      break;
+    }
+    case "office": {
+      const ast = await OfficeParser.parseOffice(buffer);
       const out = await ast.to("text");
       pages = [{ page: null, text: String(out.value) }];
       break;

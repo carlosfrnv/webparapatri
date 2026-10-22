@@ -75,6 +75,6 @@ export const config = {
 };
 
 export const STORAGE_BUCKET = "temario";
-export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 // Audio de clase: hasta ~3 horas en MP3 normal. Se comprime antes de guardarlo (~14 MB por hora).
 export const MAX_AUDIO_BYTES = 300 * 1024 * 1024;

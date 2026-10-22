@@ -7,18 +7,20 @@ import { errorMessage, uploadFile, type UploadFields } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import type { DocumentItem } from "@/lib/types";
 
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 // Clases grabadas: se comprimen en el servidor, así que pueden ser mucho más grandes.
 const MAX_AUDIO_BYTES = 300 * 1024 * 1024;
-const DOC_EXT = ["pdf", "docx", "pptx", "txt", "md"];
+const DOC_EXT = ["pdf", "docx", "pptx", "odt", "odp", "txt", "md"];
+// Formatos antiguos o de Apple que no se pueden leer: se dejan elegir para explicar cómo pasarlos a PDF.
+const OLD_EXT = ["ppt", "doc", "pps", "ppsx", "key", "pages"];
 export const AUDIO_EXT = ["mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "webm", "mp4", "flac", "amr", "3gp", "caf"];
-const ACCEPT = [...DOC_EXT, ...AUDIO_EXT].map((e) => `.${e}`).join(",") + ",audio/*";
+const ACCEPT = [...DOC_EXT, ...OLD_EXT, ...AUDIO_EXT].map((e) => `.${e}`).join(",") + ",audio/*";
 
 interface Pending {
   key: string;
   name: string;
   progress: number;
-  error?: "badType" | "tooBig" | "tooBigAudio" | string;
+  error?: "badType" | "oldType" | "tooBig" | "tooBigAudio" | string;
 }
 
 /** Zona grande de arrastrar y soltar, con progreso por archivo. */
@@ -51,6 +53,10 @@ export function UploadZone({
       setPending((list) => [...list, { key, name: file.name, progress: 0 }]);
 
       const audio = file.type.startsWith("audio/") || AUDIO_EXT.includes(ext);
+      if (OLD_EXT.includes(ext)) {
+        update(key, { error: "oldType" });
+        continue;
+      }
       // La biblioteca de referencia solo admite documentos.
       if ((!DOC_EXT.includes(ext) && !audio) || (audio && fields?.sourceType === "referencia")) {
         update(key, { error: "badType" });
@@ -78,11 +84,13 @@ export function UploadZone({
   const errorText = (e: string) =>
     e === "badType"
       ? t.upload.badType
-      : e === "tooBig"
-        ? t.upload.tooBig
-        : e === "tooBigAudio"
-          ? t.upload.tooBigAudio
-          : e;
+      : e === "oldType"
+        ? t.upload.oldType
+        : e === "tooBig"
+          ? t.upload.tooBig
+          : e === "tooBigAudio"
+            ? t.upload.tooBigAudio
+            : e;
 
   return (
     <div>

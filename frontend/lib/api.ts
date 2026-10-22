@@ -138,6 +138,20 @@ export async function uploadPhotos<T>(
 }
 
 async function sendForm<T>(form: FormData, onProgress: (fraction: number) => void, path: string): Promise<T> {
+  // Si se corta (p. ej., el servidor se estaba reiniciando), se espera a que vuelva y se reintenta.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await sendFormOnce<T>(form, onProgress, path);
+    } catch (err) {
+      const status = (err as ApiError).status;
+      if (attempt >= 3 || ![0, 502, 503, 504].includes(status)) throw err;
+      onProgress(0);
+      await sleep(4000 * attempt);
+    }
+  }
+}
+
+async function sendFormOnce<T>(form: FormData, onProgress: (fraction: number) => void, path: string): Promise<T> {
   // Primero despierta el servidor, para que la subida no falle a medias.
   await apiFetch("/health").catch(() => undefined);
   const headers = await authHeader();

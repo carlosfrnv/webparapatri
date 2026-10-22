@@ -222,8 +222,10 @@ const es = {
     label: "Subir archivos",
     title: "Arrastra aquí tus apuntes",
     hint: "o pulsa para elegir · PDF, Word, PowerPoint, texto o el audio de una clase",
-    badType: "Tipo no admitido. Usa PDF, Word (.docx), PowerPoint (.pptx), texto o un audio (MP3, M4A…).",
-    tooBig: "Demasiado grande (máximo 25 MB).",
+    badType: "Tipo no admitido. Usa PDF, Word (.docx), PowerPoint (.pptx), OpenDocument, texto o un audio (MP3, M4A…).",
+    tooBig: "Demasiado grande (máximo 50 MB). Si son diapositivas, prueba a dividir el PDF en dos o súbelo como fotos.",
+    oldType:
+      "Este formato (.ppt, .doc, Keynote…) no se puede leer. Ábrelo en PowerPoint, Word o Keynote y usa «Exportar → PDF» (o «Guardar como» .pptx/.docx), y sube ese archivo.",
     tooBigAudio: "Audio demasiado grande (máximo 300 MB, unas 3 horas).",
     saving: "Guardando…",
   },
@@ -1117,8 +1119,12 @@ const pt: Dictionary = {
     label: "Carregar ficheiros",
     title: "Arrasta para aqui os teus apontamentos",
     hint: "ou toca para escolher · PDF, Word, PowerPoint, texto ou o áudio de uma aula",
-    badType: "Tipo não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx), texto ou um áudio (MP3, M4A…).",
-    tooBig: "Demasiado grande (máximo 25 MB).",
+    badType:
+      "Tipo não suportado. Usa PDF, Word (.docx), PowerPoint (.pptx), OpenDocument, texto ou um áudio (MP3, M4A…).",
+    tooBig:
+      "Demasiado grande (máximo 50 MB). Se forem diapositivos, experimenta dividir o PDF em dois ou carrega-o como fotos.",
+    oldType:
+      "Este formato (.ppt, .doc, Keynote…) não pode ser lido. Abre-o no PowerPoint, Word ou Keynote e usa «Exportar → PDF» (ou «Guardar como» .pptx/.docx) e carrega esse ficheiro.",
     tooBigAudio: "Áudio demasiado grande (máximo 300 MB, umas 3 horas).",
     saving: "A guardar…",
   },
