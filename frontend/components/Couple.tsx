@@ -36,7 +36,8 @@ export function NewNotes() {
   useEffect(() => {
     api
       .get<LoveNote[]>("/couple/notes")
-      .then((list) => setNotes(list.filter((n) => !n.read_at).reverse()))
+      // La más reciente primero (el servidor ya las manda así): la última que le deja Carlos es la que ve.
+      .then((list) => setNotes(list.filter((n) => !n.read_at)))
       .catch(() => undefined);
   }, []);
 
