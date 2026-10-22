@@ -37,7 +37,67 @@ interface Meta {
   citation: "APA" | "Vancouver";
   subject?: string;
   instructions?: string;
+  cover?: Cover;
 }
+
+/** Portada del Word. */
+interface Cover {
+  institution: string;
+  course: string;
+  subject: string;
+  title: string;
+  subtitle: string;
+  authors: string;
+  number: string;
+  teacher: string;
+  year: string;
+  place: string;
+  date: string;
+  toc: boolean;
+}
+
+// Textos de la portada en el idioma del trabajo (no en el de la web).
+const COVER_TEXT = {
+  es: {
+    course: "Licenciatura en Imagen Médica y Radioterapia",
+    year: "1.º curso",
+    by: "Trabajo realizado por:",
+    number: "N.º de estudiante:",
+    teacher: "Docente:",
+    toc: "Índice",
+    references: "Referencias bibliográficas",
+  },
+  pt: {
+    course: "Licenciatura em Imagem Médica e Radioterapia",
+    year: "1.º ano",
+    by: "Trabalho realizado por:",
+    number: "N.º de estudante:",
+    teacher: "Docente:",
+    toc: "Índice",
+    references: "Referências bibliográficas",
+  },
+};
+
+function defaultCover(a: Assignment): Cover {
+  const ct = COVER_TEXT[a.meta.lang];
+  const now = new Date();
+  const month = now.toLocaleDateString(a.meta.lang === "pt" ? "pt-PT" : "es-ES", { month: "long", year: "numeric" });
+  return {
+    institution: "Escola Superior de Saúde da Cruz Vermelha Portuguesa – Alto Tâmega",
+    course: ct.course,
+    subject: a.meta.subject ?? "",
+    title: a.title,
+    subtitle: a.meta.kind,
+    authors: "",
+    number: "",
+    teacher: "",
+    year: ct.year,
+    place: "Chaves",
+    date: month.charAt(0).toUpperCase() + month.slice(1),
+    toc: true,
+  };
+}
+const coverOf = (a: Assignment): Cover => ({ ...defaultCover(a), ...(a.meta.cover ?? {}) });
 
 interface Section {
   id: string;
@@ -88,7 +148,26 @@ const TEXT = {
     empty: "Aún no tienes trabajos. Crea uno con su tema y lo vamos preparando paso a paso.",
     needsSql: "Falta un paso: hay que actualizar la base de datos (ejecutar el SQL en Supabase).",
     progress: (r: number, d: number, n: number) => `${r}/${n} investigados · ${d}/${n} redactados`,
-    tabs: { write: "Índice y redacción", bib: "Bibliografía", review: "Revisar mi texto" },
+    tabs: { write: "Índice y redacción", cover: "Portada", bib: "Bibliografía", review: "Revisar mi texto" },
+    coverIntro:
+      "Así saldrá la primera página del Word. Ya viene rellena: completa tu nombre, tu número y el docente, y cambia lo que quieras.",
+    coverFields: {
+      institution: "Escuela",
+      course: "Carrera",
+      subject: "Asignatura",
+      title: "Título del trabajo",
+      subtitle: "Subtítulo o tipo (opcional)",
+      authors: "Tu nombre completo (si sois varios, uno por línea)",
+      number: "N.º de estudiante (opcional)",
+      teacher: "Docente",
+      year: "Curso",
+      place: "Lugar",
+      date: "Fecha",
+    },
+    coverToc: "Añadir una página de índice después de la portada",
+    coverSaved: "Portada guardada",
+    coverPreview: "Vista previa",
+    coverReset: "Volver a lo de por defecto",
     editData: "Datos del trabajo",
     save: "Guardar",
     proposeOutline: "Proponer índice",
@@ -163,7 +242,26 @@ const TEXT = {
     empty: "Ainda não tens trabalhos. Cria um com o tema e vamos prepará-lo passo a passo.",
     needsSql: "Falta um passo: é preciso atualizar a base de dados (executar o SQL no Supabase).",
     progress: (r: number, d: number, n: number) => `${r}/${n} pesquisados · ${d}/${n} redigidos`,
-    tabs: { write: "Índice e redação", bib: "Bibliografia", review: "Rever o meu texto" },
+    tabs: { write: "Índice e redação", cover: "Capa", bib: "Bibliografia", review: "Rever o meu texto" },
+    coverIntro:
+      "Assim fica a primeira página do Word. Já vem preenchida: completa o teu nome, o teu número e o docente, e muda o que quiseres.",
+    coverFields: {
+      institution: "Escola",
+      course: "Curso",
+      subject: "Unidade curricular",
+      title: "Título do trabalho",
+      subtitle: "Subtítulo ou tipo (opcional)",
+      authors: "O teu nome completo (se forem vários, um por linha)",
+      number: "N.º de estudante (opcional)",
+      teacher: "Docente",
+      year: "Ano",
+      place: "Local",
+      date: "Data",
+    },
+    coverToc: "Acrescentar uma página de índice depois da capa",
+    coverSaved: "Capa guardada",
+    coverPreview: "Pré-visualização",
+    coverReset: "Voltar ao predefinido",
     editData: "Dados do trabalho",
     save: "Guardar",
     proposeOutline: "Propor índice",
@@ -479,7 +577,7 @@ function MetaFields<T extends MetaForm>({
 
 // ---------- Un trabajo ----------
 
-type Tab = "write" | "bib" | "review";
+type Tab = "write" | "cover" | "bib" | "review";
 
 export function AssignmentView({ id }: { id: string }) {
   const lang = useLang() as Lang;
@@ -555,7 +653,7 @@ export function AssignmentView({ id }: { id: string }) {
         subtitle={`${a.meta.kind} · ${tx.words_(a.meta.words)} · ${a.meta.lang === "pt" ? "Português" : "Español"} · ${a.meta.citation}${a.meta.subject ? ` · ${a.meta.subject}` : ""}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={() => exportWord(a, tx)} disabled={!drafted}>
+            <button className="btn-secondary" onClick={() => exportWord(a)} disabled={!drafted}>
               <FileDoc size={18} aria-hidden="true" /> {tx.word}
             </button>
             <button
@@ -687,6 +785,7 @@ export function AssignmentView({ id }: { id: string }) {
           )}
         </div>
       )}
+      {tab === "cover" && <CoverEditor a={a} tx={tx} onSaved={setA} />}
       {tab === "bib" && <Bibliography a={a} tx={tx} running={running} onFind={() => launch("references")} />}
       {tab === "review" && <Review id={id} tx={tx} />}
     </div>
@@ -951,6 +1050,124 @@ function SectionCard({
   );
 }
 
+function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: Assignment) => void }) {
+  const [cover, setCover] = useState<Cover>(() => coverOf(a));
+  const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState("");
+  const ct = COVER_TEXT[a.meta.lang];
+  const set = (k: keyof Cover, v: string | boolean) => {
+    setCover((c) => ({ ...c, [k]: v }));
+    setState("idle");
+  };
+  async function save(next = cover) {
+    setState("saving");
+    setError("");
+    try {
+      onSaved(await api.patch<Assignment>(`/assignments/${a.id}`, { meta: { ...a.meta, cover: next } }));
+      setState("saved");
+    } catch (err) {
+      setError(errorMessage(err));
+      setState("idle");
+    }
+  }
+  const field = (k: Exclude<keyof Cover, "toc">, multiline = false) => (
+    <label key={k} className="block">
+      <span className="text-sm font-semibold">{tx.coverFields[k]}</span>
+      {multiline ? (
+        <textarea className="input mt-1 min-h-20" value={cover[k]} onChange={(e) => set(k, e.target.value)} />
+      ) : (
+        <input className="input mt-1" value={cover[k]} onChange={(e) => set(k, e.target.value)} />
+      )}
+    </label>
+  );
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <div className="card space-y-3 p-4">
+        <p className="text-muted text-sm">{tx.coverIntro}</p>
+        {field("authors", true)}
+        <div className="grid grid-cols-2 gap-3">
+          {field("number")}
+          {field("teacher")}
+        </div>
+        {field("title")}
+        {field("subtitle")}
+        {field("subject")}
+        {field("institution")}
+        {field("course")}
+        <div className="grid grid-cols-3 gap-3">
+          {field("year")}
+          {field("place")}
+          {field("date")}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={cover.toc} onChange={(e) => set("toc", e.target.checked)} />
+          {tx.coverToc}
+        </label>
+        {error && <ErrorBox message={error} />}
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn-primary" disabled={state === "saving"} onClick={() => save()}>
+            {tx.save}
+          </button>
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              const d = defaultCover(a);
+              setCover({ ...d, authors: cover.authors, number: cover.number, teacher: cover.teacher });
+              setState("idle");
+            }}
+          >
+            {tx.coverReset}
+          </button>
+          {state === "saved" && (
+            <span className="text-success inline-flex items-center gap-1 text-sm font-medium">
+              <CheckCircle size={18} weight="fill" aria-hidden="true" /> {tx.coverSaved}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Vista previa: una hoja A4 con la misma disposición que el Word */}
+      <div>
+        <p className="text-muted mb-2 text-sm font-semibold">{tx.coverPreview}</p>
+        <div
+          className="mx-auto flex aspect-[210/297] w-full max-w-md flex-col items-center bg-white px-[9%] py-[10%] text-center text-[#222] shadow-lg"
+          style={{ fontFamily: "Calibri, Carlito, Arial, sans-serif" }}
+        >
+          <p className="text-[clamp(10px,2.2vw,15px)] font-bold">{cover.institution}</p>
+          <p className="mt-1 text-[clamp(9px,1.9vw,13px)]">{cover.course}</p>
+          {cover.subject && <p className="mt-1 text-[clamp(9px,1.9vw,13px)]">{cover.subject}</p>}
+          <div className="flex flex-1 flex-col justify-center">
+            <p className="text-[clamp(14px,3.6vw,24px)] leading-tight font-bold">{cover.title}</p>
+            {cover.subtitle && <p className="mt-2 text-[clamp(10px,2.1vw,14px)] italic">{cover.subtitle}</p>}
+          </div>
+          <div className="w-full text-right text-[clamp(9px,1.8vw,12px)] leading-relaxed">
+            {cover.authors && (
+              <>
+                <p className="font-semibold">{ct.by}</p>
+                {cover.authors.split("\n").map((l, i) => (
+                  <p key={i}>{l}</p>
+                ))}
+              </>
+            )}
+            {cover.number && (
+              <p>
+                {ct.number} {cover.number}
+              </p>
+            )}
+            {cover.teacher && (
+              <p className="mt-2">
+                {ct.teacher} {cover.teacher}
+              </p>
+            )}
+            {cover.year && <p>{cover.year}</p>}
+          </div>
+          <p className="mt-6 text-[clamp(9px,1.8vw,12px)]">{[cover.place, cover.date].filter(Boolean).join(", ")}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Bibliography({ a, tx, running, onFind }: { a: Assignment; tx: Tx; running: boolean; onFind: () => void }) {
   const list = bibliography(a.sections, a.meta.citation);
   const [copied, setCopied] = useState(false);
@@ -1055,13 +1272,61 @@ const plain = (s: string) =>
     .replace(/\[Web\]\s*/g, "")
     .trim();
 
-async function exportWord(a: Assignment, tx: Tx) {
+async function exportWord(a: Assignment) {
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
-  const body: InstanceType<typeof Paragraph>[] = [
-    new Paragraph({ text: a.title, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-  ];
-  if (a.meta.subject) body.push(new Paragraph({ text: a.meta.subject, alignment: AlignmentType.CENTER }));
-  body.push(new Paragraph({ text: "" }));
+  const cover = coverOf(a);
+  const ct = COVER_TEXT[a.meta.lang];
+
+  // Portada (sección propia: el trabajo empieza en la página siguiente).
+  const line = (
+    text: string,
+    opts: { size?: number; bold?: boolean; italics?: boolean; before?: number; right?: boolean } = {},
+  ) =>
+    new Paragraph({
+      alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.CENTER,
+      spacing: { before: opts.before ?? 0, after: 80 },
+      children: [new TextRun({ text, size: opts.size ?? 24, bold: opts.bold, italics: opts.italics })],
+    });
+  const coverPage: InstanceType<typeof Paragraph>[] = [line(cover.institution, { size: 28, bold: true })];
+  if (cover.course) coverPage.push(line(cover.course, { size: 24 }));
+  if (cover.subject) coverPage.push(line(cover.subject, { size: 24 }));
+  coverPage.push(line(cover.title, { size: 44, bold: true, before: 3600 }));
+  if (cover.subtitle) coverPage.push(line(cover.subtitle, { size: 26, italics: true, before: 120 }));
+  let first = true;
+  const right = (text: string, bold = false) => {
+    coverPage.push(line(text, { right: true, bold, before: first ? 3000 : 0 }));
+    first = false;
+  };
+  if (cover.authors.trim()) {
+    right(ct.by, true);
+    cover.authors
+      .split("\n")
+      .filter((l) => l.trim())
+      .forEach((l) => right(l.trim()));
+  }
+  if (cover.number) right(`${ct.number} ${cover.number}`);
+  if (cover.teacher) right(`${ct.teacher} ${cover.teacher}`);
+  if (cover.year) right(cover.year);
+  const placeDate = [cover.place, cover.date].filter(Boolean).join(", ");
+  if (placeDate) coverPage.push(line(placeDate, { before: first ? 4200 : 1400 }));
+
+  // Índice (sin números de página: se ajustan solos al cambiar el texto en Word y se descuadrarían).
+  const toc: InstanceType<typeof Paragraph>[] = [];
+  if (cover.toc && a.sections.length) {
+    toc.push(new Paragraph({ text: ct.toc, heading: HeadingLevel.HEADING_1 }));
+    for (const s of a.sections)
+      toc.push(
+        new Paragraph({
+          children: [new TextRun(s.title)],
+          spacing: { after: 120 },
+          indent: { left: /^\d+\.\d+/.test(s.title) ? 400 : 0 },
+        }),
+      );
+    if (bibliography(a.sections, a.meta.citation).length)
+      toc.push(new Paragraph({ children: [new TextRun(ct.references)], spacing: { after: 120 } }));
+  }
+
+  const body: InstanceType<typeof Paragraph>[] = [];
   for (const s of a.sections) {
     body.push(new Paragraph({ text: s.title, heading: HeadingLevel.HEADING_1 }));
     for (const para of s.draft.split(/\n\s*\n/)) {
@@ -1071,7 +1336,7 @@ async function exportWord(a: Assignment, tx: Tx) {
   }
   const bib = bibliography(a.sections, a.meta.citation);
   if (bib.length) {
-    body.push(new Paragraph({ text: tx.references, heading: HeadingLevel.HEADING_1 }));
+    body.push(new Paragraph({ text: ct.references, heading: HeadingLevel.HEADING_1 }));
     bib.forEach((l, i) =>
       body.push(
         new Paragraph({
@@ -1084,7 +1349,7 @@ async function exportWord(a: Assignment, tx: Tx) {
   }
   const doc = new Document({
     styles: { default: { document: { run: { font: "Calibri", size: 24 } } } },
-    sections: [{ children: body }],
+    sections: [{ children: coverPage }, ...(toc.length ? [{ children: toc }] : []), { children: body }],
   });
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);

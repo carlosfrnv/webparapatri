@@ -12,6 +12,7 @@ export interface AssignmentMeta {
   citation: "APA" | "Vancouver";
   subject?: string;
   instructions?: string; // lo que ha pedido el profesor
+  cover?: Record<string, string | boolean>; // portada del Word (no la usa la IA)
 }
 
 const langName = (l: Lang) => (l === "pt" ? "português europeu (norma do Acordo Ortográfico de 1990)" : "español de España");

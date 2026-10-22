@@ -39,6 +39,23 @@ const metaSchema = z.object({
   citation: z.enum(["APA", "Vancouver"]).default("APA"),
   subject: z.string().trim().max(160).optional(),
   instructions: z.string().max(8000).optional(),
+  // Portada del Word (la rellena ella en la pestaña "Portada").
+  cover: z
+    .object({
+      institution: z.string().max(300).default(""),
+      course: z.string().max(300).default(""),
+      subject: z.string().max(300).default(""),
+      title: z.string().max(400).default(""),
+      subtitle: z.string().max(300).default(""),
+      authors: z.string().max(600).default(""),
+      number: z.string().max(200).default(""),
+      teacher: z.string().max(300).default(""),
+      year: z.string().max(100).default(""),
+      place: z.string().max(100).default(""),
+      date: z.string().max(100).default(""),
+      toc: z.boolean().default(true),
+    })
+    .optional(),
 });
 
 const sourceSchema = z.object({
@@ -223,6 +240,9 @@ async function patchAssignment(userId: string, id: string, input: unknown) {
       sections: z.array(sectionSchema).max(40).optional(),
     })
     .parse(input);
+  // Al guardar los datos del trabajo no se pierde la portada (ese formulario no la envía).
+  if (body.meta && !body.meta.cover && current.meta.cover)
+    body.meta.cover = current.meta.cover as z.infer<typeof metaSchema>["cover"];
   // La investigación la escribe solo el servidor: se conserva la suya (puede haber terminado mientras ella
   // editaba otra cosa). Lo mismo con el borrador mientras la IA lo está redactando.
   if (body.sections) {
