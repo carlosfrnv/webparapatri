@@ -105,7 +105,25 @@ function defaultCover(a: Assignment): Cover {
     ...Object.fromEntries(Object.entries(a.cover_defaults ?? {}).filter(([, v]) => typeof v === "string" && v.trim())),
   };
 }
-const coverOf = (a: Assignment): Cover => ({ ...defaultCover(a), ...(a.meta.cover ?? {}) });
+/** Quita emoticonos y espacios de sobra de un nombre de asignatura. */
+const plainName = (t: string) =>
+  t.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+
+/** Los trabajos se entregan en portugués: la asignatura va con su nombre en portugués, como en su horario. */
+const ptName = (s?: Subject) => (s ? plainName(s.name_pt ?? s.name) : undefined);
+
+/** Pasa un nombre guardado (quizá en español o con emoticono) al nombre en portugués de esa asignatura. */
+function ptSubject(text: string, subjects: Subject[]) {
+  const t = plainName(text);
+  const hit = subjects.find((s) => plainName(s.name) === t || ptName(s) === t);
+  return hit ? ptName(hit)! : t;
+}
+
+const coverOf = (a: Assignment, subjects: Subject[] = []): Cover => {
+  const cover = { ...defaultCover(a), ...(a.meta.cover ?? {}) };
+  const own = subjects.find((s) => s.id === a.subject_id);
+  return { ...cover, subject: cover.subject ? ptSubject(cover.subject, subjects) : (ptName(own) ?? "") };
+};
 
 interface Section {
   id: string;
@@ -381,9 +399,6 @@ function bibliography(sections: Section[], style: Meta["citation"]) {
 }
 
 // ---------- Lista y creación ----------
-
-/** Los trabajos se entregan en portugués: la asignatura va con su nombre oficial en portugués. */
-const ptName = (s?: Subject) => (s ? (s.name_pt ?? s.name) : undefined);
 
 export function AssignmentList() {
   const lang = useLang() as Lang;
@@ -679,10 +694,10 @@ export function AssignmentView({ id }: { id: string }) {
       <PageHeader
         icon={NotePencil}
         title={a.title}
-        subtitle={`${a.meta.kind} · ${tx.words_(a.meta.words)} · ${a.meta.lang === "pt" ? "Português" : "Español"} · ${a.meta.citation}${a.meta.subject ? ` · ${a.meta.subject}` : ""}`}
+        subtitle={`${a.meta.kind} · ${tx.words_(a.meta.words)} · ${a.meta.lang === "pt" ? "Português" : "Español"} · ${a.meta.citation}${a.meta.subject ? ` · ${ptSubject(a.meta.subject, subjects)}` : ""}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={() => exportWord(a)} disabled={!drafted}>
+            <button className="btn-secondary" onClick={() => exportWord(a, subjects)} disabled={!drafted}>
               <FileDoc size={18} aria-hidden="true" /> {tx.word}
             </button>
             <button
@@ -822,7 +837,7 @@ export function AssignmentView({ id }: { id: string }) {
           )}
         </div>
       )}
-      {tab === "cover" && <CoverEditor a={a} tx={tx} onSaved={setA} />}
+      {tab === "cover" && <CoverEditor a={a} subjects={subjects} tx={tx} onSaved={setA} />}
       {tab === "bib" && <Bibliography a={a} tx={tx} running={running} onFind={() => launch("references")} />}
       {tab === "review" && <Review id={id} tx={tx} />}
     </div>
@@ -1107,8 +1122,22 @@ function authorLines(cover: Cover, ct: (typeof COVER_TEXT)["es"]) {
   return lines;
 }
 
-function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: Assignment) => void }) {
-  const [cover, setCover] = useState<Cover>(() => coverOf(a));
+function CoverEditor({
+  a,
+  subjects,
+  tx,
+  onSaved,
+}: {
+  a: Assignment;
+  subjects: Subject[];
+  tx: Tx;
+  onSaved: (a: Assignment) => void;
+}) {
+  const [raw, setCover] = useState<Cover>(() => coverOf(a, subjects));
+  // Las asignaturas pueden llegar después de abrir la pestaña: el nombre se pasa al portugués al mostrarlo.
+  const cover = { ...raw, subject: raw.subject && ptSubject(raw.subject, subjects) };
+  // Sus asignaturas en portugués (y la que ya tuviera escrita, por si no es ninguna de ellas).
+  const subjectOptions = [...new Set([...subjects.map((s) => ptName(s)!), cover.subject].filter(Boolean))];
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [error, setError] = useState("");
   const ct = COVER_TEXT[a.meta.lang];
@@ -1181,7 +1210,17 @@ function CoverEditor({ a, tx, onSaved }: { a: Assignment; tx: Tx; onSaved: (a: A
         </div>
         {field("title")}
         {field("subtitle")}
-        {field("subject")}
+        <label className="block">
+          <span className="text-sm font-semibold">{tx.coverFields.subject}</span>
+          <select className="input mt-1" value={cover.subject} onChange={(e) => set("subject", e.target.value)}>
+            <option value="">—</option>
+            {subjectOptions.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
         {field("course")}
         <div className="grid grid-cols-2 gap-3">
           {field("year")}
@@ -1409,7 +1448,7 @@ function draftBlocks(draft: string) {
   return out;
 }
 
-async function exportWord(a: Assignment) {
+async function exportWord(a: Assignment, subjects: Subject[]) {
   const {
     Document,
     Packer,
@@ -1425,7 +1464,7 @@ async function exportWord(a: Assignment) {
     TabStopType,
     LeaderType,
   } = await import("docx");
-  const cover = coverOf(a);
+  const cover = coverOf(a, subjects);
   const ct = COVER_TEXT[a.meta.lang];
   const titles = displayTitles(a.sections);
   const bib = wordBibliography(a);

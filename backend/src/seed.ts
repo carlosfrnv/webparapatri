@@ -62,3 +62,18 @@ export function localName(subject: { name: string; translations?: unknown }, lan
   const t = subject.translations as Partial<Record<Lang, string>> | null | undefined;
   return t?.[lang] ?? subject.name;
 }
+
+const plain = (s: string) =>
+  s.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+const key = (s: string) => plain(s).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+/**
+ * Nombre en portugués, como en su horario (los trabajos se entregan en portugués). Si renombró una de las
+ * iniciales (p. ej., le puso un emoticono), se reconoce igual; las suyas quedan con su nombre, sin emoticonos.
+ */
+export function ptSubjectName(subject: { name: string; translations?: unknown }): string {
+  const t = subject.translations as Partial<Record<Lang, string>> | null | undefined;
+  if (t?.pt) return t.pt;
+  const k = key(subject.name);
+  return INITIAL_SUBJECTS.find((s) => key(s.es) === k || key(s.pt) === k)?.pt ?? plain(subject.name);
+}

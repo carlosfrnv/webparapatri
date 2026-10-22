@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { userIdOf } from "../auth";
-import { localName, seedSubjectsIfEmpty } from "../seed";
+import { localName, ptSubjectName, seedSubjectsIfEmpty } from "../seed";
 import { supabase } from "../supabase";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
@@ -34,7 +34,7 @@ subjectsRouter.get(
         ...s,
         name: localName({ name: s.name, translations }, langOf(req)),
         // Los trabajos se entregan en portugués: allí se usa siempre el nombre oficial en portugués.
-        name_pt: localName({ name: s.name, translations }, "pt"),
+        name_pt: ptSubjectName({ name: s.name, translations }),
         document_count: (documents as unknown as { count: number }[])[0]?.count ?? 0,
       })),
     );
