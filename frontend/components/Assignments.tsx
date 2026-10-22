@@ -352,6 +352,9 @@ function MetaFields<T extends MetaForm>({
   tx: Tx;
   lang: Lang;
 }) {
+  // Se escribe libremente (se puede borrar del todo) y solo se ajusta a 100–30 000 al salir del campo.
+  const [wordsText, setWordsText] = useState(String(form.words));
+  const clampWords = (v: string) => Math.max(100, Math.min(30000, Math.round(Number(v) || 100)));
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -371,8 +374,18 @@ function MetaFields<T extends MetaForm>({
             min={100}
             max={30000}
             step={100}
-            value={form.words}
-            onChange={(e) => setForm({ ...form, words: Math.max(100, Math.min(30000, Number(e.target.value) || 100)) })}
+            inputMode="numeric"
+            value={wordsText}
+            onChange={(e) => {
+              setWordsText(e.target.value);
+              const n = Number(e.target.value);
+              if (n >= 100 && n <= 30000) setForm({ ...form, words: Math.round(n) });
+            }}
+            onBlur={() => {
+              const n = clampWords(wordsText);
+              setWordsText(String(n));
+              setForm({ ...form, words: n });
+            }}
           />
         </label>
         <label className="block">
