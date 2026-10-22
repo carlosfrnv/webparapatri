@@ -127,7 +127,10 @@ Nuclear…), organismos oficiales (IAEA, OMS, DGS, SNS), hospitales e institutos
 Evita blogs, foros y webs comerciales. Wikipedia solo como pista para llegar a la fuente original, nunca como fuente.
 PRIORIZA fuentes con autor y año: artículos científicos (mejor revisiones con DOI), libros e informes oficiales con fecha.
 Las páginas institucionales sin fecha (p. ej., "What is nuclear medicine?" de una sociedad) solo como complemento,
-como mucho 1 o 2: si usas una, busca en ella la fecha de actualización antes de dar la referencia por "sin fecha".`
+como mucho 1 o 2: si usas una, busca en ella la fecha de actualización antes de dar la referencia por "sin fecha".
+Usa VARIAS fuentes distintas (al menos 3), no todo de una sola. Un artículo (también si lo encuentras en ResearchGate,
+Academia.edu o similares) SIEMPRE tiene autores y año: ponlos, con su revista y DOI si lo tiene; nunca lo cites como
+"Título (s.d.)" ni con el nombre de la web como si fuera el autor.`
     : `Ahora no puedes buscar en internet: usa solo lo que sepas con seguridad y sus apuntes. No inventes referencias.`
 }
 REGLAS (es una estudiante de primer curso; no le pidas comprobaciones de investigadora):
