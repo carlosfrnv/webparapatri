@@ -110,6 +110,37 @@ function Shell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const dedicatoria = useDedicatoria();
   useEffect(() => onServerWaking(setWaking), []);
+  // Si se ha publicado una versión nueva mientras la web estaba abierta (en el iPad la pestaña puede pasar días
+  // abierta), se recarga sola al volver a ella o al cambiar de sección.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") return;
+    let last = 0;
+    const check = () => {
+      if (document.visibilityState !== "visible" || Date.now() - last < 60_000) return;
+      last = Date.now();
+      fetch(`/version?t=${last}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v: { id?: string } | null) => {
+          if (!v?.id || v.id === process.env.BUILD_ID) return;
+          // Una sola vez por versión: si tras recargar sigue sin coincidir, no se entra en un bucle.
+          try {
+            if (sessionStorage.getItem("reloaded-for") === v.id) return;
+            sessionStorage.setItem("reloaded-for", v.id);
+          } catch {
+            return;
+          }
+          window.location.reload();
+        })
+        .catch(() => undefined);
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [pathname]);
   // El service worker guarda la web para abrirla sin internet; al volver la conexión se envían los repasos pendientes.
   useEffect(() => {
     if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator)
