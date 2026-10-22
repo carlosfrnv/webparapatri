@@ -50,6 +50,8 @@ interface Section {
   // Lo que la IA está haciendo ahora en el servidor con este apartado, y el error si falló.
   status?: "research" | "draft" | null;
   error?: string | null;
+  // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
+  notes?: string;
 }
 
 interface Assignment {
@@ -96,7 +98,19 @@ const TEXT = {
     addSection: "Añadir apartado",
     goal: "Qué contar",
     research: "Investigar",
-    researchLabel: "Investigación y fuentes",
+    researchLabel: "Fuentes que ha consultado la IA",
+    researchHint:
+      "Son las páginas y artículos que la IA ha leído para escribir este apartado. No tienes que hacer nada con ellos: van solos a la Bibliografía. Si quieres, abre uno o dos para ver que existen.",
+    notesTitle: "📝 Antes de entregar, mira esto:",
+    retry: "Reintentar",
+    guideTitle: "¿Qué tengo que hacer?",
+    guide: [
+      "Crea el índice (la IA te lo propone).",
+      "Pulsa «Hacer el trabajo entero»: la IA busca fuentes y escribe todos los apartados.",
+      "Lee cada borrador y cámbialo con tus palabras: quita, añade o reordena lo que quieras. Si sale un recuadro amarillo, léelo.",
+      "En la pestaña «Bibliografía», abre 2 o 3 enlaces para ver que existen. Si alguno no abre, borra esa frase o pide «Rehacer».",
+      "Pulsa «Descargar en Word», añade la portada (tu nombre, asignatura, profesor y fecha) y entrégalo.",
+    ],
     researching: "Buscando en fuentes fiables… (puede tardar un minuto)",
     auto: "Hacer el trabajo entero",
     autoHint:
@@ -158,7 +172,19 @@ const TEXT = {
     addSection: "Adicionar secção",
     goal: "O que contar",
     research: "Pesquisar",
-    researchLabel: "Pesquisa e fontes",
+    researchLabel: "Fontes que a IA consultou",
+    researchHint:
+      "São as páginas e artigos que a IA leu para escrever esta secção. Não tens de fazer nada com eles: vão sozinhos para a Bibliografia. Se quiseres, abre um ou dois para ver que existem.",
+    notesTitle: "📝 Antes de entregar, vê isto:",
+    retry: "Tentar outra vez",
+    guideTitle: "O que tenho de fazer?",
+    guide: [
+      "Cria o índice (a IA propõe-to).",
+      "Toca em «Fazer o trabalho todo»: a IA procura fontes e escreve todas as secções.",
+      "Lê cada rascunho e muda-o com as tuas palavras: tira, acrescenta ou reordena o que quiseres. Se aparecer um quadro amarelo, lê-o.",
+      "No separador «Bibliografia», abre 2 ou 3 ligações para ver que existem. Se alguma não abrir, apaga essa frase ou pede «Refazer».",
+      "Toca em «Descarregar em Word», acrescenta a capa (o teu nome, disciplina, professor e data) e entrega.",
+    ],
     researching: "A procurar em fontes fiáveis… (pode demorar um minuto)",
     auto: "Fazer o trabalho todo",
     autoHint:
@@ -196,6 +222,15 @@ const TEXT = {
 type Tx = (typeof TEXT)["es"];
 
 const newId = () => Math.random().toString(36).slice(2, 10);
+
+/** Investigaciones antiguas traían "Pendiente de confirmar": ya no se enseña (la IA no usa esos datos). */
+const cleanResearch = (md: string) =>
+  md
+    .replace(
+      /\n?#{2,4}\s*(Pendiente de confirmar|Por confirmar|Dónde buscar|Onde procurar)[\s\S]*?(?=\n#{2,4}\s|$)/gi,
+      "",
+    )
+    .trim();
 
 /** Líneas de la sección "Fuentes"/"Fontes" de cada investigación, sin repetir. */
 function bibliography(sections: Section[], style: Meta["citation"]) {
@@ -574,7 +609,27 @@ export function AssignmentView({ id }: { id: string }) {
 
       {tab === "write" && (
         <div className="space-y-4">
-          <p className="bg-surface-2 text-muted rounded-xl p-3 text-sm">{tx.integrity}</p>
+          <details className="card p-4" open={drafted < n || n === 0}>
+            <summary className="cursor-pointer font-semibold">{tx.guideTitle}</summary>
+            <ol className="mt-3 space-y-2 text-sm">
+              {tx.guide.map((step, k) => {
+                const done = (k === 0 && n > 0) || (k === 1 && n > 0 && drafted === n);
+                return (
+                  <li key={k} className="flex gap-2">
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                        done ? "bg-success text-white" : "bg-accent-soft text-accent"
+                      }`}
+                    >
+                      {done ? "✓" : k + 1}
+                    </span>
+                    <span className={done ? "text-muted line-through" : ""}>{step}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="text-muted mt-3 text-xs">{tx.integrity}</p>
+          </details>
           {n === 0 ? (
             <OutlineStart
               id={id}
@@ -848,16 +903,19 @@ function SectionCard({
         </button>
       </div>
       {working && <Spinner label={working === "research" ? tx.researching : tx.drafting} />}
-      {s.error && !working && <ErrorBox message={s.error} />}
+      {s.error && !working && (
+        <ErrorBox message={s.error} onRetry={busy ? undefined : () => onRun(s.research ? "draft" : "research")} />
+      )}
 
       {s.research && (
-        <details className="bg-surface-2 rounded-xl p-3" open={!s.draft}>
+        <details className="bg-surface-2 rounded-xl p-3">
           <summary className="cursor-pointer text-sm font-semibold">
             <BookOpen size={16} className="mr-1 inline" aria-hidden="true" />
             {tx.researchLabel}
           </summary>
+          <p className="text-muted mt-2 text-xs">{tx.researchHint}</p>
           <div className="mt-2 text-sm">
-            <Markdown>{s.research}</Markdown>
+            <Markdown>{cleanResearch(s.research)}</Markdown>
           </div>
           {s.sources.length > 0 && <SourceChips sources={s.sources} />}
         </details>
@@ -878,6 +936,12 @@ function SectionCard({
             disabled={working === "draft"}
           />
         </label>
+      )}
+      {s.notes && s.draft && !working && (
+        <div className="bg-warning-soft rounded-xl p-3 text-sm">
+          <p className="font-semibold">{tx.notesTitle}</p>
+          <Markdown>{s.notes}</Markdown>
+        </div>
       )}
     </div>
   );

@@ -55,9 +55,12 @@ Evita blogs, foros y webs comerciales. Wikipedia solo como pista para llegar a l
 PRIORIZA fuentes con autor y año: artículos científicos (mejor revisiones con DOI), libros e informes oficiales con fecha.
 Las páginas institucionales sin fecha (p. ej., "What is nuclear medicine?" de una sociedad) solo como complemento,
 como mucho 1 o 2: si usas una, busca en ella la fecha de actualización antes de dar la referencia por "sin fecha".`
-    : `Ahora no puedes buscar en internet: usa solo lo que sepas con seguridad y sus apuntes, y en "Dónde buscar" indica
-fuentes fiables concretas para confirmarlo. No inventes referencias.`
+    : `Ahora no puedes buscar en internet: usa solo lo que sepas con seguridad y sus apuntes. No inventes referencias.`
 }
+REGLAS (es una estudiante de primer curso; no le pidas comprobaciones de investigadora):
+- Incluye SOLO datos que hayas leído en una fuente concreta. Si algo no lo puedes comprobar, NO lo incluyas
+  (no le pidas que lo verifique ella ni que busque en bases de datos).
+- Nada de citas secundarias ("como se citó en…"): cita solo las fuentes que has leído tú.
 Usa también sus apuntes si tratan el tema (cítalos como "apuntes de clase").
 APUNTES RELACIONADOS:
 ${notes || "(nada en sus apuntes)"}
@@ -69,9 +72,7 @@ en el texto (${m.citation === "APA" ? "Autor o Institución, año" : "número de
 ### ${m.lang === "pt" ? "Fontes" : "Fuentes"}
 Una línea por fuente realmente consultada, ya en formato ${m.citation === "APA" ? "APA 7" : "Vancouver"}, con su enlace.
 Usa "${m.lang === "pt" ? "s.d." : "s. f."}" solo si de verdad no hay ninguna fecha.
-### ${m.lang === "pt" ? "Por confirmar" : "Pendiente de confirmar"}
-Datos que no has podido verificar en ninguna fuente fiable y dónde buscarlos (si no hay, escribe "—").
-No añadas nada más (ni saludo ni pregunta final).`;
+No añadas nada más (ni avisos, ni saludo, ni pregunta final).`;
 
 /** Borrador de un apartado a partir de la investigación (sin internet). */
 export const draftPrompt = (title: string, m: AssignmentMeta, section: { title: string; goal: string; words: number }, all: string[], research: string, prev: string) =>
@@ -80,7 +81,8 @@ ${context(title, m)}
 ÍNDICE: ${all.join(" · ")}
 APARTADO A REDACTAR: «${section.title}» — ${section.goal} (unas ${section.words} palabras).
 ${prev ? `FINAL DEL APARTADO ANTERIOR (para enlazar sin repetir):\n${prev.slice(-800)}\n` : ""}
-INVESTIGACIÓN DE ESTE APARTADO (usa solo estos datos y sus citas; no inventes datos ni referencias):
+INVESTIGACIÓN DE ESTE APARTADO (usa solo estos datos y sus citas; no inventes datos ni referencias; si hay una
+sección "Pendiente de confirmar"/"Por confirmar", ignórala y no uses esos datos):
 ${research || "(no hay investigación: escribe solo lo general y seguro, sin cifras ni fechas, y sin citas inventadas)"}
 
 Escribe el texto del apartado en ${langName(m.lang)}, registro académico pero claro, propio de una estudiante de primer curso
@@ -91,8 +93,33 @@ CITAS COMO EN UN TRABAJO REAL (no después de cada frase):
 - Si varias frases seguidas salen de la misma fuente, cítala UNA vez en ese párrafo y no la repitas.
 - Alterna con alguna cita narrativa (p. ej., "Según la IAEA (2021), …").
 - Las ideas generales y conocidas no necesitan cita; cita los datos concretos, cifras, fechas y definiciones.
-No escribas notas, avisos ni comentarios para la estudiante: solo el texto del apartado.
-Es un borrador para que ella lo revise y lo adapte con sus palabras.`;
+Nada de citas secundarias ("como se citó en…").
+El texto es SOLO el apartado, listo para pegar en el trabajo: sin notas, avisos, comentarios ni instrucciones dentro.
+Si de verdad hay algo que ella deba revisar, escríbelo DESPUÉS del texto, tras una línea que diga exactamente ${NOTES_MARK},
+en como mucho 3 frases muy cortas y fáciles de hacer en un minuto (nunca "búscalo en PubMed" ni "confirma el DOI").
+Si no hay nada que revisar (lo normal), no pongas esa línea.`;
+
+/**
+ * Borradores antiguos: la IA dejaba al final, tras una línea "---", avisos para ella ("confirma…", "verifica…").
+ * Si el final tiene esa pinta, se pasa al recuadro de avisos para que no acabe en el Word.
+ */
+export function splitLegacyDraft(draft: string) {
+  const i = draft.lastIndexOf("\n---");
+  if (i < 0) return null;
+  const tail = draft.slice(i).replace(/^\n-{3,}\s*/, "");
+  const advice = /(confirm|verific|comprueb|compro|c[ií]tala|te recomiendo|recomendo|no la concretes|búscala|procura)/i;
+  if (tail.length > 3000 || !advice.test(tail)) return null;
+  return { body: draft.slice(0, i).trim(), notes: tail.trim() };
+}
+
+/** Separa el texto del borrador de los avisos para ella (que van en un recuadro aparte, no en el Word). */
+export const NOTES_MARK = "===NOTAS===";
+export function splitDraft(text: string) {
+  const i = text.indexOf(NOTES_MARK);
+  const body = (i >= 0 ? text.slice(0, i) : text).replace(/\n-{3,}\s*$/, "").trim();
+  const notes = i >= 0 ? text.slice(i + NOTES_MARK.length).trim() : "";
+  return { body, notes };
+}
 
 /** Revisión de un texto suyo (comentarios en el idioma de la web). */
 export const reviewPrompt = (uiLang: Lang, title: string, m: AssignmentMeta, text: string) =>

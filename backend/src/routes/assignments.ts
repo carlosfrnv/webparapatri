@@ -8,6 +8,8 @@ import {
   outlinePrompt,
   researchPrompt,
   reviewPrompt,
+  splitDraft,
+  splitLegacyDraft,
 } from "../assignments";
 import { userIdOf } from "../auth";
 import { asyncHandler, HttpError } from "../http";
@@ -53,6 +55,8 @@ const sectionSchema = z.object({
   research: z.string().max(40000).default(""),
   sources: z.array(sourceSchema).max(30).default([]),
   draft: z.string().max(60000).default(""),
+  // Avisos de la IA para ella sobre el borrador (se ven aparte y no van al Word).
+  notes: z.string().max(4000).default(""),
   // Lo que la IA está haciendo ahora con este apartado y, si falló, por qué (código del mensaje).
   status: z.enum(["research", "draft"]).nullable().optional(),
   error: z.string().max(60).nullable().optional(),
@@ -142,6 +146,12 @@ assignmentsRouter.post(
   }),
 );
 
+/** Avisos que borradores antiguos llevaban dentro del texto: se pasan al recuadro aparte. */
+function legacy(s: Section) {
+  const split = !s.notes && s.draft ? splitLegacyDraft(s.draft) : null;
+  return split ? { draft: split.body, notes: split.notes } : {};
+}
+
 /** Lo que se le manda a la web: sin estados colgados (si el servidor se reinició a medias) y con los errores traducidos. */
 function present(a: Awaited<ReturnType<typeof own>>, lang: Lang) {
   const running = jobs.has(a.id);
@@ -150,6 +160,7 @@ function present(a: Awaited<ReturnType<typeof own>>, lang: Lang) {
     running,
     sections: a.sections.map((s) => ({
       ...s,
+      ...legacy(s),
       status: running ? (s.status ?? null) : null,
       error: s.error
         ? t(
@@ -204,6 +215,7 @@ assignmentsRouter.patch(
           status: old.status ?? null,
           error: old.error ?? null,
           draft: old.status === "draft" ? old.draft : x.draft,
+          notes: old.status === "draft" ? old.notes : x.notes,
         };
       });
     }
@@ -359,7 +371,8 @@ async function doStep(
         { lang: a.meta.lang, effort: "medium", maxTokens: 8000, patient: true },
       );
       await patchSection(userId, id, sid, {
-        draft: result.text.slice(0, 60000),
+        draft: splitDraft(result.text).body.slice(0, 60000),
+        notes: splitDraft(result.text).notes.slice(0, 4000),
         status: null,
       });
     }
