@@ -78,7 +78,10 @@ const sectionSchema = z.object({
   // Si las referencias de la investigación ya se han comprobado (enlaces y DOI que existen).
   checked: z.boolean().default(false),
   // Lo que la IA está haciendo ahora con este apartado y, si falló, por qué (código del mensaje).
-  status: z.enum(["research", "draft", "queued"]).nullable().optional(),
+  status: z
+    .enum(["research", "draft", "queued", "translate"])
+    .nullable()
+    .optional(),
   error: z.string().max(60).nullable().optional(),
 });
 type Section = z.infer<typeof sectionSchema>;
@@ -364,7 +367,7 @@ assignmentsRouter.post(
 // (a la vez chocaría con el límite por minuto de la IA).
 interface Step {
   sid: string;
-  kind: "research" | "draft";
+  kind: "research" | "draft" | "translate";
   // "Hacer el trabajo entero" y "Buscar referencias": solo si aún no está hecho.
   ifMissing?: boolean;
 }
@@ -511,14 +514,20 @@ async function enqueue(userId: string, id: string, steps: Step[]) {
         );
         if (!cur) continue;
         const done =
-          st.kind === "research" ? !!cur.research.trim() : !!cur.draft.trim();
+          st.kind === "research"
+            ? !!cur.research.trim()
+            : st.kind === "draft"
+              ? !!cur.draft.trim()
+              : false;
         if (st.ifMissing && done) {
           if (cur.status === "queued" && !queue.some((q) => q.sid === cur.id))
             await patchSection(userId, id, cur.id, { status: null });
           continue;
         }
         try {
-          await doStep(userId, id, st.sid, st.kind);
+          if (st.kind === "translate")
+            await translateSection(userId, id, st.sid);
+          else await doStep(userId, id, st.sid, st.kind);
         } catch (err) {
           // Si la IA no está disponible, no tiene sentido seguir: se vacía la cola.
           if (err instanceof AiError && err.key === "aiUnavailable")
@@ -581,6 +590,127 @@ assignmentsRouter.post(
           kind: "research" as const,
           ifMissing: true,
         })),
+    );
+    await reply(req, res, userId, a.id);
+  }),
+);
+
+/** Pasa un apartado ya escrito al portugués europeo (título, objetivo, borrador y avisos). */
+async function translateSection(userId: string, id: string, sid: string) {
+  const a = await patchSection(userId, id, sid, {
+    status: "translate",
+    error: null,
+  });
+  const s = a.sections.find((x) => x.id === sid);
+  if (!s) return;
+  try {
+    const out = await completeJson(
+      `Traduce al PORTUGUÊS EUROPEU (novo Acordo Ortográfico) este apartado de un trabajo académico de 1.º de la
+Licenciatura em Imagem Médica e Radioterapia (Portugal). Es una traducción, no un resumen: conserva todo el contenido,
+los párrafos y las listas tal cual.
+- Terminología técnica portuguesa de Portugal (radiofármaco, tomografia computorizada, positrão, gamacâmara, ecografia…).
+- Citas: mantenlas exactamente (autor, año, página); en las narrativas "y" pasa a "e"; "s. f." pasa a "s.d."; "et al." igual.
+- Siglas: usa la forma portuguesa habitual (TC, RM, OMS, DGS…) y en la primera aparición el nombre en portugués.
+- Mantén la numeración del título si la tiene. Si un campo está vacío, déjalo vacío.
+Responde SOLO con JSON {"title":"...","goal":"...","draft":"...","notes":"..."}.
+TÍTULO: ${s.title}
+OBJETIVO: ${s.goal}
+BORRADOR:
+${s.draft}
+AVISOS:
+${s.notes ?? ""}`,
+      z.object({
+        title: z.string().min(1).max(200),
+        goal: z.string().max(1000).default(""),
+        draft: z.string().max(60000).default(""),
+        notes: z.string().max(4000).default(""),
+      }),
+      { lang: "pt", effort: "low", maxTokens: 12000, patient: true },
+    );
+    // Si el borrador era largo y la traducción sale muy corta, mejor no perder el texto: se avisa del fallo.
+    if (s.draft && out.draft.length < s.draft.length * 0.6)
+      throw new AiError("aiBadFormat");
+    await patchSection(userId, id, sid, { ...out, status: null });
+  } catch (err) {
+    console.error("[trabajos] traducir:", err);
+    await patchSection(userId, id, sid, {
+      status: null,
+      error: err instanceof AiError ? err.key : "unexpected",
+    }).catch(() => undefined);
+    throw err;
+  }
+}
+
+/** La portada ya guardada en español: los textos por defecto pasan a portugués (lo que ella escribió, no). */
+export function coverToPt(cover: Record<string, string | boolean>) {
+  const months: Record<string, string> = {
+    enero: "janeiro",
+    febrero: "fevereiro",
+    marzo: "março",
+    abril: "abril",
+    mayo: "maio",
+    junio: "junho",
+    julio: "julho",
+    agosto: "agosto",
+    septiembre: "setembro",
+    octubre: "outubro",
+    noviembre: "novembro",
+    diciembre: "dezembro",
+  };
+  const fixed: Record<string, string> = {
+    "Licenciatura en Imagen Médica y Radioterapia":
+      "Licenciatura em Imagem Médica e Radioterapia",
+    "1.º curso": "1.º ano",
+    "2.º curso": "2.º ano",
+    "3.º curso": "3.º ano",
+    "4.º curso": "4.º ano",
+    "1.er semestre": "1.º semestre",
+    "Trabajo escrito": "Trabalho escrito",
+  };
+  const out: Record<string, string | boolean> = {};
+  for (const [k, v] of Object.entries(cover)) {
+    if (typeof v !== "string") out[k] = v;
+    else if (k === "date")
+      out[k] = v.replace(
+        /([A-Za-zñ]+)(\s+de)?(\s+\d{4})/,
+        (m, mes: string, _de: string, year: string) =>
+          months[mes.toLowerCase()] ? `${months[mes.toLowerCase()]}${year}` : m,
+      );
+    else out[k] = fixed[v.trim()] ?? v;
+  }
+  return out;
+}
+
+/** Pasa todo el trabajo al portugués (la escuela pide entregarlos en portugués). */
+assignmentsRouter.post(
+  "/:id/translate",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const id = req.params.id as string;
+    const a = await withLock(id, async () => {
+      const cur = await own(userId, id);
+      const meta = {
+        ...cur.meta,
+        lang: "pt" as const,
+        kind:
+          cur.meta.kind === "Trabajo escrito"
+            ? "Trabalho escrito"
+            : cur.meta.kind,
+        cover: cur.meta.cover ? coverToPt(cur.meta.cover) : undefined,
+      };
+      const { error } = await supabase
+        .from("assignments")
+        .update({ meta, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", userId);
+      check(error);
+      return { ...cur, meta };
+    });
+    await enqueue(
+      userId,
+      a.id,
+      a.sections.map((x) => ({ sid: x.id, kind: "translate" as const })),
     );
     await reply(req, res, userId, a.id);
   }),

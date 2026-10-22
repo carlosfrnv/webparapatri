@@ -116,7 +116,7 @@ interface Section {
   sources: WebSource[];
   draft: string;
   // Lo que la IA está haciendo ahora en el servidor con este apartado, y el error si falló.
-  status?: "research" | "draft" | "queued" | null;
+  status?: "research" | "draft" | "queued" | "translate" | null;
   error?: string | null;
   // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
   notes?: string;
@@ -213,6 +213,9 @@ const TEXT = {
     draft: "Redactar borrador",
     drafting: "Redactando…",
     queued: "En cola: la IA lo hará en cuanto termine con el anterior…",
+    translating: "Traduciendo al portugués…",
+    toPt: "Este trabajo está en español y la escuela pide entregarlos en portugués. La IA traduce todos los apartados (con las citas y referencias adaptadas) y el Word saldrá en portugués.",
+    toPtBtn: "Pasar el trabajo a portugués",
     redo: "Rehacer",
     draftLabel: "Borrador (edítalo con tus palabras)",
     noResearch: "Al redactar, la IA investiga antes este apartado para que el borrador tenga datos y citas.",
@@ -311,6 +314,9 @@ const TEXT = {
     draft: "Redigir rascunho",
     drafting: "A redigir…",
     queued: "Em fila: a IA faz isto assim que acabar o anterior…",
+    translating: "A traduzir para português…",
+    toPt: "Este trabalho está em espanhol e a escola pede para os entregar em português. A IA traduz todas as secções (com as citações e referências adaptadas) e o Word sai em português.",
+    toPtBtn: "Passar o trabalho para português",
     redo: "Refazer",
     draftLabel: "Rascunho (edita-o com as tuas palavras)",
     noResearch: "Ao redigir, a IA pesquisa antes esta secção para o rascunho ter dados e citações.",
@@ -390,10 +396,10 @@ export function AssignmentList() {
   const [form, setForm] = useState({
     title: "",
     subject_id: "",
-    kind: KINDS[lang][0],
+    kind: KINDS.pt[0],
     words: 2000,
-    // Por defecto, el trabajo se escribe en el idioma de la web (se puede cambiar en el formulario).
-    lang: lang,
+    // La escuela pide entregar los trabajos en portugués (se puede cambiar en el formulario).
+    lang: "pt" as Lang,
     citation: "APA" as Meta["citation"],
     instructions: "",
   });
@@ -761,6 +767,14 @@ export function AssignmentView({ id }: { id: string }) {
             />
           ) : (
             <>
+              {!running && a.meta.lang === "es" && (
+                <div className="card border-accent space-y-2 border-2 p-4">
+                  <p className="text-sm">🇵🇹 {tx.toPt}</p>
+                  <button className="btn-primary" onClick={() => launch("translate")}>
+                    {tx.toPtBtn}
+                  </button>
+                </div>
+              )}
               {!running && drafted < n && (
                 <div className="card space-y-2 p-4">
                   <button className="btn-primary w-full sm:w-auto" onClick={() => launch("auto")}>
@@ -967,7 +981,7 @@ function SectionCard({
   i: number;
   n: number;
   tx: Tx;
-  working?: "research" | "draft" | "queued";
+  working?: "research" | "draft" | "queued" | "translate";
   busy: boolean;
   onChange: (patch: Partial<Section>) => void;
   onMove: (d: -1 | 1) => void;
@@ -1024,7 +1038,17 @@ function SectionCard({
         </button>
       </div>
       {working && (
-        <Spinner label={working === "research" ? tx.researching : working === "draft" ? tx.drafting : tx.queued} />
+        <Spinner
+          label={
+            working === "research"
+              ? tx.researching
+              : working === "draft"
+                ? tx.drafting
+                : working === "translate"
+                  ? tx.translating
+                  : tx.queued
+          }
+        />
       )}
       {s.error && !working && (
         <ErrorBox message={s.error} onRetry={busy ? undefined : () => onRun(s.research ? "draft" : "research")} />
@@ -1327,7 +1351,10 @@ function inlineParts(text: string) {
 /** Bibliografía para el Word: sin sus apuntes de clase (no se citan en la lista final) y sin repetidas. */
 function wordBibliography(a: Assignment) {
   const seen = new Set<string>();
-  return bibliography(a.sections, a.meta.citation).filter((line) => {
+  const list = bibliography(a.sections, a.meta.citation).map((l) =>
+    a.meta.lang === "pt" ? l.replace(/\(s\.\s?f\.\)/g, "(s.d.)") : l,
+  );
+  return list.filter((line) => {
     if (/apuntes de clase|apontamentos|sin publicar|não publicad|\baula\b.*\bp\.\s*\d/i.test(line)) return false;
     const key = (line.match(/doi\.org\/\S+|https?:\/\/\S+/i)?.[0] ?? line).toLowerCase().replace(/[^a-z0-9]/g, "");
     if (seen.has(key)) return false;
