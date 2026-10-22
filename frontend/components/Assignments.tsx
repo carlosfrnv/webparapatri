@@ -48,7 +48,7 @@ interface Section {
   sources: WebSource[];
   draft: string;
   // Lo que la IA está haciendo ahora en el servidor con este apartado, y el error si falló.
-  status?: "research" | "draft" | null;
+  status?: "research" | "draft" | "queued" | null;
   error?: string | null;
   // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
   notes?: string;
@@ -118,6 +118,7 @@ const TEXT = {
     useAndAuto: "Usar este índice y hacer el trabajo entero",
     draft: "Redactar borrador",
     drafting: "Redactando…",
+    queued: "En cola: la IA lo hará en cuanto termine con el anterior…",
     redo: "Rehacer",
     draftLabel: "Borrador (edítalo con tus palabras)",
     noResearch: "Al redactar, la IA investiga antes este apartado para que el borrador tenga datos y citas.",
@@ -192,6 +193,7 @@ const TEXT = {
     useAndAuto: "Usar este índice e fazer o trabalho todo",
     draft: "Redigir rascunho",
     drafting: "A redigir…",
+    queued: "Em fila: a IA faz isto assim que acabar o anterior…",
     redo: "Refazer",
     draftLabel: "Rascunho (edita-o com as tuas palavras)",
     noResearch: "Ao redigir, a IA pesquisa antes esta secção para o rascunho ter dados e citações.",
@@ -657,7 +659,7 @@ export function AssignmentView({ id }: { id: string }) {
                   n={n}
                   tx={tx}
                   working={s.status ?? undefined}
-                  busy={running}
+                  busy={!!s.status}
                   onChange={(patch) => saveSections(a.sections.map((y) => (y.id === s.id ? { ...y, ...patch } : y)))}
                   onMove={(d) => {
                     const list = [...a.sections];
@@ -846,7 +848,7 @@ function SectionCard({
   i: number;
   n: number;
   tx: Tx;
-  working?: "research" | "draft";
+  working?: "research" | "draft" | "queued";
   busy: boolean;
   onChange: (patch: Partial<Section>) => void;
   onMove: (d: -1 | 1) => void;
@@ -902,7 +904,9 @@ function SectionCard({
           <NotePencil size={18} aria-hidden="true" /> {s.draft ? `${tx.draft} · ${tx.redo}` : tx.draft}
         </button>
       </div>
-      {working && <Spinner label={working === "research" ? tx.researching : tx.drafting} />}
+      {working && (
+        <Spinner label={working === "research" ? tx.researching : working === "draft" ? tx.drafting : tx.queued} />
+      )}
       {s.error && !working && (
         <ErrorBox message={s.error} onRetry={busy ? undefined : () => onRun(s.research ? "draft" : "research")} />
       )}

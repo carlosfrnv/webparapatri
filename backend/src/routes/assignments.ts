@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
+import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { AiError, completeJson, generate } from "../ai";
 import {
@@ -58,7 +58,7 @@ const sectionSchema = z.object({
   // Avisos de la IA para ella sobre el borrador (se ven aparte y no van al Word).
   notes: z.string().max(4000).default(""),
   // Lo que la IA está haciendo ahora con este apartado y, si falló, por qué (código del mensaje).
-  status: z.enum(["research", "draft"]).nullable().optional(),
+  status: z.enum(["research", "draft", "queued"]).nullable().optional(),
   error: z.string().max(60).nullable().optional(),
 });
 type Section = z.infer<typeof sectionSchema>;
@@ -154,7 +154,7 @@ function legacy(s: Section) {
 
 /** Lo que se le manda a la web: sin estados colgados (si el servidor se reinició a medias) y con los errores traducidos. */
 function present(a: Awaited<ReturnType<typeof own>>, lang: Lang) {
-  const running = jobs.has(a.id);
+  const running = queues.has(a.id);
   return {
     ...a,
     running,
@@ -187,49 +187,71 @@ assignmentsRouter.get(
   }),
 );
 
+// Cada trabajo se guarda entero: las escrituras al mismo trabajo van de una en una para que ninguna pise a otra
+// (p. ej., una edición suya justo cuando termina una investigación).
+const locks = new Map<string, Promise<unknown>>();
+function withLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  const prev = locks.get(id) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  const tail = next.catch(() => undefined);
+  locks.set(id, tail);
+  void tail.then(() => {
+    if (locks.get(id) === tail) locks.delete(id);
+  });
+  return next;
+}
+
 assignmentsRouter.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
-    const current = await own(userId, req.params.id as string);
-    const body = z
-      .object({
-        title: z.string().trim().min(2).max(300).optional(),
-        subject_id: z.string().uuid().nullable().optional(),
-        meta: metaSchema.optional(),
-        sections: z.array(sectionSchema).max(40).optional(),
-      })
-      .parse(req.body);
-    // La investigación la escribe solo el servidor: se conserva la suya (puede haber terminado mientras ella
-    // editaba otra cosa). Lo mismo con el borrador mientras la IA lo está redactando.
-    if (body.sections) {
-      const prev = new Map(current.sections.map((x) => [x.id, x]));
-      body.sections = body.sections.map((x) => {
-        const old = prev.get(x.id);
-        if (!old)
-          return { ...x, research: "", sources: [], status: null, error: null };
-        return {
-          ...x,
-          research: old.research,
-          sources: old.sources,
-          status: old.status ?? null,
-          error: old.error ?? null,
-          draft: old.status === "draft" ? old.draft : x.draft,
-          notes: old.status === "draft" ? old.notes : x.notes,
-        };
-      });
-    }
-    const { data, error } = await supabase
-      .from("assignments")
-      .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("id", req.params.id)
-      .eq("user_id", userId)
-      .select(FIELDS)
-      .single();
-    check(error);
-    res.json(present(data as Awaited<ReturnType<typeof own>>, langOf(req)));
+    const id = req.params.id as string;
+    const data = await withLock(id, () =>
+      patchAssignment(userId, id, req.body),
+    );
+    res.json(present(data, langOf(req)));
   }),
 );
+
+async function patchAssignment(userId: string, id: string, input: unknown) {
+  const current = await own(userId, id);
+  const body = z
+    .object({
+      title: z.string().trim().min(2).max(300).optional(),
+      subject_id: z.string().uuid().nullable().optional(),
+      meta: metaSchema.optional(),
+      sections: z.array(sectionSchema).max(40).optional(),
+    })
+    .parse(input);
+  // La investigación la escribe solo el servidor: se conserva la suya (puede haber terminado mientras ella
+  // editaba otra cosa). Lo mismo con el borrador mientras la IA lo está redactando.
+  if (body.sections) {
+    const prev = new Map(current.sections.map((x) => [x.id, x]));
+    body.sections = body.sections.map((x) => {
+      const old = prev.get(x.id);
+      if (!old)
+        return { ...x, research: "", sources: [], status: null, error: null };
+      return {
+        ...x,
+        research: old.research,
+        sources: old.sources,
+        status: old.status ?? null,
+        error: old.error ?? null,
+        draft: old.status === "draft" ? old.draft : x.draft,
+        notes: old.status === "draft" ? old.notes : x.notes,
+      };
+    });
+  }
+  const { data, error } = await supabase
+    .from("assignments")
+    .update({ ...body, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select(FIELDS)
+    .single();
+  check(error);
+  return data as Awaited<ReturnType<typeof own>>;
+}
 
 assignmentsRouter.delete(
   "/:id",
@@ -287,7 +309,15 @@ assignmentsRouter.post(
 // Tardan de medio minuto a varios minutos: el servidor lo hace por su cuenta y la web va preguntando cómo va.
 // Así no se corta aunque ella bloquee el móvil o cambie de app.
 
-const jobs = new Map<string, Promise<void>>();
+// Cola por trabajo: ella puede pedir varios apartados seguidos y la IA los hace de uno en uno
+// (a la vez chocaría con el límite por minuto de la IA).
+interface Step {
+  sid: string;
+  kind: "research" | "draft";
+  // "Hacer el trabajo entero" y "Buscar referencias": solo si aún no está hecho.
+  ifMissing?: boolean;
+}
+const queues = new Map<string, Step[]>();
 
 /** Cambia un apartado leyendo antes lo último guardado (para no pisar lo que ella haya editado mientras). */
 async function patchSection(
@@ -296,12 +326,14 @@ async function patchSection(
   sid: string,
   patch: Partial<Section>,
 ) {
-  const a = await own(userId, id);
-  const sections = a.sections.map((x) =>
-    x.id === sid ? { ...x, ...patch } : x,
-  );
-  await saveSections(userId, id, sections);
-  return { ...a, sections };
+  return withLock(id, async () => {
+    const a = await own(userId, id);
+    const sections = a.sections.map((x) =>
+      x.id === sid ? { ...x, ...patch } : x,
+    );
+    await saveSections(userId, id, sections);
+    return { ...a, sections };
+  });
 }
 
 async function doStep(
@@ -386,13 +418,72 @@ async function doStep(
   }
 }
 
-/** Lanza el trabajo en segundo plano (uno por trabajo a la vez). */
-function start(id: string, job: () => Promise<void>) {
-  if (jobs.has(id)) throw new HttpError(409, "assignmentBusy");
-  const p = job()
-    .catch(() => undefined)
-    .finally(() => jobs.delete(id));
-  jobs.set(id, p);
+/** Añade pasos a la cola del trabajo (sin repetir) y, si no estaba en marcha, la arranca. */
+async function enqueue(userId: string, id: string, steps: Step[]) {
+  const queue = queues.get(id) ?? [];
+  const fresh = steps.filter(
+    (st) => !queue.some((q) => q.sid === st.sid && q.kind === st.kind),
+  );
+  queue.push(...fresh);
+  // Los que esperan se marcan "en cola" (los que ya están en marcha conservan su estado).
+  const waiting = new Set(fresh.map((st) => st.sid));
+  await withLock(id, async () => {
+    const a = await own(userId, id);
+    await saveSections(
+      userId,
+      id,
+      a.sections.map((x) =>
+        waiting.has(x.id) && !x.status
+          ? { ...x, status: "queued" as const, error: null }
+          : x,
+      ),
+    );
+  });
+  if (queues.has(id)) return;
+  queues.set(id, queue);
+  void (async () => {
+    try {
+      for (let st = queue.shift(); st; st = queue.shift()) {
+        const cur = (await own(userId, id)).sections.find(
+          (x) => x.id === st!.sid,
+        );
+        if (!cur) continue;
+        const done =
+          st.kind === "research" ? !!cur.research.trim() : !!cur.draft.trim();
+        if (st.ifMissing && done) {
+          if (cur.status === "queued" && !queue.some((q) => q.sid === cur.id))
+            await patchSection(userId, id, cur.id, { status: null });
+          continue;
+        }
+        try {
+          await doStep(userId, id, st.sid, st.kind);
+        } catch (err) {
+          // Si la IA no está disponible, no tiene sentido seguir: se vacía la cola.
+          if (err instanceof AiError && err.key === "aiUnavailable")
+            queue.length = 0;
+        }
+      }
+    } finally {
+      queues.delete(id);
+      // Ningún apartado se queda marcado "en cola" si la cola se cortó.
+      await withLock(id, async () => {
+        const a2 = await own(userId, id);
+        if (a2.sections.some((x) => x.status === "queued"))
+          await saveSections(
+            userId,
+            id,
+            a2.sections.map((x) =>
+              x.status === "queued" ? { ...x, status: null } : x,
+            ),
+          );
+      }).catch(() => undefined);
+    }
+  })();
+}
+
+async function reply(req: Request, res: Response, userId: string, id: string) {
+  await new Promise((r) => setTimeout(r, 300));
+  res.status(202).json(present(await own(userId, id), langOf(req)));
 }
 
 for (const kind of ["research", "draft"] as const) {
@@ -405,10 +496,8 @@ for (const kind of ["research", "draft"] as const) {
       const sid = req.params.sid as string;
       if (!a.sections.some((x) => x.id === sid))
         throw new HttpError(404, "assignmentNotFound");
-      start(a.id, () => doStep(userId, a.id, sid, kind));
-      // Se espera un momento a que quede marcado como "en marcha" antes de contestar.
-      await new Promise((r) => setTimeout(r, 300));
-      res.status(202).json(present(await own(userId, a.id), langOf(req)));
+      await enqueue(userId, a.id, [{ sid, kind }]);
+      await reply(req, res, userId, a.id);
     }),
   );
 }
@@ -420,13 +509,18 @@ assignmentsRouter.post(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     const a = await own(userId, req.params.id as string);
-    start(a.id, async () => {
-      for (const s of a.sections) {
-        if (!s.research.trim()) await doStep(userId, a.id, s.id, "research");
-      }
-    });
-    await new Promise((r) => setTimeout(r, 300));
-    res.status(202).json(present(await own(userId, a.id), langOf(req)));
+    await enqueue(
+      userId,
+      a.id,
+      a.sections
+        .filter((x) => !x.research.trim())
+        .map((x) => ({
+          sid: x.id,
+          kind: "research" as const,
+          ifMissing: true,
+        })),
+    );
+    await reply(req, res, userId, a.id);
   }),
 );
 
@@ -437,16 +531,14 @@ assignmentsRouter.post(
   asyncHandler(async (req, res) => {
     const userId = userIdOf(req);
     const a = await own(userId, req.params.id as string);
-    start(a.id, async () => {
-      for (const sid of a.sections.map((x) => x.id)) {
-        const s = (await own(userId, a.id)).sections.find((x) => x.id === sid);
-        if (!s) continue;
-        if (!s.research) await doStep(userId, a.id, sid, "research");
-        if (!s.draft) await doStep(userId, a.id, sid, "draft");
-      }
-    });
-    await new Promise((r) => setTimeout(r, 300));
-    res.status(202).json(present(await own(userId, a.id), langOf(req)));
+    await enqueue(
+      userId,
+      a.id,
+      a.sections
+        .filter((x) => !x.draft.trim())
+        .map((x) => ({ sid: x.id, kind: "draft" as const, ifMissing: true })),
+    );
+    await reply(req, res, userId, a.id);
   }),
 );
 
