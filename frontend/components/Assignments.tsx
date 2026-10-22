@@ -382,6 +382,9 @@ function bibliography(sections: Section[], style: Meta["citation"]) {
 
 // ---------- Lista y creación ----------
 
+/** Los trabajos se entregan en portugués: la asignatura va con su nombre oficial en portugués. */
+const ptName = (s?: Subject) => (s ? (s.name_pt ?? s.name) : undefined);
+
 export function AssignmentList() {
   const lang = useLang() as Lang;
   const tx = TEXT[lang];
@@ -420,7 +423,7 @@ export function AssignmentList() {
     e.preventDefault();
     setBusy(true);
     try {
-      const subject = subjects.find((s) => s.id === form.subject_id)?.name;
+      const subject = ptName(subjects.find((s) => s.id === form.subject_id));
       const a = await api.post<Assignment>("/assignments", {
         title: form.title.trim(),
         subject_id: form.subject_id || null,
@@ -582,7 +585,7 @@ function MetaFields<T extends MetaForm>({
           <option value="">{tx.none}</option>
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name}
+              {ptName(s)}
             </option>
           ))}
         </select>
@@ -864,7 +867,7 @@ function MetaEditor({
               words: form.words,
               lang: form.lang,
               citation: form.citation,
-              subject: subjects.find((s) => s.id === form.subject_id)?.name,
+              subject: ptName(subjects.find((s) => s.id === form.subject_id)),
               instructions: form.instructions.trim() || undefined,
             },
           });

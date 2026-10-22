@@ -33,6 +33,8 @@ subjectsRouter.get(
       (data ?? []).map(({ documents, translations, ...s }) => ({
         ...s,
         name: localName({ name: s.name, translations }, langOf(req)),
+        // Los trabajos se entregan en portugués: allí se usa siempre el nombre oficial en portugués.
+        name_pt: localName({ name: s.name, translations }, "pt"),
         document_count: (documents as unknown as { count: number }[])[0]?.count ?? 0,
       })),
     );

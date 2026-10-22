@@ -5,6 +5,8 @@ export const AREAS: Area[] = ["base", "radiologia", "medicina_nuclear", "radiote
 export interface Subject {
   id: string;
   name: string;
+  /** Nombre en portugués (el de la escuela), para los trabajos. */
+  name_pt?: string;
   year: number | null;
   area: Area | null;
   document_count?: number;
