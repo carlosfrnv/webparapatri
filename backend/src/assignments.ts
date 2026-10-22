@@ -51,7 +51,10 @@ ${
     ? `Busca en internet en FUENTES FIABLES (haz varias búsquedas si hace falta): artículos científicos (PubMed/PMC, SciELO,
 revistas con DOI), repositorios universitarios (RCAAP), sociedades científicas (EANM, SNMMI, Sociedade Portuguesa de Medicina
 Nuclear…), organismos oficiales (IAEA, OMS, DGS, SNS), hospitales e institutos y libros de texto reconocidos.
-Evita blogs, foros y webs comerciales. Wikipedia solo como pista para llegar a la fuente original, nunca como fuente.`
+Evita blogs, foros y webs comerciales. Wikipedia solo como pista para llegar a la fuente original, nunca como fuente.
+PRIORIZA fuentes con autor y año: artículos científicos (mejor revisiones con DOI), libros e informes oficiales con fecha.
+Las páginas institucionales sin fecha (p. ej., "What is nuclear medicine?" de una sociedad) solo como complemento,
+como mucho 1 o 2: si usas una, busca en ella la fecha de actualización antes de dar la referencia por "sin fecha".`
     : `Ahora no puedes buscar en internet: usa solo lo que sepas con seguridad y sus apuntes, y en "Dónde buscar" indica
 fuentes fiables concretas para confirmarlo. No inventes referencias.`
 }
@@ -65,6 +68,7 @@ Entre 5 y 10 viñetas con los datos importantes para este apartado (fechas, nomb
 en el texto (${m.citation === "APA" ? "Autor o Institución, año" : "número de referencia [1]"}). Explícalo con tus palabras, sin copiar.
 ### ${m.lang === "pt" ? "Fontes" : "Fuentes"}
 Una línea por fuente realmente consultada, ya en formato ${m.citation === "APA" ? "APA 7" : "Vancouver"}, con su enlace.
+Usa "${m.lang === "pt" ? "s.d." : "s. f."}" solo si de verdad no hay ninguna fecha.
 ### ${m.lang === "pt" ? "Por confirmar" : "Pendiente de confirmar"}
 Datos que no has podido verificar en ninguna fuente fiable y dónde buscarlos (si no hay, escribe "—").
 No añadas nada más (ni saludo ni pregunta final).`;
@@ -82,6 +86,12 @@ ${research || "(no hay investigación: escribe solo lo general y seguro, sin cif
 Escribe el texto del apartado en ${langName(m.lang)}, registro académico pero claro, propio de una estudiante de primer curso
 (nada pomposo), en párrafos (sin viñetas salvo que el contenido lo pida), con las citas en el texto en formato
 ${m.citation === "APA" ? "APA 7 (Autor, año)" : "Vancouver [n]"}. No pongas el título del apartado ni la lista de referencias.
+CITAS COMO EN UN TRABAJO REAL (no después de cada frase):
+- Normalmente 1 o 2 citas por párrafo, al final de la idea que apoyan.
+- Si varias frases seguidas salen de la misma fuente, cítala UNA vez en ese párrafo y no la repitas.
+- Alterna con alguna cita narrativa (p. ej., "Según la IAEA (2021), …").
+- Las ideas generales y conocidas no necesitan cita; cita los datos concretos, cifras, fechas y definiciones.
+No escribas notas, avisos ni comentarios para la estudiante: solo el texto del apartado.
 Es un borrador para que ella lo revise y lo adapte con sus palabras.`;
 
 /** Revisión de un texto suyo (comentarios en el idioma de la web). */
