@@ -1264,92 +1264,199 @@ function Review({ id, tx }: { id: string; tx: Tx }) {
 // ---------- Word ----------
 
 /** Quita el Markdown básico de una línea (negritas, cursivas, enlaces) para Word. */
-const plain = (s: string) =>
-  s
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1$2")
+/** Fragmentos de texto con **negrita** y *cursiva* (Markdown) para el Word. */
+function inlineParts(text: string) {
+  const clean = text
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, "$1 ($2)")
     .replace(/\[Web\]\s*/g, "")
-    .trim();
+    .replace(/<\/?[^>]+>/g, "");
+  const parts: { text: string; bold?: boolean; italics?: boolean }[] = [];
+  const re = /\*\*(.+?)\*\*|\*(?!\s)(.+?)\*|_(?!\s)(.+?)_/g;
+  let last = 0;
+  for (let m = re.exec(clean); m; m = re.exec(clean)) {
+    if (m.index > last) parts.push({ text: clean.slice(last, m.index) });
+    if (m[1]) parts.push({ text: m[1], bold: true });
+    else parts.push({ text: m[2] ?? m[3], italics: true });
+    last = m.index + m[0].length;
+  }
+  if (last < clean.length) parts.push({ text: clean.slice(last) });
+  // Asteriscos sueltos que no formaban pareja (p. ej., "p. 15*").
+  return parts.map((p) => ({ ...p, text: p.text.replace(/\*/g, "") })).filter((p) => p.text);
+}
+
+/** Bibliografía para el Word: sin sus apuntes de clase (no se citan en la lista final) y sin repetidas. */
+function wordBibliography(a: Assignment) {
+  const seen = new Set<string>();
+  return bibliography(a.sections, a.meta.citation).filter((line) => {
+    if (/apuntes de clase|apontamentos|sin publicar|não publicad|\baula\b.*\bp\.\s*\d/i.test(line)) return false;
+    const key = (line.match(/doi\.org\/\S+|https?:\/\/\S+/i)?.[0] ?? line).toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 async function exportWord(a: Assignment) {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = await import("docx");
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak, Footer, PageNumber, HeadingLevel } =
+    await import("docx");
   const cover = coverOf(a);
   const ct = COVER_TEXT[a.meta.lang];
+  const FONT = "Times New Roman";
+  type P = InstanceType<typeof Paragraph>;
+  const out: P[] = [];
 
-  // Portada (sección propia: el trabajo empieza en la página siguiente).
-  const line = (
+  // Todo con formato directo (negrita, tamaño, espaciado) y saltos de página "de verdad": así se ve igual en Word,
+  // Pages, la vista previa del iPad o Google Docs (algunos ignoran los estilos y los saltos de sección).
+  // Siempre en negro (los estilos de título de Word los pondrían en azul).
+  const run = (text: string, o: { size?: number; bold?: boolean; italics?: boolean } = {}) =>
+    new TextRun({ text, font: FONT, size: o.size ?? 24, bold: o.bold, italics: o.italics, color: "000000" });
+  const pageBreak = () => out.push(new Paragraph({ children: [new PageBreak()] }));
+  const centered = (
     text: string,
-    opts: { size?: number; bold?: boolean; italics?: boolean; before?: number; right?: boolean } = {},
+    o: { size?: number; bold?: boolean; italics?: boolean; before?: number; after?: number } = {},
   ) =>
-    new Paragraph({
-      alignment: opts.right ? AlignmentType.RIGHT : AlignmentType.CENTER,
-      spacing: { before: opts.before ?? 0, after: 80 },
-      children: [new TextRun({ text, size: opts.size ?? 24, bold: opts.bold, italics: opts.italics })],
-    });
-  const coverPage: InstanceType<typeof Paragraph>[] = [line(cover.institution, { size: 28, bold: true })];
-  if (cover.course) coverPage.push(line(cover.course, { size: 24 }));
-  if (cover.subject) coverPage.push(line(cover.subject, { size: 24 }));
-  coverPage.push(line(cover.title, { size: 44, bold: true, before: 3600 }));
-  if (cover.subtitle) coverPage.push(line(cover.subtitle, { size: 26, italics: true, before: 120 }));
-  let first = true;
-  const right = (text: string, bold = false) => {
-    coverPage.push(line(text, { right: true, bold, before: first ? 3000 : 0 }));
-    first = false;
-  };
-  if (cover.authors.trim()) {
-    right(ct.by, true);
-    cover.authors
-      .split("\n")
-      .filter((l) => l.trim())
-      .forEach((l) => right(l.trim()));
-  }
-  if (cover.number) right(`${ct.number} ${cover.number}`);
-  if (cover.teacher) right(`${ct.teacher} ${cover.teacher}`);
-  if (cover.year) right(cover.year);
-  const placeDate = [cover.place, cover.date].filter(Boolean).join(", ");
-  if (placeDate) coverPage.push(line(placeDate, { before: first ? 4200 : 1400 }));
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: o.before ?? 0, after: o.after ?? 120 },
+        children: [run(text, o)],
+      }),
+    );
+  const heading = (text: string, level: 1 | 2, opts: { center?: boolean } = {}) =>
+    out.push(
+      new Paragraph({
+        heading: level === 1 ? HeadingLevel.HEADING_1 : HeadingLevel.HEADING_2,
+        alignment: opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        keepNext: true,
+        spacing: { before: level === 1 ? 240 : 200, after: 160 },
+        children: [run(text, { size: level === 1 ? 28 : 26, bold: true })],
+      }),
+    );
+  const body = (text: string, o: { bullet?: boolean } = {}) =>
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 160, line: 360 },
+        indent: o.bullet ? { left: 360, hanging: 240 } : { firstLine: 0 },
+        children: [
+          ...(o.bullet ? [run("•\t")] : []),
+          ...inlineParts(text).map((p) => run(p.text, { bold: p.bold, italics: p.italics })),
+        ],
+      }),
+    );
 
-  // Índice (sin números de página: se ajustan solos al cambiar el texto en Word y se descuadrarían).
-  const toc: InstanceType<typeof Paragraph>[] = [];
+  // ---- Portada ----
+  centered(cover.institution, { size: 28, bold: true });
+  if (cover.course) centered(cover.course);
+  if (cover.subject) centered(cover.subject);
+  centered(cover.title, { size: 40, bold: true, before: 3400 });
+  if (cover.subtitle) centered(cover.subtitle, { size: 26, italics: true });
+  const right: string[][] = [];
+  if (cover.authors.trim())
+    right.push(
+      [ct.by],
+      cover.authors
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean),
+    );
+  if (cover.number) right.push([`${ct.number} ${cover.number}`]);
+  if (cover.teacher) right.push([`${ct.teacher} ${cover.teacher}`]);
+  if (cover.year) right.push([cover.year]);
+  right.flat().forEach((l, i) =>
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: i === 0 ? 3000 : 0, after: 60 },
+        children: [run(l, { bold: i === 0 && cover.authors.trim() !== "" })],
+      }),
+    ),
+  );
+  const placeDate = [cover.place, cover.date].filter(Boolean).join(", ");
+  if (placeDate) centered(placeDate, { before: right.length ? 1600 : 4200 });
+
+  // ---- Índice (página propia) ----
+  const bib = wordBibliography(a);
   if (cover.toc && a.sections.length) {
-    toc.push(new Paragraph({ text: ct.toc, heading: HeadingLevel.HEADING_1 }));
-    for (const s of a.sections)
-      toc.push(
+    pageBreak();
+    heading(ct.toc, 1, { center: true });
+    for (const s of a.sections) {
+      const sub = /^\s*\d+\.\d+/.test(s.title);
+      out.push(
         new Paragraph({
-          children: [new TextRun(s.title)],
-          spacing: { after: 120 },
-          indent: { left: /^\d+\.\d+/.test(s.title) ? 400 : 0 },
+          spacing: { after: 120, line: 360 },
+          indent: { left: sub ? 567 : 0 },
+          children: [run(s.title, { bold: !sub })],
         }),
       );
-    if (bibliography(a.sections, a.meta.citation).length)
-      toc.push(new Paragraph({ children: [new TextRun(ct.references)], spacing: { after: 120 } }));
+    }
+    if (bib.length)
+      out.push(new Paragraph({ spacing: { after: 120, line: 360 }, children: [run(ct.references, { bold: true })] }));
   }
 
-  const body: InstanceType<typeof Paragraph>[] = [];
+  // ---- Trabajo (empieza en página nueva) ----
+  pageBreak();
   for (const s of a.sections) {
-    body.push(new Paragraph({ text: s.title, heading: HeadingLevel.HEADING_1 }));
-    for (const para of s.draft.split(/\n\s*\n/)) {
-      const t = plain(para.replace(/\n/g, " "));
-      if (t) body.push(new Paragraph({ children: [new TextRun(t)], spacing: { after: 160, line: 360 } }));
+    heading(s.title, /^\s*\d+\.\d+/.test(s.title) ? 2 : 1);
+    for (const block of s.draft.split(/\n\s*\n/)) {
+      const lines = block
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length && lines.every((l) => /^[-•*]\s+/.test(l)))
+        lines.forEach((l) => body(l.replace(/^[-•*]\s+/, ""), { bullet: true }));
+      else if (lines.length && /^#{1,4}\s/.test(lines[0])) {
+        out.push(
+          new Paragraph({
+            keepNext: true,
+            spacing: { before: 160, after: 120 },
+            children: [run(lines[0].replace(/^#+\s*/, ""), { bold: true })],
+          }),
+        );
+        if (lines.length > 1) body(lines.slice(1).join(" "));
+      } else if (lines.length) body(lines.join(" "));
     }
   }
-  const bib = bibliography(a.sections, a.meta.citation);
+
+  // ---- Referencias (página propia, orden alfabético en APA, sangría francesa) ----
   if (bib.length) {
-    body.push(new Paragraph({ text: ct.references, heading: HeadingLevel.HEADING_1 }));
+    pageBreak();
+    heading(ct.references, 1, { center: true });
     bib.forEach((l, i) =>
-      body.push(
+      out.push(
         new Paragraph({
-          children: [new TextRun(a.meta.citation === "Vancouver" ? `${i + 1}. ${plain(l)}` : plain(l))],
-          indent: a.meta.citation === "APA" ? { left: 720, hanging: 720 } : undefined,
-          spacing: { after: 120 },
+          alignment: AlignmentType.LEFT,
+          indent: a.meta.citation === "APA" ? { left: 720, hanging: 720 } : { left: 567, hanging: 567 },
+          spacing: { after: 160, line: 360 },
+          children: [
+            ...(a.meta.citation === "Vancouver" ? [run(`${i + 1}.\t`)] : []),
+            ...inlineParts(l).map((p) => run(p.text, { bold: p.bold, italics: p.italics })),
+          ],
         }),
       ),
     );
   }
+
   const doc = new Document({
-    styles: { default: { document: { run: { font: "Calibri", size: 24 } } } },
-    sections: [{ children: coverPage }, ...(toc.length ? [{ children: toc }] : []), { children: body }],
+    styles: { default: { document: { run: { font: FONT, size: 24 } } } },
+    sections: [
+      {
+        // La portada no lleva número de página.
+        properties: { titlePage: true, page: { margin: { top: 1418, bottom: 1418, left: 1701, right: 1418 } } },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 20 })],
+              }),
+            ],
+          }),
+          first: new Footer({ children: [new Paragraph({ children: [] })] }),
+        },
+        children: out,
+      },
+    ],
   });
   const blob = await Packer.toBlob(doc);
   const url = URL.createObjectURL(blob);
