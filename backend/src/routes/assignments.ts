@@ -989,7 +989,9 @@ assignmentsRouter.post(
 Haz las dos listas que exige la escuela:
 1. "siglas": TODAS las abreviaturas, siglas y acrónimos que aparecen en el texto (OMS, PET, SPECT, TC, IAEA, DGS…),
    cada una con su significado completo tal y como se usa en el texto (en el idioma del trabajo; si es una institución
-   extranjera, su nombre oficial). Sin repetir. No incluyas "et al.", "p.", "s.d." ni "s. f.".
+   extranjera, su nombre oficial). Sin repetir: si una misma cosa aparece con dos siglas (p. ej., AI e IA, CT y TC),
+   ponla una sola vez, con la sigla que se usa en el idioma del trabajo. No inventes significados: si no sabes qué
+   significa una sigla en ese texto, déjala fuera. No incluyas "et al.", "p.", "s.d." ni "s. f.".
 2. "simbolos": los símbolos que aparecen (%, ≠, ≈, ±, °C, ×…) con su significado. Las unidades (keV, mSv, Gy…) cuentan
    como símbolos solo si aparecen. Si no hay, lista vacía.
 TEXTO:

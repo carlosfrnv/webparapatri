@@ -48,7 +48,11 @@ const GUIDE = (
     después solo la sigla "(DGS, 2017)";
   · citas de citas ("citado por") solo si es imposible acceder a la fuente original.
 - Siglas y acrónimos: la primera vez que aparecen en el texto, nombre completo seguido de la sigla entre paréntesis,
-  p. ej. "Organização Mundial da Saúde (OMS)"; después, solo la sigla.`;
+  p. ej. "Organização Mundial da Saúde (OMS)"; después, solo la sigla. En portugués, las siglas portuguesas
+  (TC, RM, IA, OMS…), no las inglesas (CT, MRI, AI, WHO), salvo nombres propios de instituciones (IAEA, EFRS).
+- El texto es de la estudiante: nunca digas que algo se ha redactado, buscado o generado con inteligencia artificial
+  ni hables de "la IA" como herramienta del trabajo. Solo se habla de inteligencia artificial si es parte del tema
+  (p. ej., su uso en la reconstrucción de imágenes de medicina nuclear), y entonces con su fuente.`;
 
 /** Propone un índice (JSON). */
 export const outlinePrompt = (
