@@ -11,6 +11,8 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
   // Opcional y de pago: solo se usa si se añade "anthropic:<modelo>" a AI_CHAIN.
   ANTHROPIC_API_KEY: z.string().optional(),
+  // Tope de gasto diario (en dólares) de Claude en los trabajos, cuando las IA gratuitas no dan abasto. 0 = nunca.
+  TRABAJOS_PAID_DAILY_USD: z.coerce.number().min(0).default(0.3),
   SUPABASE_URL: z
     .string({ error: "Falta esta variable" })
     .url("No es una URL válida"),

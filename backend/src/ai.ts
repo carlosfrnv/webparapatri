@@ -95,7 +95,13 @@ export interface GenerateResult {
   model: string;
   /** Si la respuesta ha podido usar la búsqueda web. */
   usedWeb: boolean;
+  /** Lo que ha costado en dólares (solo si ha respondido un modelo de pago). */
+  costUsd?: number;
 }
+
+// Gasto de Claude en los trabajos en segundo plano, por día (se reinicia a medianoche UTC o al reiniciar el servidor).
+let paidDay = "";
+let paidSpent = 0;
 
 /**
  * Petición a la IA recorriendo la cadena de proveedores.
@@ -107,8 +113,8 @@ export async function generate(
   opts: GenerateOptions,
 ): Promise<GenerateResult> {
   if (!opts.patient) return generateOnce(prompt, opts);
-  // Trabajos en segundo plano (nadie espera delante de la pantalla): solo las IA gratuitas, esperando a que
-  // vuelvan a estar libres si hace falta. Claude (de pago) no se usa nunca aquí.
+  // Trabajos en segundo plano (nadie espera delante de la pantalla): primero solo las IA gratuitas, esperando a que
+  // vuelvan a estar libres si hace falta.
   // Al investigar, solo las que buscan en internet: si no, saldría una investigación sin fuentes.
   const free = (s: Step) => !s.provider.paid && (!opts.research || canWeb(s, opts));
   const usable = CHAIN.filter((s) => free(s) && (!opts.images?.length || s.provider.supportsImages));
@@ -124,8 +130,19 @@ export async function generate(
       await new Promise((r) => setTimeout(r, Math.max(soonest, 0) + 5_000));
     }
   }
-  // Nunca de pago en segundo plano: si las gratuitas siguen sin poder, se avisa y se reintenta más tarde.
-  return generateOnce(prompt, opts, (s) => !s.provider.paid);
+  // Si las gratuitas no dan abasto: Claude, sin búsqueda web (lo caro) y solo hasta el tope de gasto del día.
+  const day = new Date().toISOString().slice(0, 10);
+  if (paidDay !== day) {
+    paidDay = day;
+    paidSpent = 0;
+  }
+  const allowPaid = paidSpent < config.TRABAJOS_PAID_DAILY_USD;
+  const result = await generateOnce(prompt, { ...opts, paidWeb: false }, (s) => !s.provider.paid || allowPaid);
+  if (result.costUsd) {
+    paidSpent += result.costUsd;
+    console.warn(`[IA] trabajos con ${result.model}: ${result.costUsd.toFixed(4)} $ (hoy ${paidSpent.toFixed(3)} $).`);
+  }
+  return result;
 }
 
 async function generateOnce(

@@ -22,6 +22,13 @@ const FALLBACK_MODELS = new Set(["claude-opus-5-5", "claude-opus-5", "claude-fab
 // La API puede "pausar" una pregunta durante búsquedas largas; la reanudamos como máximo 3 veces.
 const MAX_CONTINUATIONS = 3;
 
+// Dólares por millón de tokens (entrada, salida). Los que no estén, al precio de Sonnet para no quedarse corto.
+const PRICES: Record<string, { in: number; out: number }> = {
+  "claude-haiku-5-5": { in: 0.1, out: 0.5 },
+  "claude-haiku-4-5": { in: 1, out: 5 },
+};
+const price = (model: string) => PRICES[model] ?? { in: 3, out: 15 };
+
 export const anthropicProvider: Provider = {
   id: "anthropic",
   supportsWeb: true,
@@ -44,6 +51,8 @@ export const anthropicProvider: Provider = {
     ];
     const content: BetaContentBlock[] = [];
     let webSearches = 0;
+    let tokensIn = 0;
+    let tokensOut = 0;
     // Si el buscador web de Anthropic falla (p. ej., "demasiadas peticiones"), se corta la respuesta antes de que
     // la IA se ponga a contarle el problema a ella y se repite sin búsqueda web (ver "noWeb" en ai.ts).
     let searchError: string | null = null;
@@ -78,6 +87,11 @@ export const anthropicProvider: Provider = {
         if (message.stop_reason === "refusal") throw new ProviderError("refused", "Claude ha rechazado la petición");
         content.push(...message.content);
         webSearches += message.usage.server_tool_use?.web_search_requests ?? 0;
+        tokensIn +=
+          message.usage.input_tokens +
+          (message.usage.cache_creation_input_tokens ?? 0) +
+          (message.usage.cache_read_input_tokens ?? 0);
+        tokensOut += message.usage.output_tokens;
 
         if (message.stop_reason === "pause_turn") {
           // La API ha pausado la búsqueda: le devolvemos la respuesta parcial tal cual para que continúe.
@@ -99,6 +113,8 @@ export const anthropicProvider: Provider = {
             .trim(),
       webSources: req.web ? extractWebSources(content, req.research) : [],
       webSearches,
+      // Aproximado (precio de lista; la caché sale algo más barata): 1 céntimo por búsqueda web.
+      costUsd: (tokensIn * price(model).in + tokensOut * price(model).out) / 1e6 + webSearches * 0.01,
     };
   },
 };

@@ -34,6 +34,8 @@ export interface LlmResult {
    * cuando una respuesta usa la búsqueda con Google.
    */
   searchSuggestionsHtml?: string;
+  /** Lo que ha costado la respuesta en dólares (solo los proveedores de pago). */
+  costUsd?: number;
 }
 
 export interface Provider {
