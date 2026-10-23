@@ -241,6 +241,9 @@ const TEXT = {
     queued: "En cola: la IA lo hará en cuanto termine con el anterior…",
     translating: "Traduciendo al portugués…",
     sectionWords: "Palabras de este apartado",
+    sectionTitle: "Título del apartado",
+    editOutline:
+      "Puedes cambiar los títulos y la numeración (p. ej., 3, 3.1, 3.2 si a ti te tocan esos puntos), el objetivo y las palabras, o borrar apartados antes de usarlo. Así saldrá en el índice del Word.",
     polish: "Revisar con Haiku",
     polishHint:
       "Haiku es una IA mejor (de pago): corrige datos y citas, mejora la redacción y comprueba lo dudoso con una o dos búsquedas. Úsalo al final, cuando el borrador ya esté bien.",
@@ -349,6 +352,9 @@ const TEXT = {
     queued: "Em fila: a IA faz isto assim que acabar o anterior…",
     translating: "A traduzir para português…",
     sectionWords: "Palavras desta secção",
+    sectionTitle: "Título da secção",
+    editOutline:
+      "Podes mudar os títulos e a numeração (p. ex., 3, 3.1, 3.2 se te calharam esses pontos), o objetivo e as palavras, ou apagar secções antes de o usar. É assim que sai no índice do Word.",
     polish: "Rever com o Haiku",
     polishHint:
       "O Haiku é uma IA melhor (paga): corrige dados e citações, melhora a redação e confirma o que for duvidoso com uma ou duas pesquisas. Usa-o no fim, quando o rascunho já estiver bem.",
@@ -978,21 +984,63 @@ function OutlineStart({ id, tx, onReady }: { id: string; tx: Tx; onReady: (s: Se
       {error && <ErrorBox message={error} />}
       {proposal && (
         <div className="space-y-2">
-          <ol className="space-y-1">
-            {proposal.map((s) => (
-              <li key={s.id}>
-                <div className="font-semibold">{s.title}</div>
-                <div className="text-muted text-sm">
-                  {s.goal} {s.words ? `· ${tx.words_(s.words)}` : ""}
-                </div>
-              </li>
-            ))}
+          <p className="text-muted text-sm">{tx.editOutline}</p>
+          <ol className="space-y-3">
+            {proposal.map((s, i) => {
+              const edit = (patch: Partial<Section>) =>
+                setProposal(proposal.map((x) => (x.id === s.id ? { ...x, ...patch } : x)));
+              return (
+                <li key={s.id} className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <input
+                      className="input py-1.5 font-semibold"
+                      value={s.title}
+                      aria-label={tx.sectionTitle}
+                      onChange={(e) => edit({ title: e.target.value })}
+                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="input py-1 text-sm"
+                        value={s.goal}
+                        placeholder={tx.goal}
+                        onChange={(e) => edit({ goal: e.target.value })}
+                      />
+                      <input
+                        className="input w-20 shrink-0 py-1 text-sm"
+                        inputMode="numeric"
+                        aria-label={tx.sectionWords}
+                        value={s.words || ""}
+                        onChange={(e) => edit({ words: Number(e.target.value.replace(/\D/g, "").slice(0, 5)) || 0 })}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    className="btn-ghost text-danger min-h-8 px-2"
+                    aria-label={tx.del}
+                    onClick={() => setProposal(proposal.filter((_, j) => j !== i))}
+                  >
+                    <Trash size={16} aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
           </ol>
+          <button
+            className="btn-ghost text-sm"
+            onClick={() =>
+              setProposal([
+                ...proposal,
+                { id: newId(), title: "", goal: "", words: 0, research: "", sources: [], draft: "" },
+              ])
+            }
+          >
+            <Plus size={16} aria-hidden="true" /> {tx.addSection}
+          </button>
           <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => onReady(proposal, true)}>
+            <button className="btn-primary" onClick={() => onReady(proposal.filter((x) => x.title.trim()), true)}>
               <Sparkle size={18} aria-hidden="true" /> {tx.useAndAuto}
             </button>
-            <button className="btn-secondary" onClick={() => onReady(proposal, false)}>
+            <button className="btn-secondary" onClick={() => onReady(proposal.filter((x) => x.title.trim()), false)}>
               <CheckCircle size={18} aria-hidden="true" /> {tx.useOutline}
             </button>
           </div>
@@ -1478,22 +1526,23 @@ const isIntro = (t: string) => /^\s*(\d+(\.\d+)*\.?\s*)?introdu/i.test(t);
 const isConclusion = (t: string) => /^\s*(\d+(\.\d+)*\.?\s*)?(conclus|considera[cç][oõ]es finais)/i.test(t);
 
 /**
- * Títulos como pide la guía: Introducción y Conclusión sin número; capítulos 1, 2… y subcapítulos 1.1, 1.2…
- * (se renumeran aunque la IA o ella los hayan numerado de otra forma).
+ * Títulos como pide la guía: Introducción y Conclusión sin número; capítulos 1, 2… y subcapítulos 1.1, 1.2….
+ * La numeración que ella haya escrito se respeta (p. ej., en un trabajo de grupo le tocan el 3 y el 4); solo se
+ * numeran los apartados que no tengan número, siguiendo al anterior.
  */
 function displayTitles(sections: Section[]) {
   let chapter = 0;
-  let sub = 0;
   return sections.map((s) => {
     const raw = s.title.trim();
-    const bare = raw.replace(/^\d+(\.\d+)*\.?\s*/, "");
+    const num = raw.match(/^(\d+(?:\.\d+)*)\.?\s+/);
+    const bare = num ? raw.slice(num[0].length) : raw;
     if (isIntro(raw) || isConclusion(raw)) return { title: bare, level: 1 as const, numbered: false };
-    if (/^\d+\.\d+/.test(raw) && chapter > 0) {
-      sub++;
-      return { title: `${chapter}.${sub}. ${bare}`, level: 2 as const, numbered: true };
+    if (num) {
+      const parts = num[1].split(".").map(Number);
+      chapter = parts[0];
+      return { title: `${num[1]}. ${bare}`, level: parts.length > 1 ? (2 as const) : (1 as const), numbered: true };
     }
     chapter++;
-    sub = 0;
     return { title: `${chapter}. ${bare}`, level: 1 as const, numbered: true };
   });
 }

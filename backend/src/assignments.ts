@@ -73,7 +73,10 @@ En el "goal" de la introducción incluye lo que debe tener según la escuela: pr
 delimitación, encuadre en la asignatura, objetivos, finalidad, descripción de la estructura del trabajo y metodología
 (búsqueda bibliográfica y fuentes utilizadas). En el de la conclusión: síntesis de las ideas principales, reflexión sobre
 el cumplimiento de los objetivos y recomendaciones o sugerencias.
-Si el profesor ha dado una estructura, respétala. Los títulos van en el idioma del trabajo (${langName(m.lang)}).
+Si el profesor ha dado una estructura, respétala TAL CUAL: los mismos puntos, en el mismo orden y con LA MISMA
+NUMERACIÓN (si le toca, p. ej., el 3 y el 4 con sus 3.1, 3.2…, numera 3, 3.1, 3.2…, 4, 4.1…, no desde 1). Si es solo una
+parte de un trabajo de grupo (no empieza en el 1), no añadas Introducción ni Conclusión salvo que las pidan.
+Los títulos van en el idioma del trabajo (${langName(m.lang)}).
 Para cada apartado, en "goal" escribe en una frase qué hay que contar en él (también en el idioma del trabajo)
 y en "words" cuántas palabras aproximadas le corresponden (que sumen la extensión total).
 Si sus apuntes tratan el tema, tenlos en cuenta.
