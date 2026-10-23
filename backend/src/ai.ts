@@ -116,7 +116,10 @@ function newPaidDay() {
  * Revisión de un apartado con Claude (de pago, cuando ella lo pide): con una búsqueda web muy limitada y dentro del
  * tope de gasto del día de los trabajos.
  */
-export async function generatePaid(prompt: string, opts: AiOptions & { maxTokens?: number }): Promise<GenerateResult> {
+export async function generatePaid(
+  prompt: string,
+  opts: AiOptions & { maxTokens?: number; web?: boolean },
+): Promise<GenerateResult> {
   const step = CHAIN.find((s) => s.provider.paid);
   if (!step) throw new AiError("polishUnavailable");
   newPaidDay();
@@ -134,7 +137,7 @@ export async function generatePaid(prompt: string, opts: AiOptions & { maxTokens
     });
   let result;
   try {
-    result = await run(WEB_ENABLED);
+    result = await run(WEB_ENABLED && opts.web !== false);
   } catch (err) {
     if (!(err instanceof ProviderError)) throw err;
     if (err.kind === "refused") throw new AiError("aiRefused");

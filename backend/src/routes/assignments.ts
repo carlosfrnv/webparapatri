@@ -720,26 +720,51 @@ assignmentsRouter.post(
   }),
 );
 
+/**
+ * Partes de la respuesta de la revisión: texto, fuentes nuevas y cambios, en el orden en que vengan. Las marcas se
+ * reconocen aunque lleven negritas o espacios; si falta la del texto, el texto es lo que va antes de las otras.
+ */
+function parsePolish(full: string, last: string) {
+  const marks = [TEXT_MARK, SOURCES_MARK, NOTES_MARK];
+  const re = new RegExp(`^[ \\t*_#]*(${marks.join("|")})[ \\t*_:]*$`, "gm");
+  const found = [...full.matchAll(re)];
+  const piece = (m: string) => {
+    // La última aparición de cada marca (lo de antes pueden ser borradores o comentarios previos a una búsqueda).
+    const i = found.map((f) => f[1]).lastIndexOf(m);
+    if (i < 0) return null;
+    const start = found[i].index! + found[i][0].length;
+    const end = found.slice(i + 1).find((f) => f.index! > start)?.index ?? full.length;
+    return full.slice(start, end).trim();
+  };
+  const firstOther = found.find((f) => f[1] !== TEXT_MARK)?.index;
+  const draft = (piece(TEXT_MARK) ?? (firstOther !== undefined ? last.split(re)[0] : last))
+    .replace(/^```\w*\n?|\n?```$/g, "")
+    .replace(/\n-{3,}\s*$/, "")
+    .trim();
+  return { draft, added: piece(SOURCES_MARK) ?? "", notes: piece(NOTES_MARK) ?? "" };
+}
+
 async function polishSection(userId: string, id: string, sid: string, ui: Lang) {
   const a = await patchSection(userId, id, sid, { status: "polish", error: null });
   const s = a.sections.find((x) => x.id === sid);
   if (!s?.draft.trim()) return;
   try {
-    const result = await generatePaid(polishPrompt(a.title, a.meta, s, s.research, s.draft, ui), {
-      lang: a.meta.lang,
-      effort: "medium",
-      maxTokens: 10000,
-    });
-    // Texto revisado, fuentes nuevas (si las hay) y lo que ha cambiado. Se lee de toda la respuesta (Haiku a veces
-    // escribe algo, busca y sigue escribiendo) y las marcas se reconocen aunque lleven negritas o espacios.
-    const mark = (m: string) => new RegExp(`^[ \\t*_#]*${m}[ \\t*_]*$`, "m");
-    const full = result.allText || result.text;
-    const parts = full.split(mark(TEXT_MARK));
-    const answer = parts.length > 1 ? parts[parts.length - 1] : result.text;
-    const [main, notes = ""] = answer.split(mark(NOTES_MARK));
-    const [body, added = ""] = main.split(mark(SOURCES_MARK));
-    const draft = body.replace(/\n-{3,}\s*$/, "").trim();
-    if (draft.length < Math.min(200, s.draft.trim().length * 0.5)) throw new AiError("aiBadFormat");
+    const ask = async (web: boolean) => {
+      const result = await generatePaid(polishPrompt(a.title, a.meta, s, s.research, s.draft, ui, web), {
+        lang: a.meta.lang,
+        effort: "low",
+        maxTokens: 16000,
+        web,
+      });
+      const parsed = parsePolish(result.allText || result.text, result.text);
+      if (parsed.draft.length >= Math.min(200, s.draft.trim().length * 0.5)) return parsed;
+      console.warn("[trabajos] revisión con Haiku sin texto reconocible:", (result.allText || result.text).slice(0, 1500));
+      return null;
+    };
+    // Si la respuesta no se entiende (p. ej., se cortó tras una búsqueda), se repite una vez sin buscar (más barato).
+    const parsed = (await ask(true)) ?? (await ask(false));
+    if (!parsed) throw new AiError("aiBadFormat");
+    const { draft, notes, added } = parsed;
     const lines = added.split("\n").filter((l) => /^\s*[-*•]\s+\S/.test(l));
     await withLock(id, async () => {
       const cur = await own(userId, id);

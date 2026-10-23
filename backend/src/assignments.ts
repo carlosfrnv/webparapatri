@@ -268,6 +268,7 @@ export const polishPrompt = (
   research: string,
   draft: string,
   uiLang: Lang,
+  web = true,
 ) =>
   `Eres un profesor universitario que revisa, antes de entregarlo, un apartado del trabajo de una estudiante de 1.º.
 ${context(title, m)}
@@ -280,8 +281,12 @@ TEXTO ACTUAL:
 ${draft}
 
 Devuélvelo MEJORADO, en ${langName(m.lang)}:
-- Corrige cualquier dato que no cuadre con la investigación o que sea dudoso. Si necesitas comprobar algo concreto, puedes
-  hacer como mucho 2 búsquedas en fuentes fiables (artículos, organismos oficiales); no busques por buscar.
+- Corrige cualquier dato que no cuadre con la investigación o que sea dudoso.${
+    web
+      ? ` Si necesitas comprobar algo concreto, puedes
+  hacer como mucho 2 búsquedas en fuentes fiables (artículos, organismos oficiales); no busques por buscar.`
+      : " Ahora no puedes buscar en internet: no añadas datos nuevos que no estén en la investigación."
+  }
 - Si encuentras un dato importante que falta y lo has leído en una fuente fiable, puedes añadirlo con su cita.
 - Citas ${m.citation === "APA" ? "APA 7 (Autor, año)" : "Vancouver [n]"} correctas y naturales: 1 o 2 por párrafo, solo de fuentes de la investigación o de
   las que hayas consultado tú ahora. Nada de citas secundarias.
