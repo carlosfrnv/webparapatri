@@ -212,6 +212,8 @@ create table if not exists exams (
 create index if not exists exams_user_date_idx on exams (user_id, exam_date);
 -- Tipo de fecha: examen o entrega de un trabajo.
 alter table exams add column if not exists kind text not null default 'exam' check (kind in ('exam','assignment'));
+-- Nota que ha sacado (0-20), para guardarla en la carpeta de la asignatura en "Notas".
+alter table exams add column if not exists grade numeric(4,2) check (grade >= 0 and grade <= 20);
 
 -- Horario semanal (clases, prácticas, estudio…), personalizado por ella
 create table if not exists schedule_blocks (

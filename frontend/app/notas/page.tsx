@@ -2,6 +2,7 @@
 
 import { Student } from "@phosphor-icons/react";
 import { useCallback, useEffect, useState } from "react";
+import { ExamFolder, type GradedExam } from "@/components/ExamFolder";
 import { GradientIcon } from "@/components/GradientIcon";
 import { subjectLook } from "@/components/subjectLook";
 import { ErrorBox, PageHeader, Spinner } from "@/components/ui";
@@ -70,7 +71,7 @@ function Row({ s, onSaved }: { s: GradedSubject; onSaved: (s: GradedSubject) => 
         : { text: tg.failed, cls: "bg-danger-soft text-danger" };
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
       <GradientIcon icon={look.icon} tone={look.tone} size={36} />
       <div className="min-w-[9rem] flex-1">
         <p className="font-medium">{s.name}</p>
@@ -103,7 +104,7 @@ function Row({ s, onSaved }: { s: GradedSubject; onSaved: (s: GradedSubject) => 
           aria-label={`${tg.grade}: ${s.name}`}
         />
       </label>
-    </li>
+    </div>
   );
 }
 
@@ -112,11 +113,19 @@ export default function GradesPage() {
   const tg = t.grades;
   const lang = useLang();
   const [subjects, setSubjects] = useState<GradedSubject[] | null>(null);
+  const [exams, setExams] = useState<GradedExam[]>([]);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     try {
       setSubjects(await api.get<GradedSubject[]>("/subjects/grades/all"));
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      // Los exámenes y entregas del calendario, para la carpeta de cada asignatura (si falla, la página sale igual).
+      api
+        .get<{ exams: GradedExam[] }>(`/exams?today=${today}`)
+        .then((r) => setExams(r.exams))
+        .catch(() => undefined);
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -135,6 +144,8 @@ export default function GradesPage() {
   const passed = subjects.filter((s) => s.grade !== null && s.grade >= PASS);
   const ectsDone = passed.reduce((sum, s) => sum + (s.ects ?? 0), 0);
   const years = [...new Set(subjects.map((s) => s.year))].sort((a, b) => (a ?? 9) - (b ?? 9));
+  // Exámenes sin asignatura (o de una asignatura borrada).
+  const orphans = exams.filter((e) => !subjects.some((s) => s.id === e.subject_id));
 
   return (
     <>
@@ -180,15 +191,30 @@ export default function GradesPage() {
               {subjects
                 .filter((s) => s.year === year)
                 .map((s) => (
-                  <Row
-                    key={s.id}
-                    s={s}
-                    onSaved={(n) => setSubjects((list) => list!.map((x) => (x.id === n.id ? n : x)))}
-                  />
+                  <li key={s.id}>
+                    <Row s={s} onSaved={(n) => setSubjects((list) => list!.map((x) => (x.id === n.id ? n : x)))} />
+                    <ExamFolder
+                      subjectId={s.id}
+                      exams={exams.filter((e) => e.subject_id === s.id)}
+                      lang={lang}
+                      onChange={(list) => setExams((all) => [...all.filter((e) => e.subject_id !== s.id), ...list])}
+                    />
+                  </li>
                 ))}
             </ul>
           </section>
         ))}
+        {orphans.length > 0 && (
+          <section className="card overflow-hidden p-0 pt-3">
+            <h2 className="px-4 pb-2 font-bold sm:px-5">{tg.noSubject}</h2>
+            <ExamFolder
+              subjectId={null}
+              exams={orphans}
+              lang={lang}
+              onChange={(list) => setExams((all) => [...all.filter((e) => !orphans.includes(e)), ...list])}
+            />
+          </section>
+        )}
       </div>
     </>
   );

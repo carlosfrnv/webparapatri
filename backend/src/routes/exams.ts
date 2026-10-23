@@ -17,7 +17,10 @@ const createSchema = z.object({
   exam_date: dateSchema,
   notes: z.string().trim().max(500).nullable().optional(),
 });
-const updateSchema = createSchema.partial();
+const updateSchema = createSchema.partial().extend({
+  // Nota sacada (0-20), o null para borrarla.
+  grade: z.number().min(0).max(20).nullable().optional(),
+});
 
 // Un tema se da por dominado cuando el último test sale con un 80 % o más.
 const MASTERED_PCT = 80;
@@ -31,6 +34,7 @@ interface ExamRow {
   title: string;
   exam_date: string;
   notes: string | null;
+  grade?: number | string | null;
   subjects: { name: string; translations: unknown } | null;
 }
 
@@ -139,14 +143,19 @@ examsRouter.get(
 
     const list = (fields: string) =>
       supabase.from("exams").select(fields).eq("user_id", userId).order("exam_date");
-    let { data, error } = await list("id, kind, subject_id, title, exam_date, notes, subjects(name, translations)");
-    // Si todavía no existe la columna "kind" (falta ejecutar el SQL), todo cuenta como examen.
+    let { data, error } = await list(
+      "id, kind, subject_id, title, exam_date, notes, grade, subjects(name, translations)",
+    );
+    // Si todavía no existen las columnas nuevas (falta ejecutar el SQL), sin nota y todo cuenta como examen.
+    if (error?.code === "42703")
+      ({ data, error } = await list("id, kind, subject_id, title, exam_date, notes, subjects(name, translations)"));
     if (error?.code === "42703") ({ data, error } = await list("id, subject_id, title, exam_date, notes, subjects(name, translations)"));
     if (error) throw error;
 
     const exams = ((data ?? []) as unknown as ExamRow[]).map(({ subjects, ...e }) => ({
       ...e,
       kind: e.kind ?? "exam",
+      grade: e.grade === null || e.grade === undefined ? null : Number(e.grade),
       subject_name: subjects ? localName(subjects, langOf(req)) : null,
       days_left: daysBetween(today, e.exam_date),
     }));
@@ -202,6 +211,7 @@ examsRouter.patch(
       .eq("user_id", userId)
       .select("*")
       .maybeSingle();
+    if (error?.code === "42703" || error?.code === "PGRST204") throw new HttpError(409, "needsUpdate");
     if (error) throw error;
     if (!data) throw new HttpError(404, "examNotFound");
     res.json(data);
