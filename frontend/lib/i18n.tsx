@@ -94,6 +94,7 @@ const es = {
     pomodoro: "Pomodoro",
     grades: "Notas",
     mailbox: "Buzón",
+    works: "Trabajos",
   },
   auth: {
     missingConfigTitle: "Falta configurar Supabase",
@@ -993,6 +994,7 @@ const pt: Dictionary = {
     pomodoro: "Pomodoro",
     grades: "Notas",
     mailbox: "Caixa",
+    works: "Trabalhos",
   },
   auth: {
     missingConfigTitle: "Falta configurar o Supabase",

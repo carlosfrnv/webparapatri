@@ -14,6 +14,8 @@ import {
   FileText,
   Fire,
   Heart,
+  NotePencil,
+  Student,
   Target,
   Timer,
   UploadSimple,
@@ -175,6 +177,27 @@ export default function HomePage() {
           <HeroArt className="hidden h-52 w-52 drop-shadow-2xl sm:block lg:h-60 lg:w-60" />
         </div>
       </section>
+
+      {/* Accesos directos a lo que en el móvil no está en la barra de abajo. */}
+      <nav className="mb-6 grid grid-cols-4 gap-2 md:hidden" aria-label={t.nav.mainNav}>
+        {(
+          [
+            { href: "/notas", label: t.nav.grades, icon: Student, tone: "violet" },
+            { href: "/trabajos", label: t.nav.works, icon: NotePencil, tone: "pink" },
+            { href: "/pomodoro", label: t.nav.pomodoro, icon: Timer, tone: "amber" },
+            { href: "/buzon", label: t.nav.mailbox, icon: EnvelopeSimpleOpen, tone: "teal" },
+          ] as const
+        ).map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="card card-hover flex flex-col items-center gap-2 px-1 py-3 text-center"
+          >
+            <GradientIcon icon={a.icon} tone={a.tone} size={40} />
+            <span className="text-xs font-semibold sm:text-sm">{a.label}</span>
+          </Link>
+        ))}
+      </nav>
 
       {/* El 21 de cada mes, el aniversario y el 8 de octubre. */}
       <SpecialDay />
