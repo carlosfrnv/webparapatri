@@ -8,6 +8,7 @@ import {
   CheckCircle,
   Copy,
   FileDoc,
+  FilePdf,
   MagnifyingGlass,
   NotePencil,
   Plus,
@@ -267,6 +268,8 @@ const TEXT = {
     reviewBtn: "Revisar",
     reviewing: "Revisando…",
     word: "Descargar en Word",
+    pdf: "Descargar en PDF",
+    pdfBusy: "Preparando el PDF…",
     integrity:
       "Los borradores son un punto de partida: léelos y cámbialos con tus palabras. Así el trabajo es tuyo de verdad y podrás defenderlo si te preguntan.",
     checkedRefs: "✓ Enlaces y DOI comprobados automáticamente: las referencias que no existían se han quitado.",
@@ -374,6 +377,8 @@ const TEXT = {
     reviewBtn: "Rever",
     reviewing: "A rever…",
     word: "Descarregar em Word",
+    pdf: "Descarregar em PDF",
+    pdfBusy: "A preparar o PDF…",
     integrity:
       "Os rascunhos são um ponto de partida: lê-os e muda-os com as tuas palavras. Assim o trabalho é mesmo teu e consegues defendê-lo se te perguntarem.",
     checkedRefs: "✓ Ligações e DOI verificados automaticamente: as referências que não existiam foram retiradas.",
@@ -661,6 +666,7 @@ export function AssignmentView({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("write");
   const [editMeta, setEditMeta] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -728,6 +734,20 @@ export function AssignmentView({ id }: { id: string }) {
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={() => exportWord(a, subjects)} disabled={!drafted}>
               <FileDoc size={18} aria-hidden="true" /> {tx.word}
+            </button>
+            <button
+              className="btn-secondary"
+              disabled={!drafted || pdfBusy}
+              onClick={async () => {
+                setPdfBusy(true);
+                try {
+                  await exportPdf(a, subjects);
+                } finally {
+                  setPdfBusy(false);
+                }
+              }}
+            >
+              <FilePdf size={18} aria-hidden="true" /> {pdfBusy ? tx.pdfBusy : tx.pdf}
             </button>
             <button
               className="btn-ghost text-danger"
@@ -1493,6 +1513,61 @@ function draftBlocks(draft: string) {
   return out;
 }
 
+/** Lo que necesitan el Word y el PDF: listas de siglas y símbolos (las hace la IA) y el logo de la escuela. */
+async function exportExtras(a: Assignment) {
+  const lists = await api
+    .post<{ siglas: { sigla: string; significado: string }[]; simbolos: { simbolo: string; significado: string }[] }>(
+      `/assignments/${a.id}/lists`,
+    )
+    .catch(() => ({ siglas: [], simbolos: [] }));
+  const logo = await fetch("/esscvp-logo.png")
+    .then((r) => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null);
+  return { lists, logo };
+}
+
+const exportName = (a: Assignment) => a.title.replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "trabajo";
+
+/** PDF con el mismo formato que el Word (se ve igual en el iPad, en el ordenador o impreso). */
+async function exportPdf(a: Assignment, subjects: Subject[]) {
+  const { downloadWorkPdf } = await import("@/lib/workPdf");
+  const cover = coverOf(a, subjects);
+  const ct = COVER_TEXT[a.meta.lang];
+  const titles = displayTitles(a.sections);
+  const { lists, logo } = await exportExtras(a);
+  let logoUrl: string | null = null;
+  if (logo) {
+    const bytes = new Uint8Array(logo);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    logoUrl = `data:image/png;base64,${btoa(bin)}`;
+  }
+  await downloadWorkPdf({
+    fileName: exportName(a),
+    logo: logoUrl,
+    cover: {
+      course: cover.course,
+      yearSemester: [cover.year, cover.semester].filter(Boolean).join(", "),
+      subject: cover.subject,
+      title: cover.title,
+      subtitle: cover.subtitle,
+      authors: authorLines(cover, ct),
+      teacherLine: cover.teacher ? `${ct.teacher} ${cover.teacher}` : "",
+      placeDate: [cover.place, cover.date].filter(Boolean).join(", "),
+    },
+    labels: { toc: ct.toc, acronyms: ct.acronyms, symbols: ct.symbols, references: ct.references },
+    sections: a.sections.map((s, i) => ({
+      title: titles[i].title,
+      level: titles[i].level,
+      blocks: draftBlocks(s.draft).map((b) => ({ kind: b.kind, parts: inlineParts(b.text) })),
+    })),
+    references: wordBibliography(a).map(inlineParts),
+    numberedRefs: a.meta.citation === "Vancouver",
+    siglas: lists.siglas,
+    simbolos: lists.simbolos,
+  });
+}
+
 async function exportWord(a: Assignment, subjects: Subject[]) {
   const {
     Document,
@@ -1508,20 +1583,14 @@ async function exportWord(a: Assignment, subjects: Subject[]) {
     SectionType,
     TabStopType,
     LeaderType,
+    PageBreak,
   } = await import("docx");
   const cover = coverOf(a, subjects);
   const ct = COVER_TEXT[a.meta.lang];
   const titles = displayTitles(a.sections);
   const bib = wordBibliography(a);
   // Listas de siglas y símbolos (las hace la IA a partir del texto; si falla, el Word sale igual sin ellas).
-  const lists = await api
-    .post<{ siglas: { sigla: string; significado: string }[]; simbolos: { simbolo: string; significado: string }[] }>(
-      `/assignments/${a.id}/lists`,
-    )
-    .catch(() => ({ siglas: [], simbolos: [] }));
-  const logo = await fetch("/esscvp-logo.png")
-    .then((r) => (r.ok ? r.arrayBuffer() : null))
-    .catch(() => null);
+  const { lists, logo } = await exportExtras(a);
 
   // ---- Formato de la guía: A4, márgenes 2,54 cm, Calibri 11, justificado, interlineado 1,5 ----
   const FONT = "Calibri";
@@ -1556,13 +1625,13 @@ async function exportWord(a: Assignment, subjects: Subject[]) {
       spacing: { before: o.before ?? 0, after: o.after ?? 60 },
       children: [run(text, o)],
     });
+  // Salto de página como carácter (no como propiedad del párrafo): la vista previa del iPad/iPhone solo respeta este.
   const pageTitle = (text: string, breakBefore: boolean) =>
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
-      pageBreakBefore: breakBefore,
       spacing: { after: 360 },
-      children: [run(text, { size: 24, bold: true })],
+      children: [...(breakBefore ? [new PageBreak()] : []), run(text, { size: 24, bold: true })],
     });
 
   // ---- Capa y folha de rosto (modelo de la escuela) ----
@@ -1738,7 +1807,7 @@ async function exportWord(a: Assignment, subjects: Subject[]) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${a.title.replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "trabajo"}.docx`;
+  link.download = `${exportName(a)}.docx`;
   // El enlace tiene que estar en la página para que el navegador respete el nombre del archivo.
   document.body.appendChild(link);
   link.click();
