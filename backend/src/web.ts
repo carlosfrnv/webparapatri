@@ -46,6 +46,12 @@ export const RESEARCH_TOOLS = [
   { type: "web_fetch_20260318" as const, name: "web_fetch" as const, max_uses: 2, max_content_tokens: 4000 },
 ];
 
+/** Revisión de un apartado con Claude: como mucho 2 búsquedas y 1 página recortada (unos céntimos). */
+export const POLISH_TOOLS = [
+  { type: "web_search_20260318" as const, name: "web_search" as const, max_uses: 2 },
+  { type: "web_fetch_20260318" as const, name: "web_fetch" as const, max_uses: 1, max_content_tokens: 3000 },
+];
+
 /** Nombre que se enseña en el chip de la fuente (Radiopaedia, IAEA, PubMed… o el dominio). */
 export type WebSite = string;
 

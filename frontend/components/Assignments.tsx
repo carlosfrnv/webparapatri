@@ -12,6 +12,7 @@ import {
   NotePencil,
   Plus,
   Sparkle,
+  ArrowCounterClockwise,
   Trash,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -107,7 +108,10 @@ function defaultCover(a: Assignment): Cover {
 }
 /** Quita emoticonos y espacios de sobra de un nombre de asignatura. */
 const plainName = (t: string) =>
-  t.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
+  t
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
 /** Los trabajos se entregan en portugués: la asignatura va con su nombre en portugués, como en su horario. */
 const ptName = (s?: Subject) => (s ? plainName(s.name_pt ?? s.name) : undefined);
@@ -134,7 +138,9 @@ interface Section {
   sources: WebSource[];
   draft: string;
   // Lo que la IA está haciendo ahora en el servidor con este apartado, y el error si falló.
-  status?: "research" | "draft" | "queued" | "translate" | null;
+  status?: "research" | "draft" | "queued" | "translate" | "polish" | null;
+  // El borrador antes de la última revisión con Haiku (para deshacerla).
+  before_polish?: string | null;
   error?: string | null;
   // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
   notes?: string;
@@ -232,6 +238,12 @@ const TEXT = {
     drafting: "Redactando…",
     queued: "En cola: la IA lo hará en cuanto termine con el anterior…",
     translating: "Traduciendo al portugués…",
+    polish: "Revisar con Haiku",
+    polishHint:
+      "Haiku es una IA mejor (de pago): corrige datos y citas, mejora la redacción y comprueba lo dudoso con una o dos búsquedas. Úsalo al final, cuando el borrador ya esté bien.",
+    polishing: "Haiku está revisando el apartado… (un minuto)",
+    polishChanges: "Lo que ha cambiado Haiku",
+    undoPolish: "Deshacer la revisión",
     toPt: "Este trabajo está en español y la escuela pide entregarlos en portugués. La IA traduce todos los apartados (con las citas y referencias adaptadas) y el Word saldrá en portugués.",
     toPtBtn: "Pasar el trabajo a portugués",
     redo: "Rehacer",
@@ -333,6 +345,12 @@ const TEXT = {
     drafting: "A redigir…",
     queued: "Em fila: a IA faz isto assim que acabar o anterior…",
     translating: "A traduzir para português…",
+    polish: "Rever com o Haiku",
+    polishHint:
+      "O Haiku é uma IA melhor (paga): corrige dados e citações, melhora a redação e confirma o que for duvidoso com uma ou duas pesquisas. Usa-o no fim, quando o rascunho já estiver bem.",
+    polishing: "O Haiku está a rever a secção… (um minuto)",
+    polishChanges: "O que o Haiku mudou",
+    undoPolish: "Desfazer a revisão",
     toPt: "Este trabalho está em espanhol e a escola pede para os entregar em português. A IA traduz todas as secções (com as citações e referências adaptadas) e o Word sai em português.",
     toPtBtn: "Passar o trabalho para português",
     redo: "Refazer",
@@ -677,7 +695,7 @@ export function AssignmentView({ id }: { id: string }) {
       setError(errorMessage(err));
     }
   };
-  const run = (s: Section, kind: "research" | "draft") => launch(`sections/${s.id}/${kind}`);
+  const run = (s: Section, kind: "research" | "draft" | "polish") => launch(`sections/${s.id}/${kind}`);
 
   const running = !!a?.running;
   useEffect(() => {
@@ -1010,12 +1028,12 @@ function SectionCard({
   i: number;
   n: number;
   tx: Tx;
-  working?: "research" | "draft" | "queued" | "translate";
+  working?: "research" | "draft" | "queued" | "translate" | "polish";
   busy: boolean;
   onChange: (patch: Partial<Section>) => void;
   onMove: (d: -1 | 1) => void;
   onDelete: () => void;
-  onRun: (k: "research" | "draft") => void;
+  onRun: (k: "research" | "draft" | "polish") => void;
 }) {
   const [title, setTitle] = useState(s.title);
   const [goal, setGoal] = useState(s.goal);
@@ -1065,7 +1083,13 @@ function SectionCard({
         <button className={s.research ? "btn-primary" : "btn-secondary"} disabled={busy} onClick={() => onRun("draft")}>
           <NotePencil size={18} aria-hidden="true" /> {s.draft ? `${tx.draft} · ${tx.redo}` : tx.draft}
         </button>
+        {s.draft && (
+          <button className="btn-secondary" disabled={busy} onClick={() => onRun("polish")} title={tx.polishHint}>
+            <Sparkle size={18} aria-hidden="true" /> {tx.polish}
+          </button>
+        )}
       </div>
+      {s.draft && !s.before_polish && !working && <p className="text-muted text-xs">{tx.polishHint}</p>}
       {working && (
         <Spinner
           label={
@@ -1075,7 +1099,9 @@ function SectionCard({
                 ? tx.drafting
                 : working === "translate"
                   ? tx.translating
-                  : tx.queued
+                  : working === "polish"
+                    ? tx.polishing
+                    : tx.queued
           }
         />
       )}
@@ -1109,15 +1135,23 @@ function SectionCard({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={() => draft !== s.draft && onChange({ draft })}
-            disabled={working === "draft"}
+            disabled={working === "draft" || working === "polish"}
           />
         </label>
       )}
       {s.notes && s.draft && !working && (
         <div className="bg-warning-soft rounded-xl p-3 text-sm">
-          <p className="font-semibold">{tx.notesTitle}</p>
+          <p className="font-semibold">{s.before_polish ? tx.polishChanges : tx.notesTitle}</p>
           <Markdown>{s.notes}</Markdown>
         </div>
+      )}
+      {s.before_polish && !working && (
+        <button
+          className="btn-ghost text-sm"
+          onClick={() => onChange({ draft: s.before_polish!, before_polish: null, notes: "" })}
+        >
+          <ArrowCounterClockwise size={16} aria-hidden="true" /> {tx.undoPolish}
+        </button>
       )}
     </div>
   );

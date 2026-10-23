@@ -6,7 +6,7 @@ import { gemini } from "./llm/gemini";
 import { groqProvider } from "./llm/groq";
 import { ProviderError, type Effort, type LlmImage, type Provider } from "./llm/types";
 import { BASE_SYSTEM } from "./prompts";
-import type { WebSource } from "./web";
+import { WEB_ENABLED, type WebSource } from "./web";
 
 export class AiError extends Error {
   constructor(public key: MessageKey) {
@@ -102,6 +102,47 @@ export interface GenerateResult {
 // Gasto de Claude en los trabajos en segundo plano, por día (se reinicia a medianoche UTC o al reiniciar el servidor).
 let paidDay = "";
 let paidSpent = 0;
+function newPaidDay() {
+  const day = new Date().toISOString().slice(0, 10);
+  if (paidDay !== day) {
+    paidDay = day;
+    paidSpent = 0;
+  }
+}
+
+/**
+ * Revisión de un apartado con Claude (de pago, cuando ella lo pide): con una búsqueda web muy limitada y dentro del
+ * tope de gasto del día de los trabajos.
+ */
+export async function generatePaid(prompt: string, opts: AiOptions & { maxTokens?: number }): Promise<GenerateResult> {
+  const step = CHAIN.find((s) => s.provider.paid);
+  if (!step) throw new AiError("polishUnavailable");
+  newPaidDay();
+  if (paidSpent >= config.TRABAJOS_PAID_DAILY_USD) throw new AiError("polishLimit");
+  const run = (web: boolean) =>
+    step.provider.generate(step.model, {
+      system: BASE_SYSTEM[opts.lang],
+      prompt,
+      effort: opts.effort ?? "medium",
+      maxTokens: opts.maxTokens ?? 8000,
+      json: false,
+      web,
+      research: web,
+      polish: web,
+    });
+  let result;
+  try {
+    result = await run(WEB_ENABLED);
+  } catch (err) {
+    if (!(err instanceof ProviderError)) throw err;
+    if (err.kind === "refused") throw new AiError("aiRefused");
+    if (err.kind !== "noWeb") throw new AiError("polishUnavailable");
+    result = await run(false);
+  }
+  paidSpent += result.costUsd ?? 0;
+  console.warn(`[IA] revisión con ${step.key}: ${(result.costUsd ?? 0).toFixed(4)} $ (hoy ${paidSpent.toFixed(3)} $).`);
+  return { ...result, model: step.key, usedWeb: true };
+}
 
 /**
  * Petición a la IA recorriendo la cadena de proveedores.
@@ -131,11 +172,7 @@ export async function generate(
     }
   }
   // Si las gratuitas no dan abasto: Claude, sin búsqueda web (lo caro) y solo hasta el tope de gasto del día.
-  const day = new Date().toISOString().slice(0, 10);
-  if (paidDay !== day) {
-    paidDay = day;
-    paidSpent = 0;
-  }
+  newPaidDay();
   const allowPaid = paidSpent < config.TRABAJOS_PAID_DAILY_USD;
   const result = await generateOnce(prompt, { ...opts, paidWeb: false }, (s) => !s.provider.paid || allowPaid);
   if (result.costUsd) {

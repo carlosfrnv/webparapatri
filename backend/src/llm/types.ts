@@ -14,6 +14,8 @@ export interface LlmRequest {
   web: boolean;
   /** Modo trabajo: búsqueda abierta en cualquier web (fuentes fiables) y más búsquedas. */
   research?: boolean;
+  /** Revisión de un apartado: pocas búsquedas y una sola página leída (cada una se paga). */
+  polish?: boolean;
   /** Fotos adjuntas por la estudiante (base64), para los proveedores que pueden verlas. */
   images?: LlmImage[];
   onText?: (delta: string) => void;

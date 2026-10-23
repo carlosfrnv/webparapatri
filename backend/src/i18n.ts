@@ -84,6 +84,14 @@ const messages = {
     es: "La IA no está disponible ahora mismo. Inténtalo de nuevo dentro de un rato.",
     pt: "A IA não está disponível neste momento. Tenta novamente daqui a pouco.",
   },
+  polishUnavailable: {
+    es: "La revisión con Haiku no está disponible ahora mismo.",
+    pt: "A revisão com o Haiku não está disponível neste momento.",
+  },
+  polishLimit: {
+    es: "Por hoy ya se han hecho bastantes revisiones con Haiku. Mañana podrás seguir.",
+    pt: "Por hoje já se fizeram bastantes revisões com o Haiku. Amanhã podes continuar.",
+  },
   chatFailed: {
     es: "No se ha podido responder ahora. Inténtalo de nuevo.",
     pt: "Não foi possível responder agora. Tenta novamente.",

@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import { AiError, completeJson, generate } from "../ai";
+import { AiError, completeJson, generate, generatePaid } from "../ai";
 import {
   type AssignmentMeta,
   draftPrompt,
   outlinePrompt,
+  NOTES_MARK,
+  polishPrompt,
   queriesPrompt,
+  SOURCES_MARK,
   researchFromArticlesPrompt,
   researchPrompt,
   reviewPrompt,
@@ -87,10 +90,12 @@ const sectionSchema = z.object({
   checked: z.boolean().default(false),
   // Lo que la IA está haciendo ahora con este apartado y, si falló, por qué (código del mensaje).
   status: z
-    .enum(["research", "draft", "queued", "translate"])
+    .enum(["research", "draft", "queued", "translate", "polish"])
     .nullable()
     .optional(),
   error: z.string().max(60).nullable().optional(),
+  // El borrador antes de la última revisión con Haiku (para poder deshacerla).
+  before_polish: z.string().max(60000).nullable().optional(),
 });
 type Section = z.infer<typeof sectionSchema>;
 
@@ -207,6 +212,8 @@ const ERROR_KEYS: Record<string, true> = {
   aiRefused: true,
   aiBadFormat: true,
   unexpected: true,
+  polishUnavailable: true,
+  polishLimit: true,
 };
 
 assignmentsRouter.get(
@@ -298,8 +305,9 @@ async function patchAssignment(userId: string, id: string, input: unknown) {
         sources: old.sources,
         status: old.status ?? null,
         error: old.error ?? null,
-        draft: old.status === "draft" ? old.draft : x.draft,
-        notes: old.status === "draft" ? old.notes : x.notes,
+        draft: old.status === "draft" || old.status === "polish" ? old.draft : x.draft,
+        notes: old.status === "draft" || old.status === "polish" ? old.notes : x.notes,
+        before_polish: old.status === "polish" ? (old.before_polish ?? null) : (x.before_polish ?? null),
         checked: old.checked ?? false,
       };
     });
@@ -375,7 +383,9 @@ assignmentsRouter.post(
 // (a la vez chocaría con el límite por minuto de la IA).
 interface Step {
   sid: string;
-  kind: "research" | "draft" | "translate";
+  kind: "research" | "draft" | "translate" | "polish";
+  // Idioma de la web (los cambios de la revisión con Haiku se le explican en ese idioma).
+  ui?: Lang;
   // "Hacer el trabajo entero" y "Buscar referencias": solo si aún no está hecho.
   ifMissing?: boolean;
 }
@@ -558,7 +568,7 @@ async function researchFromArticles(
       patient: true,
     },
   ).catch(() => ({ queries: [s.title] }));
-  const articles = await searchArticles(queries, 6);
+  const articles = await searchArticles(queries, 8);
   if (articles.length < 2) return null;
   const result = await generate(
     researchFromArticlesPrompt(
@@ -642,6 +652,8 @@ async function enqueue(userId: string, id: string, steps: Step[]) {
         try {
           if (st.kind === "translate")
             await translateSection(userId, id, st.sid);
+          else if (st.kind === "polish")
+            await polishSection(userId, id, st.sid, st.ui ?? "es");
           else await doStep(userId, id, st.sid, st.kind);
         } catch (err) {
           // Si la IA no está disponible, no tiene sentido seguir: se vacía la cola.
@@ -686,6 +698,65 @@ for (const kind of ["research", "draft"] as const) {
       await reply(req, res, userId, a.id);
     }),
   );
+}
+
+/** Revisión de un apartado ya redactado con Haiku (de pago, con pocas búsquedas): solo cuando ella lo pide. */
+assignmentsRouter.post(
+  "/:id/sections/:sid/polish",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const userId = userIdOf(req);
+    const a = await own(userId, req.params.id as string);
+    const sid = req.params.sid as string;
+    const s = a.sections.find((x) => x.id === sid);
+    if (!s) throw new HttpError(404, "assignmentNotFound");
+    if (!s.draft.trim()) throw new HttpError(400, "invalidData");
+    await enqueue(userId, a.id, [{ sid, kind: "polish", ui: langOf(req) }]);
+    await reply(req, res, userId, a.id);
+  }),
+);
+
+async function polishSection(userId: string, id: string, sid: string, ui: Lang) {
+  const a = await patchSection(userId, id, sid, { status: "polish", error: null });
+  const s = a.sections.find((x) => x.id === sid);
+  if (!s?.draft.trim()) return;
+  try {
+    const result = await generatePaid(polishPrompt(a.title, a.meta, s, s.research, s.draft, ui), {
+      lang: a.meta.lang,
+      effort: "medium",
+      maxTokens: 10000,
+    });
+    // Texto revisado, fuentes nuevas (si las hay) y lo que ha cambiado.
+    const [main, notes = ""] = result.text.split(NOTES_MARK);
+    const [body, added = ""] = main.split(SOURCES_MARK);
+    const draft = body.replace(/\n-{3,}\s*$/, "").trim();
+    if (draft.length < s.draft.trim().length * 0.5) throw new AiError("aiBadFormat");
+    const lines = added.split("\n").filter((l) => /^\s*[-*•]\s+\S/.test(l));
+    await withLock(id, async () => {
+      const cur = await own(userId, id);
+      const sections = cur.sections.map((x) =>
+        x.id === sid
+          ? {
+              ...x,
+              before_polish: x.draft,
+              draft: draft.slice(0, 60000),
+              notes: notes.trim().slice(0, 4000),
+              research: lines.length
+                ? withSourceList(x.research, lines, a.meta.lang === "pt" ? "Fontes" : "Fuentes").slice(0, 40000)
+                : x.research,
+              status: null,
+            }
+          : x,
+      );
+      await saveSections(userId, id, sections);
+    });
+  } catch (err) {
+    console.error("[trabajos] revisión con Haiku:", err);
+    await patchSection(userId, id, sid, {
+      status: null,
+      error: err instanceof AiError ? err.key : "unexpected",
+    }).catch(() => undefined);
+  }
 }
 
 /** Bibliografía: investiga (sin tocar los borradores) los apartados que aún no tienen fuentes. */

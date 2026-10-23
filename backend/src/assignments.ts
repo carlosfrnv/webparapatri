@@ -108,9 +108,10 @@ objetivos planteados en la introducción; recomendaciones o sugerencias que se d
 /** Consultas para buscar artículos científicos sobre un apartado (en inglés, que es donde más hay). */
 export const queriesPrompt = (title: string, section: { title: string; goal: string }) =>
   `Trabajo: «${title}». Apartado: «${section.title}» — ${section.goal}
-Escribe 3 búsquedas cortas EN INGLÉS para encontrar artículos científicos (PubMed) sobre este apartado: 2-5 palabras
-clave cada una, sin comillas ni operadores, de la más concreta a la más general.
-Responde SOLO con JSON: {"queries": ["…", "…", "…"]}`;
+Escribe 4 búsquedas cortas para encontrar artículos científicos sobre este apartado: 3 EN INGLÉS y la última EN
+PORTUGUÉS (para revistas y repositorios portugueses y brasileños). 2-5 palabras clave cada una, sin comillas ni
+operadores, de la más concreta a la más general.
+Responde SOLO con JSON: {"queries": ["…", "…", "…", "…"]}`;
 
 /**
  * Investigación de un apartado a partir de artículos ya encontrados (gratis: sin búsqueda web).
@@ -252,6 +253,45 @@ El texto es SOLO el apartado, listo para pegar en el trabajo: sin notas, avisos,
 Si de verdad hay algo que ella deba revisar, escríbelo DESPUÉS del texto, tras una línea que diga exactamente ${NOTES_MARK},
 en como mucho 3 frases muy cortas y fáciles de hacer en un minuto (nunca "búscalo en PubMed" ni "confirma el DOI").
 Si no hay nada que revisar (lo normal), no pongas esa línea.`;
+
+export const SOURCES_MARK = "===FONTES===";
+
+/**
+ * Revisión de un apartado ya redactado con un modelo mejor (Claude), cuando ella lo pide: corrige datos y citas,
+ * mejora la redacción y, si hace falta, comprueba algo con una o dos búsquedas.
+ */
+export const polishPrompt = (
+  title: string,
+  m: AssignmentMeta,
+  section: { title: string; goal: string },
+  research: string,
+  draft: string,
+  uiLang: Lang,
+) =>
+  `Eres un profesor universitario que revisa, antes de entregarlo, un apartado del trabajo de una estudiante de 1.º.
+${context(title, m)}
+APARTADO: «${section.title}» — ${section.goal}
+${sectionRole(section.title, m)}
+INVESTIGACIÓN (datos y fuentes de este apartado):
+${research || "(sin investigación)"}
+
+TEXTO ACTUAL:
+${draft}
+
+Devuélvelo MEJORADO, en ${langName(m.lang)}:
+- Corrige cualquier dato que no cuadre con la investigación o que sea dudoso. Si necesitas comprobar algo concreto, puedes
+  hacer como mucho 2 búsquedas en fuentes fiables (artículos, organismos oficiales); no busques por buscar.
+- Si encuentras un dato importante que falta y lo has leído en una fuente fiable, puedes añadirlo con su cita.
+- Citas ${m.citation === "APA" ? "APA 7 (Autor, año)" : "Vancouver [n]"} correctas y naturales: 1 o 2 por párrafo, solo de fuentes de la investigación o de
+  las que hayas consultado tú ahora. Nada de citas secundarias.
+- Redacción académica pero natural, como la de una buena estudiante de primer curso (nada pomposo ni repetitivo);
+  conserva la estructura, las ideas y aproximadamente la misma longitud.
+FORMATO DE LA RESPUESTA (exactamente así):
+1) El texto completo revisado, listo para pegar en el trabajo (sin título, sin comentarios dentro).
+2) Solo si has añadido alguna fuente nueva: una línea que diga exactamente ${SOURCES_MARK} y debajo, una por línea y
+   empezando por "- ", su referencia completa en ${m.citation === "APA" ? "APA 7" : "Vancouver"} con su enlace o DOI.
+3) Una línea que diga exactamente ${NOTES_MARK} y debajo, en ${uiLang === "pt" ? "português" : "español"}, como mucho 4 viñetas muy cortas con lo que has
+   cambiado (p. ej., "Corregida la fecha de la primera gammacámara: 1957, no 1952").`;
 
 /**
  * Borradores antiguos: la IA dejaba al final, tras una línea "---", avisos para ella ("confirma…", "verifica…").
