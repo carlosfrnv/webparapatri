@@ -222,6 +222,7 @@ export const draftPrompt = (
   title: string,
   m: AssignmentMeta,
   section: { title: string; goal: string; words: number },
+  subtitles: string[],
   all: string[],
   research: string,
   prev: string,
@@ -229,7 +230,16 @@ export const draftPrompt = (
   `Eres un tutor universitario que ayuda a una estudiante a redactar un trabajo académico.
 ${context(title, m)}
 ÍNDICE: ${all.join(" · ")}
-APARTADO A REDACTAR: «${section.title}» — ${section.goal} (unas ${section.words} palabras).
+APARTADO A REDACTAR: «${section.title}» — ${section.goal}
+EXTENSIÓN: unas ${section.words} palabras (NO menos de ${Math.round(section.words * 0.85)}). Si la investigación trae pocos datos,
+desarrolla con explicaciones generales y seguras del tema (contexto, por qué fue importante, relación con la Imagen Médica y
+la Radioterapia), sin inventar cifras, fechas, nombres ni citas.
+${
+  /^\s*\d+\.\s/.test(section.title) && subtitles.length
+    ? `Es el comienzo de un capítulo que tiene subapartados (${subtitles.join(" · ")}): presenta el tema del capítulo
+con contexto y una visión general, sin desarrollar en detalle lo que irá en esos subapartados.`
+    : ""
+}
 ${sectionRole(section.title, m)}
 ${prev ? `FINAL DEL APARTADO ANTERIOR (para enlazar sin repetir):\n${prev.slice(-800)}\n` : ""}
 INVESTIGACIÓN DE ESTE APARTADO (usa solo estos datos y sus citas; no inventes datos ni referencias; si hay una

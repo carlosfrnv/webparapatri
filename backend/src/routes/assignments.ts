@@ -519,13 +519,23 @@ async function doStep(
         status: null,
       });
     } else {
-      const words =
-        s.words || Math.round(a.meta.words / Math.max(1, a.sections.length));
+      // Subapartados de este capítulo (p. ej., 4.1, 4.2… si este es el 4.).
+      const subtitles: string[] = [];
+      for (const x of a.sections.slice(i + 1)) {
+        if (!/^\s*\d+\.\d+/.test(x.title)) break;
+        subtitles.push(x.title);
+      }
+      // Nunca un apartado de dos líneas: la IA a veces repartía muy pocas palabras al comienzo de un capítulo.
+      const words = Math.max(
+        subtitles.length ? 150 : 200,
+        s.words || Math.round(a.meta.words / Math.max(1, a.sections.length)),
+      );
       const result = await generate(
         draftPrompt(
           a.title,
           a.meta,
           { ...s, words },
+          subtitles,
           a.sections.map((x) => x.title),
           s.research,
           a.sections[i - 1]?.draft ?? "",

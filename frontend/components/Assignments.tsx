@@ -240,6 +240,7 @@ const TEXT = {
     drafting: "Redactando…",
     queued: "En cola: la IA lo hará en cuanto termine con el anterior…",
     translating: "Traduciendo al portugués…",
+    sectionWords: "Palabras de este apartado",
     polish: "Revisar con Haiku",
     polishHint:
       "Haiku es una IA mejor (de pago): corrige datos y citas, mejora la redacción y comprueba lo dudoso con una o dos búsquedas. Úsalo al final, cuando el borrador ya esté bien.",
@@ -347,6 +348,7 @@ const TEXT = {
     drafting: "A redigir…",
     queued: "Em fila: a IA faz isto assim que acabar o anterior…",
     translating: "A traduzir para português…",
+    sectionWords: "Palavras desta secção",
     polish: "Rever com o Haiku",
     polishHint:
       "O Haiku é uma IA melhor (paga): corrige dados e citações, melhora a redação e confirma o que for duvidoso com uma ou duas pesquisas. Usa-o no fim, quando o rascunho já estiver bem.",
@@ -1039,6 +1041,7 @@ function SectionCard({
 }) {
   const [title, setTitle] = useState(s.title);
   const [goal, setGoal] = useState(s.goal);
+  const [wordsText, setWordsText] = useState(s.words ? String(s.words) : "");
   const [draft, setDraft] = useState(s.draft);
   const [syncedDraft, setSyncedDraft] = useState(s.draft);
   // Si llega un borrador nuevo de la IA, se muestra (sin pisar lo que esté escribiendo si no ha cambiado).
@@ -1064,6 +1067,20 @@ function SectionCard({
             onChange={(e) => setGoal(e.target.value)}
             onBlur={() => goal !== s.goal && onChange({ goal })}
           />
+          <label className="text-muted flex items-center gap-2 text-sm">
+            {tx.sectionWords}
+            <input
+              className="input w-24 py-1 text-sm"
+              inputMode="numeric"
+              value={wordsText}
+              onChange={(e) => setWordsText(e.target.value.replace(/\D/g, "").slice(0, 5))}
+              onBlur={() => {
+                const n = Math.min(5000, Math.max(0, Number(wordsText) || 0));
+                setWordsText(n ? String(n) : "");
+                if (n !== s.words) onChange({ words: n });
+              }}
+            />
+          </label>
         </div>
         <div className="flex flex-col">
           <button className="btn-ghost min-h-8 px-2" disabled={i === 0} onClick={() => onMove(-1)} aria-label="↑">
