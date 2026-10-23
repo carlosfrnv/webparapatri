@@ -97,6 +97,8 @@ export interface GenerateResult {
   usedWeb: boolean;
   /** Lo que ha costado en dólares (solo si ha respondido un modelo de pago). */
   costUsd?: number;
+  /** Todo el texto de la respuesta, también el escrito antes o entre búsquedas. */
+  allText?: string;
 }
 
 // Gasto de Claude en los trabajos en segundo plano, por día (se reinicia a medianoche UTC o al reiniciar el servidor).

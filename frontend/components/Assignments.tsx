@@ -141,6 +141,8 @@ interface Section {
   status?: "research" | "draft" | "queued" | "translate" | "polish" | null;
   // El borrador antes de la última revisión con Haiku (para deshacerla).
   before_polish?: string | null;
+  // Qué paso falló: "Reintentar" repite ese.
+  error_step?: "research" | "draft" | "polish" | null;
   error?: string | null;
   // Avisos de la IA sobre el borrador (aparte del texto: no van al Word).
   notes?: string;
@@ -1106,7 +1108,12 @@ function SectionCard({
         />
       )}
       {s.error && !working && (
-        <ErrorBox message={s.error} onRetry={busy ? undefined : () => onRun(s.research ? "draft" : "research")} />
+        <ErrorBox
+          message={s.error}
+          onRetry={
+            busy ? undefined : () => onRun(s.error_step === "polish" ? "polish" : s.research ? "draft" : "research")
+          }
+        />
       )}
 
       {s.research && (

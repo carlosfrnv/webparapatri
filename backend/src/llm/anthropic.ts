@@ -112,6 +112,7 @@ export const anthropicProvider: Provider = {
             .join("")
             .trim(),
       webSources: req.web ? extractWebSources(content, req.research) : [],
+      allText: content.map((b) => (b.type === "text" ? b.text : "")).join(""),
       webSearches,
       // Aproximado (precio de lista; la caché sale algo más barata): 1 céntimo por búsqueda web.
       costUsd: (tokensIn * price(model).in + tokensOut * price(model).out) / 1e6 + webSearches * 0.01,

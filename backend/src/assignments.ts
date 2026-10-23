@@ -255,6 +255,7 @@ en como mucho 3 frases muy cortas y fáciles de hacer en un minuto (nunca "búsc
 Si no hay nada que revisar (lo normal), no pongas esa línea.`;
 
 export const SOURCES_MARK = "===FONTES===";
+export const TEXT_MARK = "===TEXTO===";
 
 /**
  * Revisión de un apartado ya redactado con un modelo mejor (Claude), cuando ella lo pide: corrige datos y citas,
@@ -286,8 +287,10 @@ Devuélvelo MEJORADO, en ${langName(m.lang)}:
   las que hayas consultado tú ahora. Nada de citas secundarias.
 - Redacción académica pero natural, como la de una buena estudiante de primer curso (nada pomposo ni repetitivo);
   conserva la estructura, las ideas y aproximadamente la misma longitud.
+Si vas a buscar algo, hazlo ANTES de empezar a escribir la respuesta.
 FORMATO DE LA RESPUESTA (exactamente así):
-1) El texto completo revisado, listo para pegar en el trabajo (sin título, sin comentarios dentro).
+1) Una línea que diga exactamente ${TEXT_MARK} y debajo el texto completo revisado, listo para pegar en el trabajo
+   (sin título, sin comentarios dentro).
 2) Solo si has añadido alguna fuente nueva: una línea que diga exactamente ${SOURCES_MARK} y debajo, una por línea y
    empezando por "- ", su referencia completa en ${m.citation === "APA" ? "APA 7" : "Vancouver"} con su enlace o DOI.
 3) Una línea que diga exactamente ${NOTES_MARK} y debajo, en ${uiLang === "pt" ? "português" : "español"}, como mucho 4 viñetas muy cortas con lo que has

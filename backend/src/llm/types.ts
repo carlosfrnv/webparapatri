@@ -36,6 +36,8 @@ export interface LlmResult {
    * cuando una respuesta usa la búsqueda con Google.
    */
   searchSuggestionsHtml?: string;
+  /** Todo el texto de la respuesta, también el escrito antes o entre búsquedas (solo con búsqueda web). */
+  allText?: string;
   /** Lo que ha costado la respuesta en dólares (solo los proveedores de pago). */
   costUsd?: number;
 }

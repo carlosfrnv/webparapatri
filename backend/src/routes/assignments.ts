@@ -10,6 +10,7 @@ import {
   polishPrompt,
   queriesPrompt,
   SOURCES_MARK,
+  TEXT_MARK,
   researchFromArticlesPrompt,
   researchPrompt,
   reviewPrompt,
@@ -94,6 +95,8 @@ const sectionSchema = z.object({
     .nullable()
     .optional(),
   error: z.string().max(60).nullable().optional(),
+  // Qué paso falló (para que "Reintentar" repita ese y no otro).
+  error_step: z.enum(["research", "draft", "polish"]).nullable().optional(),
   // El borrador antes de la última revisión con Haiku (para poder deshacerla).
   before_polish: z.string().max(60000).nullable().optional(),
 });
@@ -539,6 +542,7 @@ async function doStep(
     console.error(`[trabajos] ${kind}:`, err);
     await patchSection(userId, id, sid, {
       status: null,
+      error_step: kind,
       error: err instanceof AiError ? err.key : "unexpected",
     }).catch(() => undefined);
     throw err;
@@ -726,11 +730,16 @@ async function polishSection(userId: string, id: string, sid: string, ui: Lang) 
       effort: "medium",
       maxTokens: 10000,
     });
-    // Texto revisado, fuentes nuevas (si las hay) y lo que ha cambiado.
-    const [main, notes = ""] = result.text.split(NOTES_MARK);
-    const [body, added = ""] = main.split(SOURCES_MARK);
+    // Texto revisado, fuentes nuevas (si las hay) y lo que ha cambiado. Se lee de toda la respuesta (Haiku a veces
+    // escribe algo, busca y sigue escribiendo) y las marcas se reconocen aunque lleven negritas o espacios.
+    const mark = (m: string) => new RegExp(`^[ \\t*_#]*${m}[ \\t*_]*$`, "m");
+    const full = result.allText || result.text;
+    const parts = full.split(mark(TEXT_MARK));
+    const answer = parts.length > 1 ? parts[parts.length - 1] : result.text;
+    const [main, notes = ""] = answer.split(mark(NOTES_MARK));
+    const [body, added = ""] = main.split(mark(SOURCES_MARK));
     const draft = body.replace(/\n-{3,}\s*$/, "").trim();
-    if (draft.length < s.draft.trim().length * 0.5) throw new AiError("aiBadFormat");
+    if (draft.length < Math.min(200, s.draft.trim().length * 0.5)) throw new AiError("aiBadFormat");
     const lines = added.split("\n").filter((l) => /^\s*[-*•]\s+\S/.test(l));
     await withLock(id, async () => {
       const cur = await own(userId, id);
@@ -754,6 +763,7 @@ async function polishSection(userId: string, id: string, sid: string, ui: Lang) 
     console.error("[trabajos] revisión con Haiku:", err);
     await patchSection(userId, id, sid, {
       status: null,
+      error_step: "polish",
       error: err instanceof AiError ? err.key : "unexpected",
     }).catch(() => undefined);
   }
