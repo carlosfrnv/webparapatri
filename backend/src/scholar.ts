@@ -102,6 +102,8 @@ async function getJson<T>(url: string): Promise<T | null> {
 
 const clean = (s = "") =>
   s
+    // Caracteres de control invisibles: con uno solo, el Word del trabajo ya no se abre.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFE\uFFFF]/g, "")
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim();

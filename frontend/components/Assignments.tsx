@@ -1566,6 +1566,16 @@ function draftBlocks(draft: string) {
   return out;
 }
 
+/**
+ * Quita lo que Word no admite dentro de un documento (caracteres de control invisibles, mitades sueltas de emoji…):
+ * a veces vienen en los resúmenes de los artículos o en lo que pega ella, y con uno solo el Word ya no se abre.
+ */
+const wordSafe = (text: string) =>
+  text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFE\uFFFF]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "")
+    .replace(/[\n\r]+/g, " ");
+
 async function exportWord(a: Assignment, subjects: Subject[]) {
   const {
     Document,
@@ -1603,7 +1613,7 @@ async function exportWord(a: Assignment, subjects: Subject[]) {
   type P = InstanceType<typeof Paragraph>;
   const run = (text: string, o: { size?: number; bold?: boolean; italics?: boolean; caps?: boolean } = {}) =>
     new TextRun({
-      text,
+      text: wordSafe(text),
       font: FONT,
       size: o.size ?? 22,
       bold: o.bold,
