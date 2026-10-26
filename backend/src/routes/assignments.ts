@@ -1018,7 +1018,7 @@ Responde SOLO con JSON: {"siglas":[{"sigla":"OMS","significado":"Organização M
           .max(60)
           .default([]),
       }),
-      { lang, effort: "low", patient: true, maxTokens: 4000 },
+      { lang, effort: "low", maxTokens: 4000 },
     );
     const seen = new Set<string>();
     const siglas = out.siglas

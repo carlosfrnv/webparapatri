@@ -1598,11 +1598,13 @@ async function exportWord(a: Assignment, subjects: Subject[]) {
   const titles = displayTitles(a.sections);
   const bib = wordBibliography(a);
   // Listas de siglas y símbolos (las hace la IA a partir del texto; si falla, el Word sale igual sin ellas).
-  const lists = await api
-    .post<{ siglas: { sigla: string; significado: string }[]; simbolos: { simbolo: string; significado: string }[] }>(
-      `/assignments/${a.id}/lists`,
-    )
-    .catch(() => ({ siglas: [], simbolos: [] }));
+  // Como mucho 12 segundos: si la descarga tarda más, el iPad/iPhone ya no la deja bajar.
+  type Lists = { siglas: { sigla: string; significado: string }[]; simbolos: { simbolo: string; significado: string }[] };
+  const none: Lists = { siglas: [], simbolos: [] };
+  const lists = await Promise.race([
+    api.post<Lists>(`/assignments/${a.id}/lists`).catch(() => none),
+    new Promise<Lists>((r) => setTimeout(() => r(none), 12_000)),
+  ]);
   const logo = await fetch("/esscvp-logo.png")
     .then((r) => (r.ok ? r.arrayBuffer() : null))
     .catch(() => null);
