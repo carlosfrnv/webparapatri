@@ -40,8 +40,20 @@ const allLayers = (v: boolean) => Object.fromEntries(LAYERS.map((l) => [l, v])) 
 const COLORS = { bones: "#efe6d2", selected: "#ec4899", right: "#16a34a", wrong: "#dc2626", mine: "#f59e0b" };
 
 type Quiz = { target: string; answered: null | { ok: boolean; tapped: string } };
-type Info = Record<"funcion" | "localizacion" | "tamano" | "irrigacion" | "inervacion" | "tejido" | "imagen" | "dato", string>;
-const INFO_FIELDS = ["funcion", "localizacion", "tamano", "tejido", "irrigacion", "inervacion", "imagen", "dato"] as const;
+type Info = Record<
+  "funcion" | "localizacion" | "tamano" | "irrigacion" | "inervacion" | "tejido" | "imagen" | "dato",
+  string
+>;
+const INFO_FIELDS = [
+  "funcion",
+  "localizacion",
+  "tamano",
+  "tejido",
+  "irrigacion",
+  "inervacion",
+  "imagen",
+  "dato",
+] as const;
 // Centro del cuerpo (de donde se separan las piezas al "Separar piezas").
 const BODY_CENTER = new THREE.Vector3(0, 0.9, 0);
 
@@ -74,6 +86,9 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   const [isolated, setIsolated] = useState<string | null>(null);
   // "Separar piezas": 0 = juntas; 1 = separadas del centro del cuerpo.
   const [explode, setExplode] = useState(0);
+  // "Desmontar en filas": cada pieza colocada en filas horizontales, como un catálogo (0 = en el cuerpo, 1 = en filas).
+  const [rows, setRows] = useState(false);
+  const rowsT = useRef(0);
   // Fichas ya pedidas (nombre en inglés → ficha), para no pedir dos veces la misma.
   const [infos, setInfos] = useState<Record<string, Info | "loading" | "error">>({});
   const [showInfo, setShowInfo] = useState(false);
@@ -217,9 +232,7 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
             const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
             const away = center.clone().add(center.clone().sub(BODY_CENTER));
             mesh.userData.basePos = mesh.position.clone();
-            mesh.userData.explode = mesh.parent
-              .worldToLocal(away)
-              .sub(mesh.parent.worldToLocal(center.clone()));
+            mesh.userData.explode = mesh.parent.worldToLocal(away).sub(mesh.parent.worldToLocal(center.clone()));
           });
           setLoaded((l) => ({ ...l, [layer]: true }));
           setLoading(null);
@@ -269,18 +282,141 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
     s.render();
   }, [visible, seeThrough, hidden, isolated, selected, loaded, quiz, mineOn, mine.found, partById]);
 
-  // ---------- Separar piezas ----------
-  useEffect(() => {
+  // ---------- Separar piezas y desmontar en filas ----------
+  const place = useCallback(() => {
     const s = three.current;
     if (!s) return;
+    const t = rowsT.current;
     for (const meshes of s.meshes.values())
       for (const mesh of meshes) {
         const base = mesh.userData.basePos as THREE.Vector3 | undefined;
         const dir = mesh.userData.explode as THREE.Vector3 | undefined;
-        if (base && dir) mesh.position.copy(base).addScaledVector(dir, explode * 0.8);
+        const grid = mesh.userData.grid as THREE.Vector3 | undefined;
+        if (!base || !dir) continue;
+        mesh.position.copy(base).addScaledVector(dir, explode * 0.8 * (1 - t));
+        if (grid && t > 0) mesh.position.addScaledVector(grid, t);
       }
     s.render();
-  }, [explode, loaded]);
+  }, [explode]);
+
+  useEffect(place, [place, loaded]);
+
+  /**
+   * Coloca las piezas visibles en filas (primero los huesos, luego músculos, órganos…; de la cabeza a los pies),
+   * cada una a su tamaño real, y encuadra la cámara. Devuelve el centro y el tamaño del conjunto.
+   */
+  const layoutRows = useCallback(() => {
+    const s = three.current;
+    if (!s) return null;
+    for (const meshes of s.meshes.values())
+      for (const mesh of meshes) if (mesh.userData.basePos) mesh.position.copy(mesh.userData.basePos as THREE.Vector3);
+    s.scene.updateMatrixWorld(true);
+    const items: { meshes: THREE.Mesh[]; box: THREE.Box3; order: number }[] = [];
+    for (const [id, meshes] of s.meshes) {
+      const layer = meshes[0].userData.layer as Layer;
+      if (!visible[layer] || hidden.has(id) || (isolated && id !== isolated)) continue;
+      const box = new THREE.Box3();
+      for (const m of meshes) box.expandByObject(m);
+      items.push({ meshes, box, order: LAYERS.indexOf(layer) });
+    }
+    const c = (b: THREE.Box3) => b.getCenter(new THREE.Vector3());
+    items.sort((a, b) => a.order - b.order || c(b.box).y - c(a.box).y || c(a.box).x - c(b.box).x);
+    const W = Math.max(
+      1.6,
+      Math.sqrt(
+        items.reduce((sum, i) => {
+          const z = i.box.getSize(new THREE.Vector3());
+          return sum + (z.x + 0.02) * (z.y + 0.02);
+        }, 0),
+      ) * 1.6,
+    );
+    const gap = 0.02;
+    let x = 0;
+    let y = 0;
+    let rowH = 0;
+    let lastOrder = items[0]?.order ?? 0;
+    const placed: { meshes: THREE.Mesh[]; from: THREE.Vector3; to: THREE.Vector3 }[] = [];
+    for (const it of items) {
+      const size = it.box.getSize(new THREE.Vector3());
+      // Cada capa empieza fila nueva; y una fila se cierra cuando ya no cabe la pieza.
+      if (x > 0 && (x + size.x > W || it.order !== lastOrder)) {
+        y -= rowH + gap * (it.order !== lastOrder ? 4 : 1);
+        x = 0;
+        rowH = 0;
+      }
+      lastOrder = it.order;
+      placed.push({
+        meshes: it.meshes,
+        from: c(it.box),
+        to: new THREE.Vector3(x + size.x / 2 - W / 2, y - size.y / 2, 0),
+      });
+      x += size.x + gap;
+      rowH = Math.max(rowH, size.y);
+    }
+    const height = -(y - rowH);
+    // El conjunto, centrado donde estaba el cuerpo.
+    const shift = new THREE.Vector3(0, BODY_CENTER.y + height / 2, 0);
+    for (const p of placed) {
+      const to = p.to.add(shift);
+      for (const mesh of p.meshes) {
+        const parent = mesh.parent!;
+        mesh.userData.grid = parent.worldToLocal(to.clone()).sub(parent.worldToLocal(p.from.clone()));
+      }
+    }
+    // Las que no se colocan (ocultas o de capas apagadas) se quedan donde están.
+    const moving = new Set(placed.flatMap((p) => p.meshes));
+    for (const meshes of s.meshes.values()) for (const m of meshes) if (!moving.has(m)) m.userData.grid = undefined;
+    return { width: W, height };
+  }, [visible, hidden, isolated]);
+
+  function frameRows(box: { width: number; height: number }) {
+    const s = three.current;
+    if (!s) return;
+    const fov = (s.camera.fov * Math.PI) / 180;
+    const fit = Math.max(box.height, box.width / s.camera.aspect) / (2 * Math.tan(fov / 2));
+    // Con muchas piezas en filas hay que alejarse más de lo normal.
+    s.controls.maxDistance = Math.max(6, fit * 1.6);
+    s.controls.target.copy(BODY_CENTER);
+    s.camera.position.set(0, BODY_CENTER.y, fit * 1.08 + 0.2);
+    s.controls.update();
+  }
+
+  function animateRows(on: boolean) {
+    const from = rowsT.current;
+    const to = on ? 1 : 0;
+    const start = performance.now();
+    const step = () => {
+      const k = Math.min(1, (performance.now() - start) / 900);
+      rowsT.current = from + (to - from) * (1 - Math.pow(1 - k, 3));
+      place();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  function toggleRows() {
+    const on = !rows;
+    setRows(on);
+    if (on) {
+      setExplode(0);
+      const box = layoutRows();
+      if (box) frameRows(box);
+    } else {
+      const s = three.current;
+      s?.controls.target.set(0, 0.9, 0);
+      s?.camera.position.set(0, 0.95, 3.6);
+    }
+    animateRows(on);
+  }
+
+  // Si cambian las capas o las piezas ocultas con las filas puestas, se vuelven a colocar.
+  useEffect(() => {
+    if (!rows) return;
+    const box = layoutRows();
+    if (box) frameRows(box);
+    place();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al cambiar lo que se ve
+  }, [rows, layoutRows, loaded]);
 
   // ---------- Tocar y pasar el ratón ----------
   const pick = useCallback(
@@ -376,6 +512,8 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
     setHidden(new Set());
     setIsolated(null);
     setExplode(0);
+    setRows(false);
+    rowsT.current = 0;
     setSelected(null);
     s.render();
   }
@@ -566,18 +704,30 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
             {ta.seeThrough}
           </label>
         )}
-        <label className="flex min-h-10 items-center gap-2 px-2 text-sm">
-          {ta.explode}
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={explode}
-            onChange={(e) => setExplode(Number(e.target.value))}
-            className="accent-[var(--accent)] w-28"
-          />
-        </label>
+        {!rows && (
+          <label className="flex min-h-10 items-center gap-2 px-2 text-sm">
+            {ta.explode}
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={explode}
+              onChange={(e) => setExplode(Number(e.target.value))}
+              className="w-28 accent-[var(--accent)]"
+            />
+          </label>
+        )}
+        <button
+          onClick={toggleRows}
+          aria-pressed={rows}
+          disabled={parts.length === 0}
+          className={`min-h-10 rounded-full border-2 px-4 text-sm font-semibold ${
+            rows ? "border-accent bg-accent-soft text-accent" : "border-border"
+          }`}
+        >
+          {rows ? ta.rowsOff : ta.rowsOn}
+        </button>
         <div className="ml-auto flex flex-wrap gap-2">
           {subjectId && (
             <button

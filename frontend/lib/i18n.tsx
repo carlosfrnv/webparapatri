@@ -634,6 +634,8 @@ const es = {
     isolate: "Aislar",
     showAll: "Ver todo el cuerpo",
     explode: "Separar piezas",
+    rowsOn: "🧩 Desmontar en filas",
+    rowsOff: "🧍 Volver al cuerpo",
   },
   push: {
     title: "Recordatorios",
@@ -1551,6 +1553,8 @@ const pt: Dictionary = {
     isolate: "Isolar",
     showAll: "Ver o corpo todo",
     explode: "Separar peças",
+    rowsOn: "🧩 Desmontar em filas",
+    rowsOff: "🧍 Voltar ao corpo",
   },
   push: {
     title: "Lembretes",
