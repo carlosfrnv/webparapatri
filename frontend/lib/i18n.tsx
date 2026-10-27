@@ -619,6 +619,21 @@ const es = {
     quizScore: (ok: number, total: number) => `Aciertos: ${ok} de ${total}`,
     credits:
       "Modelos 3D: Z-Anatomy (CC BY-SA 4.0), a partir de BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Simplificados para la web.",
+    info: "📋 Ficha",
+    infoLoading: "Preparando la ficha…",
+    infoFields: {
+      funcion: "Función",
+      localizacion: "Localización",
+      tamano: "Tamaño",
+      irrigacion: "Irrigación",
+      inervacion: "Inervación",
+      tejido: "Tejido",
+      imagen: "En imagen médica",
+      dato: "Para recordarlo",
+    },
+    isolate: "Aislar",
+    showAll: "Ver todo el cuerpo",
+    explode: "Separar piezas",
   },
   push: {
     title: "Recordatorios",
@@ -1521,6 +1536,21 @@ const pt: Dictionary = {
     quizScore: (ok: number, total: number) => `Certas: ${ok} de ${total}`,
     credits:
       "Modelos 3D: Z-Anatomy (CC BY-SA 4.0), a partir de BodyParts3D © The Database Center for Life Science (CC BY-SA 2.1 JP). Simplificados para a web.",
+    info: "📋 Ficha",
+    infoLoading: "A preparar a ficha…",
+    infoFields: {
+      funcion: "Função",
+      localizacion: "Localização",
+      tamano: "Tamanho",
+      irrigacion: "Irrigação",
+      inervacion: "Inervação",
+      tejido: "Tecido",
+      imagen: "Em imagem médica",
+      dato: "Para te lembrares",
+    },
+    isolate: "Isolar",
+    showAll: "Ver o corpo todo",
+    explode: "Separar peças",
   },
   push: {
     title: "Lembretes",

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowsClockwise, Eye, EyeSlash, MagnifyingGlass, Question, X } from "@phosphor-icons/react";
+import { ArrowsClockwise, Crosshair, Eye, EyeSlash, MagnifyingGlass, Question, X } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -40,6 +40,10 @@ const allLayers = (v: boolean) => Object.fromEntries(LAYERS.map((l) => [l, v])) 
 const COLORS = { bones: "#efe6d2", selected: "#ec4899", right: "#16a34a", wrong: "#dc2626", mine: "#f59e0b" };
 
 type Quiz = { target: string; answered: null | { ok: boolean; tapped: string } };
+type Info = Record<"funcion" | "localizacion" | "tamano" | "irrigacion" | "inervacion" | "tejido" | "imagen" | "dato", string>;
+const INFO_FIELDS = ["funcion", "localizacion", "tamano", "tejido", "irrigacion", "inervacion", "imagen", "dato"] as const;
+// Centro del cuerpo (de donde se separan las piezas al "Separar piezas").
+const BODY_CENTER = new THREE.Vector3(0, 0.9, 0);
 
 export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   const t = useT();
@@ -66,6 +70,13 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   const [parts, setParts] = useState<Part[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  // "Aislar": solo se ve esta pieza.
+  const [isolated, setIsolated] = useState<string | null>(null);
+  // "Separar piezas": 0 = juntas; 1 = separadas del centro del cuerpo.
+  const [explode, setExplode] = useState(0);
+  // Fichas ya pedidas (nombre en inglés → ficha), para no pedir dos veces la misma.
+  const [infos, setInfos] = useState<Record<string, Info | "loading" | "error">>({});
+  const [showInfo, setShowInfo] = useState(false);
   const [query, setQuery] = useState("");
   const [hover, setHover] = useState<{ x: number; y: number; id: string } | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -197,6 +208,19 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
           });
           s.groups[layer] = group;
           s.scene.add(group);
+          // Para "Separar piezas": posición original de cada malla y hacia dónde se aleja del centro del cuerpo
+          // (en las coordenadas de su grupo, que pueden ir escaladas).
+          group.updateMatrixWorld(true);
+          group.traverse((o) => {
+            const mesh = o as THREE.Mesh;
+            if (!mesh.isMesh || !mesh.parent) return;
+            const center = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+            const away = center.clone().add(center.clone().sub(BODY_CENTER));
+            mesh.userData.basePos = mesh.position.clone();
+            mesh.userData.explode = mesh.parent
+              .worldToLocal(away)
+              .sub(mesh.parent.worldToLocal(center.clone()));
+          });
           setLoaded((l) => ({ ...l, [layer]: true }));
           setLoading(null);
           s.render();
@@ -237,13 +261,26 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
     }
     for (const [id, meshes] of s.meshes)
       for (const mesh of meshes) {
-        mesh.visible = !hidden.has(id);
+        mesh.visible = !hidden.has(id) && (!isolated || id === isolated);
         const base = mesh.userData.base as THREE.MeshStandardMaterial;
         const marked = mineOn ? (mine.found!.has(partById.get(id)?.en ?? "") ? mineMaterial(base) : DIM) : base;
         mesh.material = s.flash.get(id) ?? (id === selected ? selectedMaterial(base) : marked);
       }
     s.render();
-  }, [visible, seeThrough, hidden, selected, loaded, quiz, mineOn, mine.found, partById]);
+  }, [visible, seeThrough, hidden, isolated, selected, loaded, quiz, mineOn, mine.found, partById]);
+
+  // ---------- Separar piezas ----------
+  useEffect(() => {
+    const s = three.current;
+    if (!s) return;
+    for (const meshes of s.meshes.values())
+      for (const mesh of meshes) {
+        const base = mesh.userData.basePos as THREE.Vector3 | undefined;
+        const dir = mesh.userData.explode as THREE.Vector3 | undefined;
+        if (base && dir) mesh.position.copy(base).addScaledVector(dir, explode * 0.8);
+      }
+    s.render();
+  }, [explode, loaded]);
 
   // ---------- Tocar y pasar el ratón ----------
   const pick = useCallback(
@@ -308,7 +345,7 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   });
 
   // ---------- Acercar la cámara a una pieza ----------
-  function focus(id: string) {
+  function focus(id: string, distance = 3.2) {
     const s = three.current;
     const meshes = s?.meshes.get(id);
     if (!s || !meshes) return;
@@ -318,7 +355,7 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
     const size = Math.max(...box.getSize(new THREE.Vector3()).toArray(), 0.05);
     const dir = s.camera.position.clone().sub(s.controls.target).normalize();
     const from = { target: s.controls.target.clone(), pos: s.camera.position.clone() };
-    const to = { target: center, pos: center.clone().add(dir.multiplyScalar(size * 3.2 + 0.15)) };
+    const to = { target: center, pos: center.clone().add(dir.multiplyScalar(size * distance + 0.15)) };
     const start = performance.now();
     const step = () => {
       const k = Math.min(1, (performance.now() - start) / 600);
@@ -337,6 +374,8 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
     s.controls.target.set(0, 0.9, 0);
     s.camera.position.set(0, 0.95, 3.6);
     setHidden(new Set());
+    setIsolated(null);
+    setExplode(0);
     setSelected(null);
     s.render();
   }
@@ -468,6 +507,31 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
   }
 
   const sel = selected ? partById.get(selected) : null;
+
+  async function loadInfo(en: string) {
+    setShowInfo(true);
+    const key = `${lang}:${en}`;
+    if (infos[key] && infos[key] !== "error") return;
+    try {
+      const saved = localStorage.getItem(`atlas-info:${key}`);
+      if (saved) return setInfos((m) => ({ ...m, [key]: JSON.parse(saved) as Info }));
+    } catch {
+      /* sin almacenamiento: se pide al servidor */
+    }
+    setInfos((m) => ({ ...m, [key]: "loading" }));
+    try {
+      const info = await api.post<Info>("/atlas/info", { en, name: translate(en, lang), lang });
+      setInfos((m) => ({ ...m, [key]: info }));
+      try {
+        localStorage.setItem(`atlas-info:${key}`, JSON.stringify(info));
+      } catch {
+        /* sin almacenamiento */
+      }
+    } catch {
+      setInfos((m) => ({ ...m, [key]: "error" }));
+    }
+  }
+  const info = sel ? infos[`${lang}:${sel.en}`] : undefined;
   const other: AtlasLang = lang === "es" ? "pt" : "es";
   // La pregunta se deja preparada para el chat (la lee al abrirse).
   const ask = () => {
@@ -502,6 +566,18 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
             {ta.seeThrough}
           </label>
         )}
+        <label className="flex min-h-10 items-center gap-2 px-2 text-sm">
+          {ta.explode}
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={explode}
+            onChange={(e) => setExplode(Number(e.target.value))}
+            className="accent-[var(--accent)] w-28"
+          />
+        </label>
         <div className="ml-auto flex flex-wrap gap-2">
           {subjectId && (
             <button
@@ -643,7 +719,7 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
 
         {/* Ficha de la pieza tocada */}
         {sel && !quiz && (
-          <div className="bg-surface/95 absolute inset-x-3 bottom-3 rounded-2xl p-4 shadow-lg backdrop-blur sm:right-auto sm:left-3 sm:w-80">
+          <div className="bg-surface/95 absolute inset-x-3 bottom-3 max-h-[60%] overflow-y-auto rounded-2xl p-4 shadow-lg backdrop-blur sm:right-auto sm:left-3 sm:w-96">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-display text-lg leading-tight font-bold">{translate(sel.en, lang)}</p>
@@ -656,12 +732,37 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
                   {other.toUpperCase()}: {translate(sel.en, other)} · EN: {sel.en}
                 </p>
               </div>
-              <button className="btn-ghost min-h-8 px-2" onClick={() => setSelected(null)} aria-label={t.common.close}>
+              <button
+                className="btn-ghost min-h-8 px-2"
+                onClick={() => {
+                  setSelected(null);
+                  setShowInfo(false);
+                }}
+                aria-label={t.common.close}
+              >
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Link href="/chat" onClick={ask} className="btn-primary min-h-9 px-3 text-sm">
+              <button
+                className={`${showInfo ? "btn-secondary" : "btn-primary"} min-h-9 px-3 text-sm`}
+                onClick={() => (showInfo ? setShowInfo(false) : loadInfo(sel.en))}
+                aria-expanded={showInfo}
+              >
+                {ta.info}
+              </button>
+              <button
+                className="btn-secondary min-h-9 px-3 text-sm"
+                onClick={() => {
+                  setIsolated(sel.id);
+                  // Más lejos que "Acercar": la pieza sola, entera y con sitio para la ficha.
+                  focus(sel.id, 7);
+                  setShowInfo(false);
+                }}
+              >
+                <Crosshair size={16} aria-hidden="true" /> {ta.isolate}
+              </button>
+              <Link href="/chat" onClick={ask} className="btn-secondary min-h-9 px-3 text-sm">
                 {ta.explain}
               </Link>
               <button className="btn-secondary min-h-9 px-3 text-sm" onClick={() => focus(sel.id)}>
@@ -677,7 +778,31 @@ export default function Atlas3D({ subjectId }: { subjectId?: string }) {
                 <EyeSlash size={16} aria-hidden="true" /> {ta.hide}
               </button>
             </div>
+            {showInfo && (
+              <div className="mt-3 space-y-2 text-sm">
+                {info === "loading" || !info ? (
+                  <p className="text-muted">{ta.infoLoading}</p>
+                ) : info === "error" ? (
+                  <p className="text-danger">{ta.loadError}</p>
+                ) : (
+                  INFO_FIELDS.filter((f) => info[f]?.trim()).map((f) => (
+                    <div key={f}>
+                      <p className="text-accent text-[11px] font-bold tracking-wide uppercase">{ta.infoFields[f]}</p>
+                      <p>{info[f]}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
+        )}
+        {isolated && !quiz && (
+          <button
+            className="bg-surface/95 absolute top-3 left-3 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold shadow"
+            onClick={() => setIsolated(null)}
+          >
+            <Eye size={14} aria-hidden="true" /> {ta.showAll}
+          </button>
         )}
         {hidden.size > 0 && !quiz && (
           <button

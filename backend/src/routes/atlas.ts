@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { userIdOf } from "../auth";
+import { completeJson } from "../ai";
 import { asyncHandler, HttpError } from "../http";
+import { aiLimiter } from "../limits";
 import { supabase } from "../supabase";
 
 /**
@@ -97,5 +99,59 @@ atlasRouter.post(
       if (!chunks || chunks.length < 1000) break;
     }
     res.json({ documents: ids.length, found: matchParts(phrases, parts) });
+  }),
+);
+
+// ---------- Ficha de una estructura (como en los atlas: función, localización, tamaño, irrigación…) ----------
+
+const infoSchema = z.object({
+  en: z.string().trim().min(2).max(200), // nombre anatómico en inglés (Z-Anatomy)
+  name: z.string().trim().min(2).max(200), // nombre en el idioma de la web
+  lang: z.enum(["es", "pt"]),
+});
+const infoOut = z.object({
+  funcion: z.string().max(600),
+  localizacion: z.string().max(600),
+  tamano: z.string().max(300).default(""),
+  irrigacion: z.string().max(400).default(""),
+  inervacion: z.string().max(400).default(""),
+  tejido: z.string().max(300).default(""),
+  imagen: z.string().max(600).default(""),
+  dato: z.string().max(400).default(""),
+});
+// La anatomía no cambia: se guarda en memoria para no gastar IA dos veces en la misma pieza.
+const infoCache = new Map<string, z.infer<typeof infoOut>>();
+
+atlasRouter.post(
+  "/info",
+  aiLimiter,
+  asyncHandler(async (req, res) => {
+    const { en, name, lang } = infoSchema.parse(req.body);
+    const key = `${lang}:${en.toLowerCase()}`;
+    const hit = infoCache.get(key);
+    if (hit) return void res.json(hit);
+    const pt = lang === "pt";
+    const out = await completeJson(
+      `Ficha de anatomía para una estudiante de 1.º de Imagen Médica y Radioterapia, como la de un atlas.
+Estructura: «${name}» (nombre anatómico en inglés: ${en}).
+Escribe en ${pt ? "portugués europeo" : "español de España"}, frases cortas y claras, con datos anatómicos estándar y seguros
+(si un campo no aplica a esta estructura, déjalo vacío; no inventes cifras: da valores aproximados solo si son los habituales
+de los libros, p. ej. "unos 1,3-1,4 kg en el adulto").
+Campos:
+- funcion: para qué sirve (1-2 frases).
+- localizacion: dónde está y con qué se relaciona (1-2 frases).
+- tamano: tamaño o peso aproximado en el adulto, si tiene sentido.
+- irrigacion: arterias principales (y venas si es relevante).
+- inervacion: nervios principales, si aplica.
+- tejido: tipo de tejido u órgano (p. ej., hueso largo, músculo esquelético, órgano parenquimatoso).
+- imagen: cómo se ve o se estudia en imagen médica (RX, TC, RM, ecografía, medicina nuclear), 1-2 frases.
+- dato: un dato curioso o un truco para recordarlo (1 frase).
+Responde SOLO con JSON: {"funcion":"","localizacion":"","tamano":"","irrigacion":"","inervacion":"","tejido":"","imagen":"","dato":""}`,
+      infoOut,
+      { lang, effort: "low", maxTokens: 1500 },
+    );
+    if (infoCache.size > 2000) infoCache.clear();
+    infoCache.set(key, out);
+    res.json(out);
   }),
 );
