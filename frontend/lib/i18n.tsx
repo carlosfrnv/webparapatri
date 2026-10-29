@@ -391,6 +391,11 @@ const es = {
       back: "Estudiar",
       open: "Abrir láminas",
     },
+    radiopaedia: {
+      title: "Radiopaedia",
+      subtitle: "Cualquier tema de radiología explicado en español, con el artículo y las imágenes de Radiopaedia",
+      open: "Buscar",
+    },
     positioning: {
       button: "📐 Posicionamiento",
       title: "Posicionamiento radiológico",
@@ -1310,6 +1315,11 @@ const pt: Dictionary = {
       subtitle: "Lâminas com os nomes: vê-as, pratica tapando-os ou faz um exame",
       back: "Estudar",
       open: "Abrir lâminas",
+    },
+    radiopaedia: {
+      title: "Radiopaedia",
+      subtitle: "Qualquer tema de radiologia explicado em português, com o artigo e as imagens da Radiopaedia",
+      open: "Procurar",
     },
     positioning: {
       button: "📐 Posicionamento",
