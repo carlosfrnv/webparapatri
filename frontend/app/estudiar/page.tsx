@@ -2,7 +2,6 @@
 
 import {
   ArrowCounterClockwise,
-  Books,
   Brain,
   Cards,
   CaretRight,
@@ -240,18 +239,6 @@ function StudyPageContent() {
             </div>
             <Link href="/trabajos" className="btn-secondary">
               {t.assignments.open}
-            </Link>
-          </section>
-
-          {/* Radiopaedia: temas de radiología explicados, con el artículo original */}
-          <section className="card flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-            <GradientIcon icon={Books} tone="violet" size={52} />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold">{t.tools.radiopaedia.title}</h2>
-              <p className="text-muted mt-0.5 text-sm">{t.tools.radiopaedia.subtitle}</p>
-            </div>
-            <Link href="/radiopaedia" className="btn-secondary">
-              {t.tools.radiopaedia.open}
             </Link>
           </section>
 

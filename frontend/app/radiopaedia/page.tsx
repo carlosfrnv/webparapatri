@@ -47,7 +47,7 @@ const TEXT = {
       "Ictus isquémico",
       "Apendicitis",
     ],
-    back: "Estudiar",
+    back: "Biblioteca",
   },
   pt: {
     title: "Radiopaedia",
@@ -73,7 +73,7 @@ const TEXT = {
       "AVC isquémico",
       "Apendicite",
     ],
-    back: "Estudar",
+    back: "Biblioteca",
   },
 };
 
@@ -152,7 +152,7 @@ export default function RadiopaediaPage() {
 
   return (
     <div>
-      <Link href="/estudiar" className="text-accent mb-4 inline-flex items-center gap-1 font-semibold">
+      <Link href="/biblioteca" className="text-accent mb-4 inline-flex items-center gap-1 font-semibold">
         <ArrowLeft size={18} aria-hidden="true" /> {tx.back}
       </Link>
       <PageHeader icon={Books} title={tx.title} subtitle={tx.subtitle} />

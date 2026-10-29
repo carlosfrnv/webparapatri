@@ -1,6 +1,6 @@
 "use client";
 
-import { Books, Broom, GraduationCap, MagnifyingGlass, Student, Trash } from "@phosphor-icons/react";
+import { BookOpenText, Books, Broom, GraduationCap, MagnifyingGlass, Student, Trash } from "@phosphor-icons/react";
 import { GradientIcon } from "@/components/GradientIcon";
 import { subjectLook } from "@/components/subjectLook";
 import Link from "next/link";
@@ -291,6 +291,16 @@ export default function LibraryPage() {
       />
 
       <SearchBox subjects={subjects ?? []} />
+
+      {/* Radiopaedia: temas de radiología explicados, con el artículo original */}
+      <Link href="/radiopaedia" className="card card-hover mb-8 flex items-center gap-4 p-4 sm:p-5">
+        <GradientIcon icon={BookOpenText} tone="violet" size={48} />
+        <div className="min-w-0 flex-1">
+          <h2 className="font-bold">{t.tools.radiopaedia.title}</h2>
+          <p className="text-muted mt-0.5 text-sm">{t.tools.radiopaedia.subtitle}</p>
+        </div>
+        <span className="btn-secondary shrink-0">{t.tools.radiopaedia.open}</span>
+      </Link>
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">{t.library.upload}</h2>
