@@ -35,8 +35,7 @@ const TEXT = {
     save: "Guardar",
     saved: "Guardado",
     source: "Fuente: Radiopaedia.org",
-    noSource:
-      "Esta vez no se ha podido consultar Radiopaedia: la ficha está hecha con conocimientos generales. Ábrelo en Radiopaedia para comprobarlo.",
+    noSource: "Resumen hecho con conocimientos generales de radiología. Para ampliarlo, ábrelo en Radiopaedia.",
     history: "Buscado hace poco",
     favorites: "Guardados",
     suggestions: [
@@ -61,8 +60,7 @@ const TEXT = {
     save: "Guardar",
     saved: "Guardado",
     source: "Fonte: Radiopaedia.org",
-    noSource:
-      "Desta vez não foi possível consultar a Radiopaedia: a ficha foi feita com conhecimentos gerais. Abre-a na Radiopaedia para confirmar.",
+    noSource: "Resumo feito com conhecimentos gerais de radiologia. Para aprofundar, abre-o na Radiopaedia.",
     history: "Procurado há pouco",
     favorites: "Guardados",
     suggestions: [
@@ -215,7 +213,7 @@ export default function RadiopaediaPage() {
             <h2 className="font-display mt-1 text-2xl font-extrabold sm:text-3xl">{entry.title}</h2>
           </header>
           <div className="space-y-4 p-5 sm:p-7">
-            {!entry.from_radiopaedia && <p className="bg-warning-soft rounded-xl p-3 text-sm">{tx.noSource}</p>}
+            {!entry.from_radiopaedia && <p className="text-muted text-sm">{tx.noSource}</p>}
             <div className="prose-sm">
               <Markdown>{entry.body}</Markdown>
             </div>
