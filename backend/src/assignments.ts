@@ -63,7 +63,8 @@ export const outlinePrompt = (
   `Eres un tutor universitario que ayuda a una estudiante a planificar un trabajo académico.
 ${context(title, m)}
 
-Propón un índice adecuado a la extensión (normalmente entre 4 y 8 apartados, con subapartados solo si hacen falta),
+Propón un índice adecuado a la extensión (si el profesor no da estructura, normalmente entre 4 y 8 apartados, con
+subapartados solo si hacen falta),
 con la estructura que pide la escuela:
 - "${l(m, "Introdução", "Introducción")}" SIN número;
 - los capítulos del desarrollo numerados "1.", "2.", … y sus subcapítulos "1.1", "1.2", …;
@@ -76,6 +77,10 @@ el cumplimiento de los objetivos y recomendaciones o sugerencias.
 Si el profesor ha dado una estructura, respétala TAL CUAL: los mismos puntos, en el mismo orden y con LA MISMA
 NUMERACIÓN (si le toca, p. ej., el 3 y el 4 con sus 3.1, 3.2…, numera 3, 3.1, 3.2…, 4, 4.1…, no desde 1). Si es solo una
 parte de un trabajo de grupo (no empieza en el 1), no añadas Introducción ni Conclusión salvo que las pidan.
+Si las instrucciones traen subapartados (1.1, 1.2…), CADA subapartado es un apartado propio del índice, con su número,
+su título, su "goal" y sus palabras (no los juntes en el capítulo). El capítulo que tiene subapartados queda como un
+apartado corto de presentación (unas 80-120 palabras), y el resto de sus palabras se reparte entre sus subapartados.
+Si las instrucciones dan porcentajes de palabras, respétalos sobre la extensión total.
 Los títulos van en el idioma del trabajo (${langName(m.lang)}).
 Para cada apartado, en "goal" escribe en una frase qué hay que contar en él (también en el idioma del trabajo)
 y en "words" cuántas palabras aproximadas le corresponden (que sumen la extensión total).
