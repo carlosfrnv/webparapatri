@@ -77,9 +77,14 @@ el cumplimiento de los objetivos y recomendaciones o sugerencias.
 Si el profesor ha dado una estructura, respétala TAL CUAL: los mismos puntos, en el mismo orden y con LA MISMA
 NUMERACIÓN (si le toca, p. ej., el 3 y el 4 con sus 3.1, 3.2…, numera 3, 3.1, 3.2…, 4, 4.1…, no desde 1). Si es solo una
 parte de un trabajo de grupo (no empieza en el 1), no añadas Introducción ni Conclusión salvo que las pidan.
-Si las instrucciones traen subapartados (1.1, 1.2…), CADA subapartado es un apartado propio del índice, con su número,
+${
+  m.words >= 3000
+    ? `Si las instrucciones traen subapartados (1.1, 1.2…), CADA subapartado es un apartado propio del índice, con su número,
 su título, su "goal" y sus palabras (no los juntes en el capítulo). El capítulo que tiene subapartados queda como un
-apartado corto de presentación (unas 80-120 palabras), y el resto de sus palabras se reparte entre sus subapartados.
+apartado corto de presentación (unas 80-120 palabras), y el resto de sus palabras se reparte entre sus subapartados.`
+    : `Es un trabajo corto (${m.words} palabras): un apartado por capítulo, sin subapartados; lo que el profesor pone entre
+paréntesis o como subpuntos son orientaciones de contenido: recógelas en el "goal" del capítulo.`
+}
 Si las instrucciones dan porcentajes de palabras, respétalos sobre la extensión total.
 Los títulos van en el idioma del trabajo (${langName(m.lang)}).
 Para cada apartado, en "goal" escribe en una frase qué hay que contar en él (también en el idioma del trabajo)
