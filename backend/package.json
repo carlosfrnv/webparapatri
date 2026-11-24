@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch --env-file=.env src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node --max-old-space-size=320 dist/index.js",
     "typecheck": "tsc --noEmit",
     "referencia": "tsx --env-file=.env src/scripts/subir-referencia.ts",
     "probar": "tsx --env-file=.env src/scripts/probar-pregunta.ts"
