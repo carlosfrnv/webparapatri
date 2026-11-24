@@ -144,9 +144,10 @@ async function sendForm<T>(form: FormData, onProgress: (fraction: number) => voi
       return await sendFormOnce<T>(form, onProgress, path);
     } catch (err) {
       const status = (err as ApiError).status;
-      if (attempt >= 3 || ![0, 502, 503, 504].includes(status)) throw err;
+      // Un reinicio del servidor (al publicar cambios) tarda uno o dos minutos: se espera hasta ~2 min en total.
+      if (attempt >= 7 || ![0, 502, 503, 504].includes(status)) throw err;
       onProgress(0);
-      await sleep(4000 * attempt);
+      await sleep(Math.min(4000 * attempt, 25_000));
     }
   }
 }
