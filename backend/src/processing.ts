@@ -148,7 +148,11 @@ async function processOne(params: {
   } catch (err) {
     console.error(`Error al procesar el documento ${documentId}:`, err);
     // Guardamos un código; el frontend muestra el mensaje en el idioma elegido.
-    const message = err instanceof ExtractionError ? err.message : PROCESSING_ERRORS.generic;
+    // En los errores inesperados se guarda también el motivo técnico (corto), para poder ver qué ha fallado.
+    const detail = String((err as { message?: string })?.message ?? err)
+      .replace(/\s+/g, " ")
+      .slice(0, 160);
+    const message = err instanceof ExtractionError ? err.message : `${PROCESSING_ERRORS.generic} — ${detail}`;
     await supabase
       .from("documents")
       .update({ status: "error", error_message: message })

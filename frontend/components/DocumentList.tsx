@@ -42,7 +42,13 @@ export function usePollProcessing(docs: DocumentItem[], setDocs: (fn: (d: Docume
 /** Traduce los códigos de error del procesado que guarda el backend. */
 export function useDocError() {
   const t = useT();
-  return (message: string | null) => (message ? (t.docErrors[message] ?? message) : null);
+  // "código — detalle técnico": el mensaje del código y, debajo entre paréntesis, el detalle.
+  return (message: string | null) => {
+    if (!message) return null;
+    const [code, detail] = message.split(" — ");
+    const text = t.docErrors[code] ?? code;
+    return detail ? `${text} (${detail})` : text;
+  };
 }
 
 export function DocumentList({
