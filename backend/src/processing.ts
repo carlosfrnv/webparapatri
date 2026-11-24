@@ -46,7 +46,11 @@ export async function processDocument(params: {
         )
       )
         throw err;
-      pages = await transcribePdf(params.buffer).catch((e) => {
+      // Como mucho 8 minutos: si la IA no da abasto, se avisa en vez de quedarse "procesando" para siempre.
+      pages = await Promise.race([
+        transcribePdf(params.buffer),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("tiempo agotado")), 8 * 60_000)),
+      ]).catch((e) => {
         console.error("Error al leer el PDF escaneado:", e);
         return [];
       });
