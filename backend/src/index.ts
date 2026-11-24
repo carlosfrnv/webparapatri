@@ -5,6 +5,7 @@ import { requireAuth } from "./auth";
 import { config } from "./config";
 import { errorHandler } from "./http";
 import { generalLimiter } from "./limits";
+import { recoverStuckDocuments } from "./processing";
 import { atlasRouter } from "./routes/atlas";
 import { encyclopediaRouter } from "./routes/encyclopedia";
 import { chatRouter } from "./routes/chat";
@@ -77,4 +78,8 @@ app.listen(config.PORT, () => {
     console.error("⚠️  Ningún modelo de AI_CHAIN tiene su clave configurada: la IA no funcionará.");
   else console.log(`IA (en este orden): ${CHAIN.map((s) => s.key).join(" → ")}`);
   setInterval(maybeSendDailyReminders, 15 * 60_000);
+  // Apuntes que se quedaron en "procesando" (reinicio del servidor a mitad): al arrancar y cada 10 minutos.
+  const recover = () => recoverStuckDocuments().catch((err) => console.error("Error al recuperar documentos:", err));
+  setTimeout(recover, 30_000);
+  setInterval(recover, 10 * 60_000);
 });

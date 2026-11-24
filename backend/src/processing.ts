@@ -4,6 +4,8 @@ import { chunkPages } from "./chunk";
 import { ExtractionError, extractText } from "./extract";
 import { PROCESSING_ERRORS } from "./i18n";
 import { classifyPrompt } from "./prompts";
+import { STORAGE_BUCKET } from "./config";
+import { detectKind } from "./extract";
 import { supabase } from "./supabase";
 import { describeFigures, figureChunk, transcribePdf } from "./vision";
 import { transcribeAudio } from "./audio";
@@ -22,6 +24,8 @@ export async function processDocument(params: {
   title: string;
   sourceType: "apuntes" | "referencia";
   suggestSubject: boolean;
+  /** Al reintentar un documento que se quedó a medias: sin leer las figuras (lo más pesado). */
+  skipFigures?: boolean;
 }) {
   const { documentId, userId } = params;
   try {
@@ -53,9 +57,13 @@ export async function processDocument(params: {
 
     // Figuras (esquemas, radiografías…): la IA las describe y se guardan como fragmentos más.
     // Si falla, el documento se queda solo con el texto.
-    if (isNotes && !scanned) {
+    if (isNotes && !scanned && !params.skipFigures) {
       const formulas = await isFormulaDocument(documentId, userId).catch(() => false);
-      const figures = await describeFigures(params.buffer, params.kind, { formulas }).catch((err) => {
+      // Como mucho 4 minutos: si la IA tarda más (saturada), el documento se guarda solo con el texto.
+      const figures = await Promise.race([
+        describeFigures(params.buffer, params.kind, { formulas }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("tiempo agotado")), 4 * 60_000)),
+      ]).catch((err) => {
         console.error(`Error al leer las figuras de ${documentId}:`, err);
         return [];
       });
@@ -130,5 +138,56 @@ async function suggestSubject(documentId: string, userId: string, title: string,
       .update({ suggested_subject_id: result.subject_id })
       .eq("id", documentId)
       .eq("user_id", userId);
+  }
+}
+
+// Marca (en error_message) de un documento que se está reintentando tras quedarse a medias.
+const RETRYING = "retrying";
+
+/**
+ * Documentos que se quedaron en "procesando" porque el servidor se reinició o se durmió a mitad (el plan gratuito de
+ * Render lo hace): se vuelven a procesar una vez desde el archivo guardado (sin figuras, que es lo más pesado); si
+ * vuelve a fallar, se marcan con error para que ella pueda volver a subirlos en vez de esperar para siempre.
+ */
+export async function recoverStuckDocuments() {
+  const before = new Date(Date.now() - 10 * 60_000).toISOString();
+  const { data, error } = await supabase
+    .from("documents")
+    .select("id, user_id, title, storage_path, mime_type, source_type, error_message")
+    .eq("status", "processing")
+    .lt("created_at", before)
+    .limit(20);
+  if (error || !data?.length) return;
+  for (const doc of data) {
+    if (doc.error_message === RETRYING) {
+      await supabase
+        .from("documents")
+        .update({ status: "error", error_message: PROCESSING_ERRORS.generic })
+        .eq("id", doc.id);
+      continue;
+    }
+    const kind = detectKind(doc.mime_type ?? "", doc.storage_path);
+    const file = kind ? await supabase.storage.from(STORAGE_BUCKET).download(doc.storage_path) : null;
+    if (!kind || !file?.data) {
+      await supabase
+        .from("documents")
+        .update({ status: "error", error_message: PROCESSING_ERRORS.generic })
+        .eq("id", doc.id);
+      continue;
+    }
+    console.warn(`[documentos] "${doc.title}" se quedó a medias: se vuelve a procesar.`);
+    await supabase.from("documents").update({ error_message: RETRYING }).eq("id", doc.id);
+    // Si quedaron fragmentos de la vez anterior, se quitan para no duplicarlos.
+    await supabase.from("chunks").delete().eq("document_id", doc.id);
+    await processDocument({
+      documentId: doc.id,
+      userId: doc.user_id,
+      buffer: Buffer.from(await file.data.arrayBuffer()),
+      kind,
+      title: doc.title,
+      sourceType: doc.source_type === "referencia" ? "referencia" : "apuntes",
+      suggestSubject: false,
+      skipFigures: true,
+    });
   }
 }
