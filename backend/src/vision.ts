@@ -19,6 +19,9 @@ const MAX_FIGURES = 40;
 const BATCH = 8;
 // Ancho al que se envían las imágenes (suficiente para leer las leyendas).
 const WIDTH = 1200;
+// "Fotos" de las páginas del PDF: de pocas en pocas y a una resolución que basta para recortar las figuras.
+const SHOT_GROUP = 1;
+const SHOT_WIDTH = 1400;
 // Por debajo de este tamaño suelen ser iconos o adornos.
 const MIN_PIXELS = 120;
 const MIN_BYTES = 15_000;
@@ -114,9 +117,11 @@ const OPS_PAINT_IMAGE = new Set([85, 86]);
 
 interface PdfDoc {
   numPages: number;
+  cleanup?(): Promise<void>;
   getPage(n: number): Promise<{
     view: number[];
     getOperatorList(): Promise<{ fnArray: number[]; argsArray: unknown[][] }>;
+    cleanup?(): boolean;
   }>;
 }
 
@@ -191,7 +196,11 @@ async function pdfImages(parser: PDFParse): Promise<{ total: number; pages: PdfI
       }
     });
     pages.push(found);
+    // Libera las imágenes ya leídas (si no, se acumulan las de todo el PDF en memoria).
+    page.cleanup?.();
+    if (i % 4 === 0) await doc.cleanup?.();
   }
+  await doc.cleanup?.();
   return { total: doc.numPages, pages };
 }
 
@@ -261,20 +270,28 @@ async function pdfCandidates(buffer: Buffer, allPages = false): Promise<Candidat
     const pages = [...crops.keys()].sort((a, b) => a - b);
     if (pages.length === 0) return [];
     // Más resolución al recortar, para que la figura recortada siga viéndose bien.
-    const shots = await parser.getScreenshot({ partial: pages, desiredWidth: WIDTH * 2, imageDataUrl: false });
     const out: Candidate[] = [];
-    for (const shot of shots.pages) {
-      const zones = (crops.get(shot.pageNumber) ?? [null]).sort((x, y) => (x?.[1] ?? 0) - (y?.[1] ?? 0));
-      for (const zone of zones) {
-        const image = await toJpeg(shot.data, false, zone);
-        // En las páginas enteras la referencia es la página (la usa la transcripción de PDF escaneados).
-        if (image)
-          out.push({
-            ref: allPages ? shot.pageNumber : out.length + 1,
-            page: shot.pageNumber,
-            label: `página ${shot.pageNumber}`,
-            image,
-          });
+    // De dos en dos páginas: hacer la "foto" de todas a la vez llegaba a 1,5 GB de memoria con 30 páginas, y el
+    // servidor gratuito (512 MB) se reiniciaba y los apuntes se quedaban "procesando".
+    for (let i = 0; i < pages.length; i += SHOT_GROUP) {
+      const shots = await parser.getScreenshot({
+        partial: pages.slice(i, i + SHOT_GROUP),
+        desiredWidth: SHOT_WIDTH,
+        imageDataUrl: false,
+      });
+      for (const shot of shots.pages) {
+        const zones = (crops.get(shot.pageNumber) ?? [null]).sort((x, y) => (x?.[1] ?? 0) - (y?.[1] ?? 0));
+        for (const zone of zones) {
+          const image = await toJpeg(shot.data, false, zone);
+          // En las páginas enteras la referencia es la página (la usa la transcripción de PDF escaneados).
+          if (image)
+            out.push({
+              ref: allPages ? shot.pageNumber : out.length + 1,
+              page: shot.pageNumber,
+              label: `página ${shot.pageNumber}`,
+              image,
+            });
+        }
       }
     }
     return out;

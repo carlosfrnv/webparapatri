@@ -16,7 +16,16 @@ import { isFormulaDocument } from "./formulas";
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
  * extrae el texto, lo divide en fragmentos y los guarda. El frontend consulta el estado.
  */
-export async function processDocument(params: {
+// De uno en uno: si sube varios apuntes a la vez, procesarlos juntos multiplica la memoria y el servidor gratuito
+// (512 MB) se reiniciaba a mitad.
+let lane: Promise<unknown> = Promise.resolve();
+export function processDocument(params: Parameters<typeof processOne>[0]) {
+  const job = lane.then(() => processOne(params));
+  lane = job.catch(() => undefined);
+  return job;
+}
+
+async function processOne(params: {
   documentId: string;
   userId: string;
   buffer: Buffer;
@@ -146,7 +155,8 @@ async function suggestSubject(documentId: string, userId: string, title: string,
 }
 
 // Marca (en error_message) de un documento que se está reintentando tras quedarse a medias.
-const RETRYING = "retrying";
+// (Se cambió de nombre al arreglar la memoria: los que fallaron con la versión anterior tienen otra oportunidad.)
+const RETRYING = "retrying-v2";
 
 /**
  * Documentos que se quedaron en "procesando" porque el servidor se reinició o se durmió a mitad (el plan gratuito de
