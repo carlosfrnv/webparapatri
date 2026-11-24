@@ -72,26 +72,6 @@ async function processOne(params: {
     }
     const chunks = chunkPages(pages);
 
-    // Figuras (esquemas, radiografías…): la IA las describe y se guardan como fragmentos más.
-    // Si falla, el documento se queda solo con el texto.
-    if (isNotes && !scanned && !params.skipFigures) {
-      const formulas = await isFormulaDocument(documentId, userId).catch(() => false);
-      // Como mucho 4 minutos: si la IA tarda más (saturada), el documento se guarda solo con el texto.
-      const figures = await Promise.race([
-        describeFigures(params.buffer, params.kind, { formulas }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("tiempo agotado")), 4 * 60_000)),
-      ]).catch((err) => {
-        console.error(`Error al leer las figuras de ${documentId}:`, err);
-        return [];
-      });
-      for (const f of figures) chunks.push({ position: chunks.length, page: f.page, content: figureChunk(f) });
-      // Las imágenes se guardan para las preguntas con imágenes.
-      if (figures.length > 0)
-        await saveFigures(documentId, userId, figures).catch((err) =>
-          console.error(`Error al guardar las figuras de ${documentId}:`, err),
-        );
-    }
-
     for (let i = 0; i < chunks.length; i += 200) {
       const batch = chunks.slice(i, i + 200).map((c) => ({
         document_id: documentId,
@@ -105,11 +85,47 @@ async function processOne(params: {
       if (error) throw error;
     }
 
+    // Ya se puede estudiar con el texto: "Listo" sin esperar a las figuras, que tardan minutos con una clase entera.
     await supabase
       .from("documents")
       .update({ status: "ready", error_message: null })
       .eq("id", documentId)
       .eq("user_id", userId);
+
+    // Figuras (esquemas, radiografías…): la IA las describe y se añaden como fragmentos más.
+    // Si falla, el documento se queda solo con el texto (ya está "Listo").
+    if (isNotes && !scanned && !params.skipFigures) {
+      try {
+        const formulas = await isFormulaDocument(documentId, userId).catch(() => false);
+        // Como mucho 4 minutos: si la IA tarda más (saturada), se queda solo con el texto.
+        const figures = await Promise.race([
+          describeFigures(params.buffer, params.kind, { formulas }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("tiempo agotado")), 4 * 60_000)),
+        ]).catch((err) => {
+          console.error(`Error al leer las figuras de ${documentId}:`, err);
+          return [];
+        });
+        if (figures.length > 0) {
+          const { error } = await supabase.from("chunks").insert(
+            figures.map((f, k) => ({
+              document_id: documentId,
+              user_id: userId,
+              position: chunks.length + k,
+              page: f.page,
+              content: figureChunk(f),
+              source_type: params.sourceType,
+            })),
+          );
+          if (error) console.error(`Error al guardar las figuras de ${documentId}:`, error);
+          // Las imágenes se guardan para las preguntas con imágenes.
+          await saveFigures(documentId, userId, figures).catch((err) =>
+            console.error(`Error al guardar las imágenes de ${documentId}:`, err),
+          );
+        }
+      } catch (err) {
+        console.error(`Error con las figuras de ${documentId}:`, err);
+      }
+    }
 
     if (params.suggestSubject) {
       const firstText = pages
