@@ -11,6 +11,8 @@ import { describeFigures, figureChunk, transcribePdf } from "./vision";
 import { transcribeAudio } from "./audio";
 import { saveFigures } from "./figures";
 import { isFormulaDocument } from "./formulas";
+import { getOrGenerateStudy } from "./study";
+import type { Lang } from "./i18n";
 
 /**
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
@@ -35,6 +37,8 @@ async function processOne(params: {
   suggestSubject: boolean;
   /** Al reintentar un documento que se quedó a medias: sin leer las figuras (lo más pesado). */
   skipFigures?: boolean;
+  /** Idioma en que se prepara el resumen al terminar (el de la web al subirlo). */
+  lang?: Lang;
 }) {
   const { documentId, userId } = params;
   try {
@@ -118,6 +122,13 @@ async function processOne(params: {
         console.error("Error al sugerir asignatura:", err),
       );
     }
+
+    // El resumen, las flashcards y el test se preparan ya, en segundo plano: así, cuando abra el documento,
+    // están hechos (antes se generaban al abrirlo y tardaban uno o dos minutos con una clase entera).
+    if (isNotes)
+      void getOrGenerateStudy(documentId, userId, params.lang ?? "es").catch((err) =>
+        console.error(`Error al preparar el resumen de ${documentId}:`, err),
+      );
   } catch (err) {
     console.error(`Error al procesar el documento ${documentId}:`, err);
     // Guardamos un código; el frontend muestra el mensaje en el idioma elegido.

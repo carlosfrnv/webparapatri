@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { STORAGE_BUCKET } from "./config";
 import { detectKind } from "./extract";
 import { HttpError } from "./http";
+import type { Lang } from "./i18n";
 import { processDocument } from "./processing";
 import type { SourceKind } from "./search";
 import { supabase } from "./supabase";
@@ -35,6 +36,8 @@ export async function ingestDocument(params: {
   referenceOrg: ReferenceOrg | null;
   /** El script de terminal espera a que termine el procesado; la web no. */
   wait?: boolean;
+  /** Idioma de la web: en él se prepara el resumen al terminar. */
+  lang?: Lang;
 }) {
   const kind = detectKind(params.mimetype, params.originalName);
   if (!kind) throw new HttpError(415, "unsupportedType");
@@ -77,6 +80,7 @@ export async function ingestDocument(params: {
     sourceType: params.sourceType,
     // La referencia no necesita asignatura; los apuntes sin asignatura reciben una sugerencia de la IA.
     suggestSubject: params.sourceType === "apuntes" && !params.subjectId,
+    lang: params.lang,
   });
   if (params.wait) await job;
   else void job;

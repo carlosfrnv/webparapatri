@@ -97,6 +97,7 @@ documentsRouter.post(
     }
 
     const data = await ingestDocument({
+      lang: langOf(req),
       userId,
       buffer: file.buffer,
       originalName,
@@ -143,6 +144,7 @@ documentsRouter.post(
     const pdf = await photosToPdf(files.map((f) => f.buffer));
     if (!pdf) throw new HttpError(415, "unsupportedType");
     const data = await ingestDocument({
+      lang: langOf(req),
       userId,
       buffer: pdf,
       originalName: `${title.replace(/[\\/:*?"<>|]/g, "-")}.pdf`,
@@ -188,6 +190,7 @@ documentsRouter.post(
         throw new HttpError(415, "unsupportedType");
       });
       const data = await ingestDocument({
+      lang: langOf(req),
         userId,
         buffer: m4a,
         originalName: `${originalName.replace(/\.[^.]+$/, "")}.m4a`,
