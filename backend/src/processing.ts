@@ -18,6 +18,18 @@ import type { Lang } from "./i18n";
  * Procesa un documento en segundo plano (el plan gratuito de Render no tiene colas):
  * extrae el texto, lo divide en fragmentos y los guarda. El frontend consulta el estado.
  */
+/**
+ * Texto que admite la base de datos: el carácter nulo (algunos PDF de Google Slides lo ponen donde había una flecha)
+ * hace que Postgres rechace todo el documento ("unsupported Unicode escape sequence"). Se cambia por una flecha y
+ * se quitan los demás caracteres de control invisibles y las mitades sueltas de emoji.
+ */
+export function dbSafe(text: string) {
+  return text
+    .replace(/\u0000/g, "→")
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+}
+
 // De uno en uno: si sube varios apuntes a la vez, procesarlos juntos multiplica la memoria y el servidor gratuito
 // (512 MB) se reiniciaba a mitad.
 let lane: Promise<unknown> = Promise.resolve();
@@ -78,7 +90,7 @@ async function processOne(params: {
         user_id: userId,
         position: c.position,
         page: c.page,
-        content: c.content,
+        content: dbSafe(c.content),
         source_type: params.sourceType,
       }));
       const { error } = await supabase.from("chunks").insert(batch);
@@ -112,7 +124,7 @@ async function processOne(params: {
               user_id: userId,
               position: chunks.length + k,
               page: f.page,
-              content: figureChunk(f),
+              content: dbSafe(figureChunk(f)),
               source_type: params.sourceType,
             })),
           );

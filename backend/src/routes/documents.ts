@@ -8,6 +8,7 @@ import { compressAudio, isAudio } from "../audio";
 import { MAX_PHOTO_BYTES, MAX_PHOTOS, photosToPdf } from "../photos";
 import { MAX_AUDIO_BYTES, MAX_UPLOAD_BYTES, STORAGE_BUCKET } from "../config";
 import { DOC_FIELDS, ingestDocument } from "../ingest";
+import { dbSafe } from "../processing";
 import { asyncHandler, HttpError } from "../http";
 import { langOf } from "../i18n";
 import { aiLimiter } from "../limits";
@@ -422,7 +423,7 @@ async function analyseFigures(
         user_id: userId,
         position: start + i,
         page: f.page,
-        content: figureChunk(f),
+        content: dbSafe(figureChunk(f)),
         source_type: "apuntes",
       })),
     );
