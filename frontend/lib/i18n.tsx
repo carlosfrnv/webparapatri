@@ -575,6 +575,7 @@ const es = {
     },
     print: "Guardar PDF / Imprimir",
     making: "Preparando el PDF…",
+    ready: "PDF listo: toca para guardarlo",
     howTo:
       "En el iPad o el móvil se prepara el PDF y se abre el menú de compartir: elige «Guardar en Archivos» o «Imprimir». En el ordenador elige «Guardar como PDF».",
     preview: "Así quedará:",
@@ -1500,6 +1501,7 @@ const pt: Dictionary = {
     },
     print: "Guardar PDF / Imprimir",
     making: "A preparar o PDF…",
+    ready: "PDF pronto: toca para guardar",
     howTo:
       "No iPad ou no telemóvel prepara-se o PDF e abre-se o menu de partilhar: escolhe «Guardar em Ficheiros» ou «Imprimir». No computador escolhe «Guardar como PDF».",
     preview: "Vai ficar assim:",

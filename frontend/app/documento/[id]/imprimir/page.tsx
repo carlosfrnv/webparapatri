@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer } from "@phosphor-icons/react";
+import { DownloadSimple, Printer } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -10,7 +10,7 @@ import { SummaryWithFigures, useFigureImages } from "@/components/SummaryFigures
 import { stripOrigins } from "@/components/Sources";
 import { ErrorBox, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
-import { exportElementToPdf, isInstalledApp } from "@/lib/pdfExport";
+import { makePdf, sharePdf, shouldMakePdf } from "@/lib/pdfExport";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, StudyMaterials, Subject } from "@/lib/types";
 
@@ -44,6 +44,8 @@ function Print() {
   const summaryRef = useRef<HTMLElement>(null);
   const docRef = useRef<HTMLElement>(null);
   const [making, setMaking] = useState(false);
+  // PDF ya hecho que espera a que ella toque para abrir el menú de compartir (Apple lo exige).
+  const [ready, setReady] = useState<File | null>(null);
   const [highlights, setHighlights] = useHighlights(id);
   useHighlightPaint(summaryRef, highlights, `${parts.summary}-${figures.length}-${materials?.generated_at}`);
 
@@ -100,11 +102,13 @@ function Print() {
           <button
             className="btn-primary"
             onClick={async () => {
-              // En la web instalada como app (iPad/iPhone) no se puede abrir el menú de imprimir: se hace el PDF aquí.
-              if (!isInstalledApp() || !docRef.current) return window.print();
+              // En el iPad/móvil el menú de imprimir no siempre se abre: se hace el PDF aquí y se comparte.
+              if (!shouldMakePdf() || !docRef.current) return window.print();
               setMaking(true);
+              setReady(null);
               try {
-                await exportElementToPdf(docRef.current, doc.title);
+                const file = await makePdf(docRef.current, doc.title);
+                if ((await sharePdf(file)) === "needs-tap") setReady(file);
               } catch (err) {
                 alert(errorMessage(err));
               } finally {
@@ -115,13 +119,26 @@ function Print() {
           >
             <Printer size={18} weight="duotone" aria-hidden="true" /> {making ? tp.making : tp.print}
           </button>
+          {ready && (
+            <button
+              className="btn-primary animate-pulse"
+              onClick={async () => {
+                if ((await sharePdf(ready)) === "done") setReady(null);
+              }}
+            >
+              <DownloadSimple size={18} weight="bold" aria-hidden="true" /> {tp.ready}
+            </button>
+          )}
           <p className="text-muted text-xs">{tp.howTo}</p>
         </div>
         <p className="text-muted text-sm">{tp.preview}</p>
       </div>
 
       {/* Documento */}
-      <article ref={docRef} className="card print-doc mx-auto max-w-3xl p-6 sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none">
+      <article
+        ref={docRef}
+        className="card print-doc mx-auto max-w-3xl p-6 sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none"
+      >
         <header className="border-border mb-6 border-b pb-4">
           <p className="text-muted text-xs font-semibold tracking-wider uppercase">
             {[subject, t.appName].filter(Boolean).join(" · ")}

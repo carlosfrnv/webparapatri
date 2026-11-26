@@ -4,11 +4,18 @@
  * de compartir (Guardar en Archivos, Imprimir, enviar…) o, si no lo hay, se descarga.
  */
 
-/** Si la web está instalada como app (pantalla de inicio), sin las barras del navegador. */
-export function isInstalledApp() {
+/**
+ * Si conviene hacer el PDF aquí en vez de abrir el menú de imprimir: en el iPad/iPhone y en Android (instalada como
+ * app el menú de imprimir no se abre, y en el navegador del móvil a veces tampoco). En el ordenador, imprimir.
+ */
+export function shouldMakePdf() {
+  const nav = navigator as Navigator & { standalone?: boolean };
   return (
-    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
-    window.matchMedia("(display-mode: standalone)").matches
+    nav.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches ||
+    /iPad|iPhone|iPod|Android/i.test(nav.userAgent) ||
+    // iPad con iPadOS se presenta como un Mac, pero tiene pantalla táctil.
+    (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1)
   );
 }
 
@@ -32,7 +39,8 @@ function blankRowNear(ctx: CanvasRenderingContext2D, width: number, y: number, m
   return y;
 }
 
-export async function exportElementToPdf(element: HTMLElement, fileName: string) {
+/** Hace el PDF de `element` (lo que tiene la clase no-print no sale). */
+export async function makePdf(element: HTMLElement, fileName: string) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas-pro"), import("jspdf")]);
   const canvas = await html2canvas(element, {
     scale: 2,
@@ -67,24 +75,34 @@ export async function exportElementToPdf(element: HTMLElement, fileName: string)
   }
 
   const name = `${fileName.replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "apuntes"}.pdf`;
-  const blob = pdf.output("blob");
-  const file = new File([blob], name, { type: "application/pdf" });
-  // iPad/iPhone: menú de compartir (Guardar en Archivos, Imprimir…).
+  return new File([pdf.output("blob")], name, { type: "application/pdf" });
+}
+
+/**
+ * Abre el menú de compartir con el PDF (Guardar en Archivos, Imprimir…). Apple solo lo deja abrir justo después de tocar
+ * un botón: si hacer el PDF ha tardado, se niega ("needs-tap") y hay que pedirle que toque otra vez.
+ */
+export async function sharePdf(file: File): Promise<"done" | "needs-tap"> {
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: name });
-      return;
+      await navigator.share({ files: [file], title: file.name });
+      return "done";
     } catch (err) {
-      // Si ella cierra el menú sin elegir nada, no es un error.
-      if ((err as Error).name === "AbortError") return;
+      const name = (err as Error).name;
+      // Si cierra el menú sin elegir nada, no es un error.
+      if (name === "AbortError") return "done";
+      if (name === "NotAllowedError") return "needs-tap";
     }
   }
-  const url = URL.createObjectURL(blob);
+  // Sin menú de compartir: se abre el PDF (desde el visor se puede guardar o imprimir) o se descarga.
+  const url = URL.createObjectURL(file);
   const link = document.createElement("a");
   link.href = url;
-  link.download = name;
+  link.download = file.name;
+  link.target = "_blank";
   document.body.appendChild(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return "done";
 }
