@@ -10,6 +10,7 @@ import { SummaryWithFigures, useFigureImages } from "@/components/SummaryFigures
 import { stripOrigins } from "@/components/Sources";
 import { ErrorBox, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { exportElementToPdf, isInstalledApp } from "@/lib/pdfExport";
 import { dateLocale, useLang, useT } from "@/lib/i18n";
 import type { DocumentItem, StudyMaterials, Subject } from "@/lib/types";
 
@@ -41,6 +42,8 @@ function Print() {
   const figures = useFigureImages(id);
   // Sus subrayados se ven también en el PDF, y sus notas al final del resumen.
   const summaryRef = useRef<HTMLElement>(null);
+  const docRef = useRef<HTMLElement>(null);
+  const [making, setMaking] = useState(false);
   const [highlights, setHighlights] = useHighlights(id);
   useHighlightPaint(summaryRef, highlights, `${parts.summary}-${figures.length}-${materials?.generated_at}`);
 
@@ -96,10 +99,21 @@ function Print() {
           </div>
           <button
             className="btn-primary"
-            onClick={() => window.print()}
-            disabled={!(Object.keys(parts) as Part[]).some((p) => p !== "images" && parts[p])}
+            onClick={async () => {
+              // En la web instalada como app (iPad/iPhone) no se puede abrir el menú de imprimir: se hace el PDF aquí.
+              if (!isInstalledApp() || !docRef.current) return window.print();
+              setMaking(true);
+              try {
+                await exportElementToPdf(docRef.current, doc.title);
+              } catch (err) {
+                alert(errorMessage(err));
+              } finally {
+                setMaking(false);
+              }
+            }}
+            disabled={making || !(Object.keys(parts) as Part[]).some((p) => p !== "images" && parts[p])}
           >
-            <Printer size={18} weight="duotone" aria-hidden="true" /> {tp.print}
+            <Printer size={18} weight="duotone" aria-hidden="true" /> {making ? tp.making : tp.print}
           </button>
           <p className="text-muted text-xs">{tp.howTo}</p>
         </div>
@@ -107,7 +121,7 @@ function Print() {
       </div>
 
       {/* Documento */}
-      <article className="card print-doc mx-auto max-w-3xl p-6 sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none">
+      <article ref={docRef} className="card print-doc mx-auto max-w-3xl p-6 sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none">
         <header className="border-border mb-6 border-b pb-4">
           <p className="text-muted text-xs font-semibold tracking-wider uppercase">
             {[subject, t.appName].filter(Boolean).join(" · ")}

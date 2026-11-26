@@ -12,6 +12,8 @@
     "@phosphor-icons/react": "^2.1.7",
     "@supabase/supabase-js": "^2.117.3",
     "docx": "9.8.1",
+    "html2canvas-pro": "2.6.3",
+    "jspdf": "4.2.1",
     "katex": "^0.16.22",
     "next": "16.4.0",
     "react": "19.3.0",

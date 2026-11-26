@@ -574,8 +574,9 @@ const es = {
       mindmap: "Esquema",
     },
     print: "Guardar PDF / Imprimir",
+    making: "Preparando el PDF…",
     howTo:
-      "En el iPad o el móvil se abre el menú de imprimir: puedes imprimirlo o, con el botón de compartir, guardarlo como PDF en Archivos. En el ordenador elige «Guardar como PDF».",
+      "En el iPad o el móvil se prepara el PDF y se abre el menú de compartir: elige «Guardar en Archivos» o «Imprimir». En el ordenador elige «Guardar como PDF».",
     preview: "Así quedará:",
     footer: (date: string) => `Estudio IMR · Generado por IA a partir de tus apuntes · ${date}`,
   },
@@ -1498,8 +1499,9 @@ const pt: Dictionary = {
       mindmap: "Esquema",
     },
     print: "Guardar PDF / Imprimir",
+    making: "A preparar o PDF…",
     howTo:
-      "No iPad ou no telemóvel abre-se o menu de imprimir: podes imprimir ou, com o botão de partilhar, guardar como PDF em Ficheiros. No computador escolhe «Guardar como PDF».",
+      "No iPad ou no telemóvel prepara-se o PDF e abre-se o menu de partilhar: escolhe «Guardar em Ficheiros» ou «Imprimir». No computador escolhe «Guardar como PDF».",
     preview: "Vai ficar assim:",
     footer: (date: string) => `Estudo IMR · Gerado pela IA a partir dos teus apontamentos · ${date}`,
   },
