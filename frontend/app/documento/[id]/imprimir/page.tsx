@@ -149,7 +149,7 @@ function Print() {
         </header>
 
         {parts.mindmap && (
-          <section className="mb-8 print:break-after-page">
+          <section className="mb-8 print:break-after-page" data-pdf-sheet>
             {map.tree ? (
               <MindMapView tree={map.tree} />
             ) : map.error ? (

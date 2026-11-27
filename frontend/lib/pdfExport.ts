@@ -25,6 +25,8 @@ const PAGE_H = 297;
 const MARGIN = 12;
 // Ancho (en píxeles de pantalla) con el que se maqueta cada hoja del PDF.
 const PRINT_WIDTH = 740;
+// Anchos que se prueban para la hoja del esquema.
+const SHEET_WIDTHS = [740, 900, 1060, 1220];
 // Lo que nunca se parte entre dos hojas.
 const ATOMS = new Set([
   "P",
@@ -51,6 +53,8 @@ interface Atom {
   el: Element;
   // Contenedores de los que cuelga (de fuera adentro), para repetirlos en cada hoja: tarjetas, listas, tablas…
   chain: Element[];
+  // Va solo y entero en su propia hoja (el esquema).
+  sheet?: boolean;
 }
 
 const hasOwnText = (el: Element) =>
@@ -62,6 +66,10 @@ function collectAtoms(root: Element, pageHeight: number) {
   const walk = (el: Element, chain: Element[]) => {
     for (const child of el.children) {
       if (child.classList.contains("no-print")) continue;
+      if (child instanceof HTMLElement && child.dataset.pdfSheet !== undefined) {
+        atoms.push({ el: child, chain, sheet: true });
+        continue;
+      }
       const tag = child.tagName.toUpperCase();
       const small = child.getBoundingClientRect().height <= pageHeight * 0.35;
       if (ATOMS.has(tag) || child.children.length === 0 || hasOwnText(child) || (small && tag !== "TABLE"))
@@ -118,6 +126,23 @@ async function paginate(source: HTMLElement, host: HTMLElement, pageHeight: numb
   };
   newPage();
   for (const atom of atoms) {
+    if (atom.sheet) {
+      // Hoja propia: se prueban varios anchos (en uno ancho el esquema sale con las ramas a los dos lados) y se queda
+      // el que, reducido para caber en el folio, deja la letra más grande.
+      // Lo que ya hay en la hoja se queda con el esquema si es poco (el título del apunte); si no, hoja nueva.
+      if (page.childNodes.length && page.getBoundingClientRect().height > pageHeight * 0.2) newPage();
+      place(atom);
+      let best = { width: PRINT_WIDTH, fit: 0 };
+      for (const width of SHEET_WIDTHS) {
+        page.style.width = `${width}px`;
+        const h = page.getBoundingClientRect().height;
+        const fit = Math.min(1, PRINT_WIDTH / width, pageHeight / h);
+        if (fit > best.fit + 0.02) best = { width, fit };
+      }
+      page.style.width = `${best.width}px`;
+      newPage();
+      continue;
+    }
     const before = open;
     const { copy, created } = place(atom);
     if (page.getBoundingClientRect().height > pageHeight && page.childNodes.length > 1 && last !== null) {
@@ -166,9 +191,9 @@ export async function makePdf(
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     for (const [i, page] of pages.entries()) {
       onProgress?.(i + 1, pages.length);
-      const h = page.getBoundingClientRect().height;
+      const { width: pw, height: h } = page.getBoundingClientRect();
       // Tope de píxeles por hoja que Safari (iPhone/iPad) aguanta de sobra.
-      const scale = Math.min(2, Math.sqrt(6_000_000 / (PRINT_WIDTH * h)));
+      const scale = Math.min(2, Math.sqrt(6_000_000 / (pw * h)));
       const canvas = await html2canvas(page, {
         scale,
         backgroundColor: "#ffffff",
@@ -179,8 +204,9 @@ export async function makePdf(
       });
       if (i > 0) pdf.addPage();
       // Si una pieza sola no cabía en una hoja (una imagen enorme), se reduce para que quepa.
+      // Las hojas normales ocupan el ancho del folio; la del esquema, si es más ancha, se reduce igual que se ve.
       let w = contentW;
-      let hMm = (h * contentW) / PRINT_WIDTH;
+      let hMm = (h * contentW) / pw;
       if (hMm > contentH) {
         w = (w * contentH) / hMm;
         hMm = contentH;
