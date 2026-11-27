@@ -43,7 +43,7 @@ function Print() {
   // Sus subrayados se ven también en el PDF, y sus notas al final del resumen.
   const summaryRef = useRef<HTMLElement>(null);
   const docRef = useRef<HTMLElement>(null);
-  const [making, setMaking] = useState(false);
+  const [making, setMaking] = useState<string | false>(false);
   // PDF ya hecho que espera a que ella toque para abrir el menú de compartir (Apple lo exige).
   const [ready, setReady] = useState<File | null>(null);
   const [highlights, setHighlights] = useHighlights(id);
@@ -104,10 +104,12 @@ function Print() {
             onClick={async () => {
               // En el iPad/móvil el menú de imprimir no siempre se abre: se hace el PDF aquí y se comparte.
               if (!shouldMakePdf() || !docRef.current) return window.print();
-              setMaking(true);
+              setMaking(tp.making);
               setReady(null);
               try {
-                const file = await makePdf(docRef.current, doc.title);
+                const file = await makePdf(docRef.current, doc.title, (page, pages) =>
+                  setMaking(`${tp.making} ${page}/${pages}`),
+                );
                 if ((await sharePdf(file)) === "needs-tap") setReady(file);
               } catch (err) {
                 alert(errorMessage(err));
@@ -115,9 +117,9 @@ function Print() {
                 setMaking(false);
               }
             }}
-            disabled={making || !(Object.keys(parts) as Part[]).some((p) => p !== "images" && parts[p])}
+            disabled={!!making || !(Object.keys(parts) as Part[]).some((p) => p !== "images" && parts[p])}
           >
-            <Printer size={18} weight="duotone" aria-hidden="true" /> {making ? tp.making : tp.print}
+            <Printer size={18} weight="duotone" aria-hidden="true" /> {making || tp.print}
           </button>
           {ready && (
             <button

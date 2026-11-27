@@ -23,55 +23,108 @@ export function shouldMakePdf() {
 const PAGE_W = 210;
 const PAGE_H = 297;
 const MARGIN = 12;
+// Ancho (en píxeles de pantalla) con el que se maqueta el PDF.
+const PRINT_WIDTH = 740;
+// Lo que no se parte entre dos páginas (si cabe en una).
+const BLOCKS = "p,li,h1,h2,h3,h4,h5,h6,tr,img,figure,pre,blockquote,svg,dt,dd,table,section > div";
 
-/** Fila de la imagen que está toda en blanco cerca de `y` (para no cortar una línea de texto por la mitad). */
-function blankRowNear(ctx: CanvasRenderingContext2D, width: number, y: number, maxUp: number) {
-  for (let row = y; row > y - maxUp; row--) {
-    const data = ctx.getImageData(0, row, width, 1).data;
-    let white = true;
-    for (let i = 0; i < data.length; i += 16)
-      if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) {
-        white = false;
-        break;
+/**
+ * Dónde se corta cada página (en píxeles de la pantalla, desde arriba del elemento): una página entera cada vez, pero
+ * subiendo el corte hasta el principio del párrafo, imagen o fila que quedaría partido.
+ */
+function pageBreaks(element: HTMLElement, pageHeight: number) {
+  const top = element.getBoundingClientRect().top;
+  const total = element.scrollHeight;
+  const blocks = [...element.querySelectorAll<HTMLElement>(BLOCKS)]
+    .filter((b) => !b.closest(".no-print"))
+    .map((b) => {
+      const r = b.getBoundingClientRect();
+      return { el: b, top: r.top - top, bottom: r.bottom - top };
+    });
+  // Final de cada línea de texto de un bloque (para cortar un párrafo largo entre dos líneas).
+  const lineEnds = (el: HTMLElement) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return [...range.getClientRects()].map((r) => r.bottom - top);
+  };
+  const breaks: [number, number][] = [];
+  let start = 0;
+  while (start < total - 1) {
+    let end = Math.min(start + pageHeight, total);
+    if (end < total) {
+      const limit = end;
+      for (const b of blocks) {
+        if (!(b.top < limit && b.bottom > limit)) continue;
+        // Partido por el corte: si cabe en una página, entero a la siguiente; si no, se corta entre líneas.
+        if (b.top > start + pageHeight * 0.3) end = Math.min(end, b.top);
+        else {
+          const line = Math.max(...lineEnds(b.el).filter((y) => y <= limit && y > start + pageHeight * 0.3), -1);
+          if (line > 0) end = Math.min(end, line + 1);
+        }
       }
-    if (white) return row;
+    }
+    breaks.push([start, Math.ceil(end)]);
+    start = Math.ceil(end);
   }
-  return y;
+  return breaks;
 }
 
-/** Hace el PDF de `element` (lo que tiene la clase no-print no sale). */
-export async function makePdf(element: HTMLElement, fileName: string) {
+/**
+ * Hace el PDF de `element` (lo que tiene la clase no-print no sale). Se fotografía página a página: en el iPad y el
+ * iPhone, Safari no deja hacer una imagen de más de ~16 millones de píxeles y un apunte largo entero no cabe.
+ */
+export async function makePdf(
+  element: HTMLElement,
+  fileName: string,
+  onProgress?: (page: number, pages: number) => void,
+) {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas-pro"), import("jspdf")]);
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCORS: true,
-    // Lo que no sale al imprimir (botones, herramientas…) tampoco sale en el PDF.
-    ignoreElements: (el) => el.classList?.contains("no-print") ?? false,
-  });
-  const ctx = canvas.getContext("2d")!;
+  // Siempre con el ancho de un folio (en el móvil la página es estrecha y saldría con letra enorme y el triple de hojas).
+  const saved = element.style.cssText;
+  element.style.width = `${PRINT_WIDTH}px`;
+  element.style.maxWidth = "none";
+  try {
+    return await render(element, fileName, html2canvas, jsPDF, onProgress);
+  } finally {
+    element.style.cssText = saved;
+  }
+}
+
+async function render(
+  element: HTMLElement,
+  fileName: string,
+  html2canvas: typeof import("html2canvas-pro").default,
+  jsPDF: typeof import("jspdf").jsPDF,
+  onProgress?: (page: number, pages: number) => void,
+) {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const contentW = PAGE_W - 2 * MARGIN;
-  const pxPerMm = canvas.width / contentW;
-  const pageHeightPx = Math.floor((PAGE_H - 2 * MARGIN) * pxPerMm);
+  const width = Math.ceil(element.getBoundingClientRect().width);
+  const pxPerMm = width / contentW;
+  const breaks = pageBreaks(element, Math.floor((PAGE_H - 2 * MARGIN) * pxPerMm));
+  // Resolución: el doble que la pantalla, con un tope de píxeles por página que Safari aguanta de sobra.
+  const scale = Math.min(2, Math.sqrt(6_000_000 / (width * (PAGE_H - 2 * MARGIN) * pxPerMm)));
 
-  let y = 0;
-  let first = true;
-  while (y < canvas.height) {
-    let end = Math.min(y + pageHeightPx, canvas.height);
-    // Se corta por una zona en blanco (entre líneas), como mucho subiendo un 15 % de la página.
-    if (end < canvas.height) end = blankRowNear(ctx, canvas.width, end, Math.floor(pageHeightPx * 0.15));
-    const slice = document.createElement("canvas");
-    slice.width = canvas.width;
-    slice.height = end - y;
-    const sctx = slice.getContext("2d")!;
-    sctx.fillStyle = "#ffffff";
-    sctx.fillRect(0, 0, slice.width, slice.height);
-    sctx.drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
-    if (!first) pdf.addPage();
-    pdf.addImage(slice.toDataURL("image/jpeg", 0.8), "JPEG", MARGIN, MARGIN, contentW, slice.height / pxPerMm);
-    first = false;
-    y = end;
+  for (const [i, [start, end]] of breaks.entries()) {
+    onProgress?.(i + 1, breaks.length);
+    const canvas = await html2canvas(element, {
+      scale,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      imageTimeout: 8000,
+      logging: false,
+      // html2canvas-pro: x/y desde la esquina del propio elemento.
+      x: 0,
+      y: start,
+      width,
+      height: end - start,
+      // Lo que no sale al imprimir (botones, herramientas…) tampoco sale en el PDF.
+      ignoreElements: (el) => el.classList?.contains("no-print") ?? false,
+    });
+    if (i > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.85), "JPEG", MARGIN, MARGIN, contentW, (end - start) / pxPerMm);
+    // Se libera la memoria de la página antes de la siguiente.
+    canvas.width = canvas.height = 0;
   }
 
   const name = `${fileName.replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "apuntes"}.pdf`;
