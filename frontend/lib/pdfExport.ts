@@ -92,7 +92,10 @@ async function paginate(source: HTMLElement, host: HTMLElement, pageHeight: numb
   let page!: HTMLElement;
   // Contenedores ya abiertos en la hoja actual: [original, copia en la hoja].
   let open: [Element, Element][] = [];
-  let last: Element | null = null;
+  // Piezas en la hoja actual y la última puesta.
+  let count = 0;
+  let lastAtom: Atom | null = null;
+  let lastCopy: Element | null = null;
   const newPage = () => {
     page = source.cloneNode(false) as HTMLElement;
     page.removeAttribute("id");
@@ -107,7 +110,9 @@ async function paginate(source: HTMLElement, host: HTMLElement, pageHeight: numb
     host.appendChild(page);
     pages.push(page);
     open = [];
-    last = null;
+    count = 0;
+    lastAtom = null;
+    lastCopy = null;
   };
   const place = (atom: Atom) => {
     let keep = 0;
@@ -130,7 +135,7 @@ async function paginate(source: HTMLElement, host: HTMLElement, pageHeight: numb
       // Hoja propia: se prueban varios anchos (en uno ancho el esquema sale con las ramas a los dos lados) y se queda
       // el que, reducido para caber en el folio, deja la letra más grande.
       // Lo que ya hay en la hoja se queda con el esquema si es poco (el título del apunte); si no, hoja nueva.
-      if (page.childNodes.length && page.getBoundingClientRect().height > pageHeight * 0.2) newPage();
+      if (count && page.getBoundingClientRect().height > pageHeight * 0.2) newPage();
       place(atom);
       let best = { width: PRINT_WIDTH, fit: 0 };
       for (const width of SHEET_WIDTHS) {
@@ -145,19 +150,23 @@ async function paginate(source: HTMLElement, host: HTMLElement, pageHeight: numb
     }
     const before = open;
     const { copy, created } = place(atom);
-    if (page.getBoundingClientRect().height > pageHeight && page.childNodes.length > 1 && last !== null) {
+    if (count > 0 && page.getBoundingClientRect().height > pageHeight) {
       // No cabe: se quita de esta hoja (con los contenedores abiertos solo para ella) y va a la siguiente.
       copy.remove();
       if (created.length) created[0].remove();
       open = before;
       // Un título no se queda solo al final de la hoja: se lleva a la siguiente con lo que le sigue.
-      const moved: Element | null = last && HEADINGS.has((last as Element).tagName.toUpperCase()) ? last : null;
-      const movedAtom = moved ? atoms[atoms.indexOf(atom) - 1] : null;
-      if (moved && page.getBoundingClientRect().height > 0) (moved as Element).remove();
+      const carry = count > 1 && lastAtom && HEADINGS.has(lastAtom.el.tagName.toUpperCase()) ? lastAtom : null;
+      if (carry) lastCopy?.remove();
       newPage();
-      if (movedAtom) place(movedAtom);
-      last = place(atom).copy;
-    } else last = copy;
+      if (carry) {
+        place(carry);
+        count = 1;
+      }
+      lastCopy = place(atom).copy;
+    } else lastCopy = copy;
+    lastAtom = atom;
+    count++;
   }
   // Las imágenes de las copias tienen que estar cargadas antes de la foto.
   await Promise.all(
@@ -188,9 +197,12 @@ export async function makePdf(
     const pages = await paginate(source, host, pageHeight);
     source.remove();
 
+    // Solo la hoja que se fotografía está en la página (html2canvas copia la página entera en cada foto).
+    for (const page of pages) page.remove();
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     for (const [i, page] of pages.entries()) {
       onProgress?.(i + 1, pages.length);
+      host.appendChild(page);
       const { width: pw, height: h } = page.getBoundingClientRect();
       // Tope de píxeles por hoja que Safari (iPhone/iPad) aguanta de sobra.
       const scale = Math.min(2, Math.sqrt(6_000_000 / (pw * h)));
@@ -213,6 +225,7 @@ export async function makePdf(
       }
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.85), "JPEG", MARGIN + (contentW - w) / 2, MARGIN, w, hMm);
       canvas.width = canvas.height = 0;
+      page.remove();
     }
     const name = `${fileName.replace(/[^\p{L}\p{N} _-]/gu, "").slice(0, 60) || "apuntes"}.pdf`;
     return new File([pdf.output("blob")], name, { type: "application/pdf" });
